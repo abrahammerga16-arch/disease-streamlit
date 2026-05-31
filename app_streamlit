@@ -17,12 +17,23 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-HTML_PATH = os.path.join(os.path.dirname(__file__), "healthcare_dashboard.html")
-with open(HTML_PATH, "r", encoding="utf-8") as f:
-    html_content = f.read()
+# Get Groq API key from Streamlit secrets
+try:
+    groq_key = st.secrets["GROQ_API_KEY"]
+except Exception:
+    groq_key = ""
 
-# Inject Groq API key from Streamlit secrets
-groq_key = st.secrets.get("GROQ_API_KEY", "")
+# Load HTML file
+HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "healthcare_dashboard.html")
+
+try:
+    with open(HTML_PATH, "r", encoding="utf-8") as f:
+        html_content = f.read()
+except FileNotFoundError:
+    st.error("healthcare_dashboard.html not found. Please upload it to your GitHub repo.")
+    st.stop()
+
+# Inject Groq API key
 html_content = html_content.replace("YOUR_GROQ_API_KEY_HERE", groq_key)
 
 components.html(html_content, height=3800, scrolling=True)
