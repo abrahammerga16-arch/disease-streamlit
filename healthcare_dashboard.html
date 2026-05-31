@@ -1110,11 +1110,16 @@
     </main>
 
     <script>
-        // ── Groq API (free — get key at console.groq.com) ──
-        const GROQ_MODEL = 'llama3-70b-8192';
-        const GROQ_API_KEY = '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'; // ← replace with your key
+        // ── Groq API ──
+        // Key is injected at runtime by app.py from Streamlit secrets.
+        // To run locally: replace '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' with your key from console.groq.com
+        const GROQ_MODEL = 'llama-3.3-70b-versatile';
+        const GROQ_API_KEY = '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';
 
         async function callClaude(systemPrompt, userMessage) {
+            if (!GROQ_API_KEY || GROQ_API_KEY === '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') {
+                throw new Error('Groq API key not configured. Please add GROQ_API_KEY to your Streamlit secrets.');
+            }
             const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -1123,14 +1128,18 @@
                 },
                 body: JSON.stringify({
                     model: GROQ_MODEL,
-                    max_tokens: 1000,
+                    max_tokens: 1024,
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userMessage }
                     ]
                 })
             });
-            if (!res.ok) throw new Error('API error ' + res.status);
+            if (!res.ok) {
+                const errBody = await res.json().catch(() => ({}));
+                const msg = errBody?.error?.message || res.statusText;
+                throw new Error(`Groq API error ${res.status}: ${msg}`);
+            }
             const d = await res.json();
             return d.choices[0].message.content;
         }
