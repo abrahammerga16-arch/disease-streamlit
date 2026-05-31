@@ -17,8 +17,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Get Groq API key from Streamlit secrets
-groq_key = st.secrets.get("GROQ_API_KEY", "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")
+# Get Groq API key from Streamlit secrets (NO DEFAULT VALUE - SECURITY FIX)
+groq_key = st.secrets.get("GROQ_API_KEY")
 if not groq_key:
     st.error(
         "⚠️ **GROQ_API_KEY not found in Streamlit secrets.**\n\n"
@@ -37,11 +37,16 @@ try:
 except FileNotFoundError:
     st.error(
         "⚠️ **healthcare_dashboard.html not found.**\n\n"
-        "Make sure the file is committed to your GitHub repo at the same level as `app.py`."
+        "Make sure the file is committed to your GitHub repo at the same level as `app_streamlit.py`."
     )
     st.stop()
 
-# Inject Groq API key into the HTML
-html_content = html_content.replace("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", groq_key)
+# Inject Groq API key via JavaScript window variable (SECURE APPROACH)
+html_with_key = f"""
+<script>
+    window.GROQ_API_KEY = '{groq_key}';
+</script>
+{html_content}
+"""
 
-components.html(html_content, height=3800, scrolling=True)
+components.html(html_with_key, height=3800, scrolling=True)
