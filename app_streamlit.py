@@ -21,7 +21,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-HTML_PATH = os.path.join(os.path.dirname(__file__), "healthcare_dashboard_v2 (1)")
+HTML_PATH = os.path.join(os.path.dirname(__file__), "healthcare_dashboard")
 
 with open(HTML_PATH, "r", encoding="utf-8") as f:
     html_content = f.read()
