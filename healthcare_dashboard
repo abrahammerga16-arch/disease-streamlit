@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediCare — Integrated Healthcare Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --teal: #0d9488;
+            --teal-light: #14b8a6;
+            --teal-dark: #0f766e;
+            --navy: #0f172a;
+            --navy-light: #1e293b;
+            --slate: #334155;
+            --muted: #64748b;
+            --soft: #f0fdfa;
+            --white: #ffffff;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --success: #10b981;
+            --info: #3b82f6;
+            --glass: rgba(255,255,255,0.06);
+            --border: rgba(255,255,255,0.1);
+        }
+
+        /* === LIGHT MODE === */
+        body.light-mode {
+            --navy: #f0faf9;
+            --navy-light: #e0f5f3;
+            --slate: #1e4a47;
+            --muted: #4b7a77;
+            --white: #0f172a;
+            --glass: rgba(0,0,0,0.04);
+            --border: rgba(0,0,0,0.1);
+            background: #f0faf9;
+            color: #0f172a;
+        }
+        body.light-mode .hero {
+            background: linear-gradient(135deg, #e0f5f3 0%, #ccefec 50%, #b8e9e5 100%);
+        }
+        body.light-mode .hero::before {
+            background: radial-gradient(circle, rgba(13,148,136,0.18) 0%, transparent 70%);
+        }
+        body.light-mode .hero-subtitle { color: rgba(15,23,42,0.55); }
+        body.light-mode .stat-label { color: rgba(15,23,42,0.45); }
+        body.light-mode .hero-card {
+            background: rgba(255,255,255,0.75);
+            border-color: rgba(13,148,136,0.2);
+            box-shadow: 0 8px 32px rgba(13,148,136,0.12);
+        }
+        body.light-mode .vital-box {
+            background: rgba(13,148,136,0.07);
+            border-color: rgba(13,148,136,0.15);
+        }
+        body.light-mode .vital-name { color: rgba(15,23,42,0.45); }
+        body.light-mode .health-bar-label { color: rgba(15,23,42,0.5); }
+        body.light-mode .health-bar-track { background: rgba(0,0,0,0.08); }
+        body.light-mode .features-row { background: rgba(0,0,0,0.05); border-top-color: rgba(0,0,0,0.07); }
+        body.light-mode .feature-pill { background: rgba(255,255,255,0.7); }
+        body.light-mode .feature-text p { color: rgba(15,23,42,0.45); }
+        body.light-mode .context-bar {
+            background: rgba(255,255,255,0.8);
+            border-color: rgba(13,148,136,0.2);
+            box-shadow: 0 2px 16px rgba(13,148,136,0.08);
+        }
+        body.light-mode .context-label { color: rgba(15,23,42,0.4); }
+        body.light-mode .ctx-input {
+            background: rgba(255,255,255,0.9);
+            border-color: rgba(13,148,136,0.25);
+            color: #0f172a;
+        }
+        body.light-mode .ctx-input option { background: #fff; color: #0f172a; }
+        body.light-mode .tabs { border-bottom-color: rgba(0,0,0,0.1); }
+        body.light-mode .tab-btn { color: rgba(15,23,42,0.4); }
+        body.light-mode .tab-btn:hover { color: rgba(15,23,42,0.8); }
+        body.light-mode .tab-icon { background: rgba(0,0,0,0.05); }
+        body.light-mode .panel-card {
+            background: rgba(255,255,255,0.85);
+            border-color: rgba(13,148,136,0.18);
+            box-shadow: 0 4px 24px rgba(13,148,136,0.08);
+        }
+        body.light-mode .panel-header-text p { color: rgba(15,23,42,0.45); }
+        body.light-mode .field-label { color: rgba(15,23,42,0.55); }
+        body.light-mode .field-input {
+            background: rgba(255,255,255,0.95);
+            border-color: rgba(13,148,136,0.25);
+            color: #0f172a;
+        }
+        body.light-mode .field-input::placeholder { color: rgba(15,23,42,0.35); }
+        body.light-mode .btn-ghost {
+            background: rgba(0,0,0,0.05);
+            border-color: rgba(0,0,0,0.12);
+            color: rgba(15,23,42,0.6);
+        }
+        body.light-mode .btn-ghost:hover { background: rgba(0,0,0,0.1); color: #0f172a; }
+        body.light-mode .output-area {
+            background: rgba(255,255,255,0.9);
+            border-color: rgba(13,148,136,0.15);
+            color: rgba(15,23,42,0.8);
+        }
+        body.light-mode .output-area li { color: rgba(15,23,42,0.75); border-bottom-color: rgba(0,0,0,0.05); }
+        body.light-mode .output-area p { color: rgba(15,23,42,0.8); }
+        body.light-mode .quick-select-label { color: rgba(15,23,42,0.4); }
+        body.light-mode .cat-tab {
+            border-color: rgba(0,0,0,0.12);
+            background: rgba(0,0,0,0.04);
+            color: rgba(15,23,42,0.5);
+        }
+        body.light-mode .cat-tab:hover { border-color: var(--teal); color: var(--teal-dark); background: rgba(13,148,136,0.08); }
+        body.light-mode .cat-tab.active { background: rgba(13,148,136,0.15); border-color: var(--teal); color: var(--teal-dark); }
+        body.light-mode .symptom-pill {
+            border-color: rgba(0,0,0,0.12);
+            background: rgba(255,255,255,0.8);
+            color: rgba(15,23,42,0.7);
+        }
+        body.light-mode .symptom-pill:hover { border-color: var(--teal); color: var(--teal-dark); background: rgba(13,148,136,0.08); }
+        body.light-mode .symptom-pill.selected { background: rgba(13,148,136,0.15); border-color: var(--teal); color: var(--teal-dark); }
+        body.light-mode .or-divider { color: rgba(15,23,42,0.25); }
+        body.light-mode .or-divider::before, body.light-mode .or-divider::after { background: rgba(0,0,0,0.08); }
+        body.light-mode .section-title { color: var(--teal-dark); border-bottom-color: rgba(13,148,136,0.2); }
+        body.light-mode .confidence-heading { color: rgba(15,23,42,0.35); }
+        body.light-mode .conf-card { background: rgba(255,255,255,0.7); border-color: rgba(0,0,0,0.08); }
+        body.light-mode .conf-card.top { background: rgba(13,148,136,0.08); border-color: rgba(13,148,136,0.4); }
+        body.light-mode .conf-card-rank { color: rgba(15,23,42,0.3); }
+        body.light-mode .conf-card-name { color: #0f172a; }
+        body.light-mode .conf-bar-track { background: rgba(0,0,0,0.08); }
+        body.light-mode .hero-badge { background: rgba(13,148,136,0.12); border-color: rgba(13,148,136,0.35); }
+
+        /* === THEME TOGGLE BUTTON === */
+        .theme-toggle {
+            position: fixed;
+            top: 18px;
+            right: 20px;
+            z-index: 999;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(12px);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            transition: all 0.25s;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+        }
+        .theme-toggle:hover {
+            background: rgba(13,148,136,0.2);
+            border-color: var(--teal);
+            transform: scale(1.08);
+        }
+        body.light-mode .theme-toggle {
+            background: rgba(255,255,255,0.85);
+            border-color: rgba(13,148,136,0.3);
+            box-shadow: 0 2px 12px rgba(13,148,136,0.15);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--navy);
+            color: var(--white);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* === HERO HEADER === */
+        .hero {
+            position: relative;
+            background: linear-gradient(135deg, #0f172a 0%, #0d2d2a 50%, #0a1f1d 100%);
+            padding: 60px 40px 0;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -100px; right: -100px;
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(13,148,136,0.25) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -50px; left: -80px;
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, rgba(245,158,11,0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .hero-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            align-items: center;
+            gap: 60px;
+        }
+
+        .hero-text { position: relative; z-index: 2; }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(13,148,136,0.15);
+            border: 1px solid rgba(13,148,136,0.4);
+            color: var(--teal-light);
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 24px;
+            animation: fadeInDown 0.6s ease;
+        }
+
+        .hero-badge::before {
+            content: '';
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--teal-light);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.4); }
+        }
+
+        .hero-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.4rem;
+            font-weight: 900;
+            line-height: 1.08;
+            color: var(--white);
+            margin-bottom: 20px;
+            animation: fadeInUp 0.7s ease 0.1s both;
+        }
+
+        .hero-title span {
+            color: var(--teal-light);
+            position: relative;
+        }
+
+        .hero-subtitle {
+            font-size: 1.05rem;
+            color: rgba(255,255,255,0.55);
+            line-height: 1.7;
+            max-width: 460px;
+            margin-bottom: 36px;
+            font-weight: 300;
+            animation: fadeInUp 0.7s ease 0.2s both;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 32px;
+            animation: fadeInUp 0.7s ease 0.3s both;
+        }
+
+        .stat-item { text-align: left; }
+
+        .stat-num {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--teal-light);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-top: 4px;
+        }
+
+        /* Hero visual - SVG medical illustration */
+        .hero-visual {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeInRight 0.8s ease 0.2s both;
+        }
+
+        .hero-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 24px;
+            padding: 30px;
+            backdrop-filter: blur(20px);
+            position: relative;
+            width: 100%;
+            max-width: 380px;
+        }
+
+        .hero-card-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .avatar {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--teal), #0d6e68);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .hero-card-title { font-size: 0.95rem; font-weight: 600; }
+        .hero-card-sub { font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+        .vital-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .vital-box {
+            background: rgba(255,255,255,0.05);
+            border-radius: 14px;
+            padding: 14px;
+            border: 1px solid rgba(255,255,255,0.07);
+        }
+
+        .vital-icon { font-size: 1.2rem; margin-bottom: 6px; }
+        .vital-val { font-size: 1.1rem; font-weight: 700; color: var(--teal-light); }
+        .vital-name { font-size: 0.68rem; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+        .health-bar-row { margin-bottom: 10px; }
+        .health-bar-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-bottom: 5px; }
+        .health-bar-track { background: rgba(255,255,255,0.08); border-radius: 100px; height: 6px; overflow: hidden; }
+        .health-bar-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--teal), var(--teal-light)); transition: width 1.5s cubic-bezier(.4,0,.2,1); }
+
+        .floating-badge {
+            position: absolute;
+            top: -18px; right: -18px;
+            background: var(--accent);
+            color: var(--navy);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 100px;
+            letter-spacing: 0.05em;
+            box-shadow: 0 4px 20px rgba(245,158,11,0.4);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        /* === FEATURES ROW === */
+        .features-row {
+            display: grid;
+            grid-template-columns: repeat(3,1fr);
+            gap: 1px;
+            background: rgba(255,255,255,0.07);
+            border-top: 1px solid rgba(255,255,255,0.07);
+            margin-top: 60px;
+        }
+
+        .feature-pill {
+            background: rgba(13,148,136,0.04);
+            padding: 22px 28px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .feature-icon {
+            width: 42px; height: 42px;
+            border-radius: 12px;
+            background: rgba(13,148,136,0.15);
+            border: 1px solid rgba(13,148,136,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .feature-text h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 3px; }
+        .feature-text p { font-size: 0.75rem; color: rgba(255,255,255,0.4); }
+
+        /* === MAIN CONTENT === */
+        .main-content {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 50px 40px 80px;
+        }
+
+        /* === USER CONTEXT BAR === */
+        .context-bar {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 20px 28px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+            backdrop-filter: blur(10px);
+        }
+
+        .context-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(255,255,255,0.35);
+            margin-bottom: 6px;
+        }
+
+        .context-field { flex: 1; min-width: 120px; }
+
+        .ctx-input {
+            width: 100%;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: var(--white);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .ctx-input:focus {
+            border-color: var(--teal);
+            background: rgba(13,148,136,0.08);
+            box-shadow: 0 0 0 3px rgba(13,148,136,0.15);
+        }
+
+        .ctx-input option { background: var(--navy-light); }
+
+        /* === TABS === */
+        .tabs-wrapper { margin-bottom: 32px; }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 14px 28px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: rgba(255,255,255,0.4);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.92rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: -1px;
+        }
+
+        .tab-btn:hover { color: rgba(255,255,255,0.8); }
+
+        .tab-btn.active {
+            color: var(--teal-light);
+            border-bottom-color: var(--teal-light);
+            font-weight: 600;
+        }
+
+        .tab-icon {
+            width: 30px; height: 30px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.25s;
+        }
+
+        .tab-btn.active .tab-icon {
+            background: rgba(13,148,136,0.2);
+        }
+
+        /* === TAB PANELS === */
+        .tab-panel { display: none; animation: fadeIn 0.3s ease; }
+        .tab-panel.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .panel-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 20px;
+            padding: 36px;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .panel-icon {
+            width: 54px; height: 54px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .icon-teal { background: rgba(13,148,136,0.2); border: 1px solid rgba(13,148,136,0.3); }
+        .icon-amber { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); }
+        .icon-blue { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); }
+
+        .panel-header-text h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 4px; }
+        .panel-header-text p { font-size: 0.82rem; color: rgba(255,255,255,0.4); }
+
+        /* Input styling */
+        .field-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(255,255,255,0.45);
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .field-input {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 14px 18px;
+            color: var(--white);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.25s;
+            margin-bottom: 24px;
+        }
+
+        .field-input:focus {
+            border-color: var(--teal);
+            background: rgba(13,148,136,0.07);
+            box-shadow: 0 0 0 3px rgba(13,148,136,0.12);
+        }
+
+        .field-input::placeholder { color: rgba(255,255,255,0.2); }
+
+        /* Buttons */
+        .btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+        .btn {
+            padding: 13px 28px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.92rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:active { transform: scale(0.97); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+            color: var(--white);
+            box-shadow: 0 4px 20px rgba(13,148,136,0.35);
+        }
+        .btn-primary:hover { background: linear-gradient(135deg, var(--teal-light), var(--teal)); box-shadow: 0 6px 24px rgba(13,148,136,0.5); transform: translateY(-1px); }
+
+        .btn-success {
+            background: linear-gradient(135deg, #059669, #047857);
+            color: var(--white);
+            box-shadow: 0 4px 20px rgba(5,150,105,0.3);
+        }
+        .btn-success:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+        .btn-blue {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: var(--white);
+            box-shadow: 0 4px 20px rgba(37,99,235,0.3);
+        }
+        .btn-blue:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+        .btn-ghost {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.6);
+        }
+        .btn-ghost:hover { background: rgba(255,255,255,0.1); color: var(--white); }
+
+        .btn-warning {
+            background: rgba(245,158,11,0.12);
+            border: 1px solid rgba(245,158,11,0.25);
+            color: var(--accent);
+        }
+        .btn-warning:hover { background: rgba(245,158,11,0.2); }
+
+        /* Output area */
+        .output-area {
+            margin-top: 28px;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 16px;
+            padding: 24px;
+            max-height: 380px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            line-height: 1.7;
+            color: rgba(255,255,255,0.8);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(13,148,136,0.4) transparent;
+        }
+
+        .output-area:empty { display: none; }
+
+        .output-area strong { color: var(--teal-light); font-weight: 600; }
+        .output-area ul { list-style: none; padding: 0; }
+        .output-area li {
+            padding: 6px 0 6px 18px;
+            position: relative;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            color: rgba(255,255,255,0.75);
+        }
+        .output-area li::before { content: '→'; position: absolute; left: 0; color: var(--teal); }
+        .output-area p { margin-bottom: 10px; }
+
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--teal);
+            font-weight: 700;
+            border-bottom: 1px solid rgba(13,148,136,0.2);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            margin-top: 16px;
+        }
+
+        .section-title:first-child { margin-top: 0; }
+
+        .error-msg {
+            color: #fca5a5;
+            background: rgba(239,68,68,0.1);
+            border: 1px solid rgba(239,68,68,0.2);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 0.88rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .warn-msg {
+            color: #fcd34d;
+            background: rgba(245,158,11,0.08);
+            border: 1px solid rgba(245,158,11,0.2);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 0.88rem;
+            margin-top: 14px;
+        }
+
+        /* === CONFIDENCE CARDS === */
+        .confidence-block {
+            margin-bottom: 22px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .confidence-heading {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: rgba(255,255,255,0.35);
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .confidence-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+        }
+        .conf-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 14px 16px;
+            overflow: hidden;
+        }
+        .conf-card.top {
+            border-color: rgba(13,148,136,0.45);
+            background: rgba(13,148,136,0.07);
+        }
+        .conf-card-rank {
+            font-size: 0.65rem;
+            color: rgba(255,255,255,0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 5px;
+        }
+        .conf-card.top .conf-card-rank { color: var(--teal-light); }
+        .conf-card-name {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--white);
+            margin-bottom: 10px;
+            line-height: 1.3;
+        }
+        .conf-bar-track {
+            background: rgba(255,255,255,0.08);
+            border-radius: 100px;
+            height: 5px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+        .conf-bar-fill {
+            height: 100%;
+            border-radius: 100px;
+            background: linear-gradient(90deg, var(--teal-dark), var(--teal-light));
+            transition: width 1.2s cubic-bezier(.4,0,.2,1);
+            width: 0;
+        }
+        .conf-card.top .conf-bar-fill {
+            background: linear-gradient(90deg, var(--teal), #34d399);
+        }
+        .conf-pct {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--teal-light);
+            text-align: right;
+        }
+        .conf-card.top .conf-pct { color: #34d399; }
+
+        /* === BOTTOM CLEAR ALL === */
+        .bottom-bar {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+
+        /* === ANIMATIONS === */
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* === QUICK-SELECT SYMPTOMS === */
+        .quick-select-wrapper {
+            margin-bottom: 20px;
+        }
+        .quick-select-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(255,255,255,0.35);
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .symptom-category-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+        .cat-tab {
+            padding: 5px 13px;
+            border-radius: 100px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.04);
+            color: rgba(255,255,255,0.5);
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            font-family: 'DM Sans', sans-serif;
+        }
+        .cat-tab:hover {
+            border-color: var(--teal);
+            color: var(--teal-light);
+            background: rgba(13,148,136,0.1);
+        }
+        .cat-tab.active {
+            background: rgba(13,148,136,0.2);
+            border-color: var(--teal);
+            color: var(--teal-light);
+        }
+        .symptom-pills-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 130px;
+            overflow-y: auto;
+            padding: 4px 2px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(13,148,136,0.4) transparent;
+        }
+        .symptom-pill {
+            padding: 6px 14px;
+            border-radius: 100px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.75);
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.18s;
+            white-space: nowrap;
+            font-family: 'DM Sans', sans-serif;
+            user-select: none;
+        }
+        .symptom-pill:hover {
+            border-color: var(--teal-light);
+            color: var(--white);
+            background: rgba(13,148,136,0.12);
+            transform: translateY(-1px);
+        }
+        .symptom-pill.selected {
+            background: rgba(13,148,136,0.25);
+            border-color: var(--teal-light);
+            color: var(--teal-light);
+            font-weight: 600;
+        }
+        .or-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 16px 0 10px;
+            color: rgba(255,255,255,0.25);
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .or-divider::before, .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255,255,255,0.08);
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 768px) {
+            .hero-inner { grid-template-columns: 1fr; gap: 40px; }
+            .hero-title { font-size: 2.4rem; }
+            .hero-visual { display: none; }
+            .features-row { grid-template-columns: 1fr; }
+            .main-content { padding: 30px 20px 60px; }
+            .context-bar { flex-direction: column; }
+            .hero { padding: 40px 20px 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" id="theme-toggle" title="Toggle dark/light mode">🌙</button>
+
+    <!-- ===== HERO ===== -->
+    <header class="hero">
+        <div class="hero-inner">
+            <div class="hero-text">
+                <div class="hero-badge" data-translate="AI-Powered Healthcare">AI-Powered Healthcare</div>
+                <h1 class="hero-title"><span data-translate="Your Personal">Your Personal</span><br><span data-translate="Health Intelligence">Health Intelligence</span><br><span data-translate="Dashboard">Dashboard</span></h1>
+                <p class="hero-subtitle" data-translate="Diagnose symptoms, get personalized health plans, and consult our AI healthcare chatbot — all in one seamless platform.">Diagnose symptoms, get personalized health plans, and consult our AI healthcare chatbot — all in one seamless platform.</p>
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <div class="stat-num">41+</div>
+                        <div class="stat-label" data-translate="Diseases">Diseases</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-num">3</div>
+                        <div class="stat-label" data-translate="Smart Tools">Smart Tools</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-num">2</div>
+                        <div class="stat-label" data-translate="Languages">Languages</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-visual">
+                <div class="hero-card">
+                    <div class="floating-badge" data-translate="✦ AI Powered">✦ AI Powered</div>
+                    <div class="hero-card-header">
+                        <div class="avatar">🩺</div>
+                        <div>
+                            <div class="hero-card-title" data-translate="Patient Overview">Patient Overview</div>
+                            <div class="hero-card-sub" data-translate="Real-time health insights">Real-time health insights</div>
+                        </div>
+                    </div>
+
+                    <div class="vital-grid">
+                        <div class="vital-box">
+                            <div class="vital-icon">❤️</div>
+                            <div class="vital-val">72 bpm</div>
+                            <div class="vital-name" data-translate="Heart Rate">Heart Rate</div>
+                        </div>
+                        <div class="vital-box">
+                            <div class="vital-icon">🩸</div>
+                            <div class="vital-val">120/80</div>
+                            <div class="vital-name" data-translate="Blood Pressure">Blood Pressure</div>
+                        </div>
+                        <div class="vital-box">
+                            <div class="vital-icon">🌡️</div>
+                            <div class="vital-val">98.6°F</div>
+                            <div class="vital-name" data-translate="Temperature">Temperature</div>
+                        </div>
+                        <div class="vital-box">
+                            <div class="vital-icon">💧</div>
+                            <div class="vital-val">98%</div>
+                            <div class="vital-name" data-translate="SpO₂">SpO₂</div>
+                        </div>
+                    </div>
+
+                    <div class="health-bar-row">
+                        <div class="health-bar-label"><span data-translate="Overall Health">Overall Health</span><span>82%</span></div>
+                        <div class="health-bar-track"><div class="health-bar-fill" style="width:82%"></div></div>
+                    </div>
+                    <div class="health-bar-row">
+                        <div class="health-bar-label"><span data-translate="Diagnosis Accuracy">Diagnosis Accuracy</span><span>95%</span></div>
+                        <div class="health-bar-track"><div class="health-bar-fill" style="width:95%; background: linear-gradient(90deg,#f59e0b,#fcd34d)"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FEATURE ROW -->
+        <div class="features-row">
+            <div class="feature-pill">
+                <div class="feature-icon">🔬</div>
+                <div class="feature-text">
+                    <h4 data-translate="Symptom Analysis">Symptom Analysis</h4>
+                    <p data-translate="AI-powered disease prediction">AI-powered disease prediction</p>
+                </div>
+            </div>
+            <div class="feature-pill">
+                <div class="feature-icon">📋</div>
+                <div class="feature-text">
+                    <h4 data-translate="Health Planning">Health Planning</h4>
+                    <p data-translate="Personalized care plans">Personalized care plans</p>
+                </div>
+            </div>
+            <div class="feature-pill">
+                <div class="feature-icon">💬</div>
+                <div class="feature-text">
+                    <h4 data-translate="24/7 AI Chatbot">24/7 AI Chatbot</h4>
+                    <p data-translate="Always available support">Always available support</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main-content">
+
+        <!-- Context Bar -->
+        <div class="context-bar">
+            <div class="context-field" style="max-width:110px">
+                <div class="context-label" data-translate="Your Age">Your Age</div>
+                <input type="number" id="age" class="ctx-input" value="25" min="0">
+            </div>
+            <div class="context-field" style="max-width:160px">
+                <div class="context-label" data-translate="Role">Role</div>
+                <select id="role" class="ctx-input">
+                    <option value="Normal User" data-translate="Normal User">Normal User</option>
+                    <option value="Student" data-translate="Student">Student</option>
+                    <option value="Doctor" data-translate="Doctor">Doctor</option>
+                </select>
+            </div>
+            <div class="context-field" id="id-group" style="display:none; max-width:180px">
+                <div class="context-label" data-translate="ID Number">ID Number</div>
+                <input type="text" id="id-number" class="ctx-input" placeholder="Enter ID">
+            </div>
+            <div class="context-field" style="max-width:140px">
+                <div class="context-label" data-translate="Language">Language</div>
+                <select id="language" class="ctx-input">
+                    <option value="English">🌐 English</option>
+                    <option value="Amharic">🇪🇹 Amharic</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs-wrapper">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="openTab('predict')" data-key="Disease Predictor">
+                    <span class="tab-icon">🔬</span> <span data-translate="Disease Predictor">Disease Predictor</span>
+                </button>
+                <button class="tab-btn" onclick="openTab('recommender')" data-key="Health Recommender">
+                    <span class="tab-icon">📋</span> <span data-translate="Health Recommender">Health Recommender</span>
+                </button>
+                <button class="tab-btn" onclick="openTab('chatbot')" data-key="Healthcare Chatbot">
+                    <span class="tab-icon">💬</span> <span data-translate="Healthcare Chatbot">Healthcare Chatbot</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab: Predict -->
+        <div id="predict" class="tab-panel active">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div class="panel-icon icon-teal">🔬</div>
+                    <div class="panel-header-text">
+                        <h3 data-translate="Symptom-Based Disease Predictor">Symptom-Based Disease Predictor</h3>
+                        <p data-translate="Enter your symptoms and our AI will identify possible conditions">Enter your symptoms and our AI will identify possible conditions</p>
+                    </div>
+                </div>
+                <!-- Quick Select Symptoms -->
+                <div class="quick-select-wrapper">
+                    <div class="quick-select-label" data-translate="Quick-select symptoms:">Quick-select symptoms:</div>
+                    <div class="symptom-category-tabs" id="cat-tabs"></div>
+                    <div class="symptom-pills-container" id="symptom-pills"></div>
+                </div>
+
+                <div class="or-divider">or type symptoms</div>
+
+                <label class="field-label" id="predict-label" for="symptoms">Symptoms (comma-separated)</label>
+                <input type="text" id="symptoms" class="field-input" placeholder="e.g. headache, fever, fatigue…">
+                <div class="btn-row">
+                    <button class="btn btn-primary" id="predict-btn" data-key="Predict & Recommend">
+                        <span data-translate="✦ Predict & Recommend">✦ Predict & Recommend</span>
+                    </button>
+                    <button class="btn btn-ghost" id="predict-clear-btn" data-key="Clear"><span data-translate="✕ Clear">✕ Clear</span></button>
+                </div>
+                <div id="predict-output" class="output-area"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Recommender -->
+        <div id="recommender" class="tab-panel">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div class="panel-icon icon-amber">📋</div>
+                    <div class="panel-header-text">
+                        <h3 data-translate="Personalized Health Recommender">Personalized Health Recommender</h3>
+                        <p data-translate="Get a tailored health management plan for any condition">Get a tailored health management plan for any condition</p>
+                    </div>
+                </div>
+                <label class="field-label" id="recommender-label" for="disease-input">Disease Name</label>
+                <input type="text" id="disease-input" list="disease-suggestions" class="field-input" placeholder="e.g. Asthma, Diabetes">
+                <datalist id="disease-suggestions"></datalist>
+                <div class="btn-row">
+                    <button class="btn btn-success" id="recommend-btn" data-key="Get Plan">
+                        <span data-translate="✦ Get Health Plan">✦ Get Health Plan</span>
+                    </button>
+                    <button class="btn btn-ghost" id="recommend-clear-btn" data-key="Clear"><span data-translate="✕ Clear">✕ Clear</span></button>
+                </div>
+                <div id="recommender-output" class="output-area"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Chatbot -->
+        <div id="chatbot" class="tab-panel">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <div class="panel-icon icon-blue">💬</div>
+                    <div class="panel-header-text">
+                        <h3 data-translate="AI Healthcare Assistant">AI Healthcare Assistant</h3>
+                        <p data-translate="Ask any health-related question and get instant, reliable answers">Ask any health-related question and get instant, reliable answers</p>
+                    </div>
+                </div>
+                <label class="field-label" id="chatbot-label" for="chat-query">Your Question</label>
+                <input type="text" id="chat-query" class="field-input" placeholder="e.g. Tell me about Asthma diet recommendations">
+                <div class="btn-row">
+                    <button class="btn btn-blue" id="chat-btn" data-key="Ask Bot">
+                        <span data-translate="✦ Ask AI">✦ Ask AI</span>
+                    </button>
+                    <button class="btn btn-ghost" id="chat-clear-btn" data-key="Clear"><span data-translate="✕ Clear">✕ Clear</span></button>
+                </div>
+                <div id="chat-output" class="output-area"></div>
+            </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="bottom-bar">
+            <button class="btn btn-warning" id="clear-all-btn" data-key="Clear All"><span data-translate="↺ Reset All">↺ Reset All</span></button>
+        </div>
+
+    </main>
+
+    <script>
+        const API_URL = 'https://disease-predictor.onrender.com';
+
+        // Common headers for all requests — bypasses ngrok browser warning page
+        const NGROK_HEADERS = {
+            'Content-Type': 'application/json',
+            
+        };
+
+        // Elements
+        const ageInput = document.getElementById('age');
+        const roleInput = document.getElementById('role');
+        const idGroup = document.getElementById('id-group');
+        const idNumberInput = document.getElementById('id-number');
+        const languageInput = document.getElementById('language');
+        const predictInput = document.getElementById('symptoms');
+        const predictBtn = document.getElementById('predict-btn');
+        const predictClearBtn = document.getElementById('predict-clear-btn');
+        const predictOutput = document.getElementById('predict-output');
+        const diseaseInput = document.getElementById('disease-input');
+        const diseaseSuggestions = document.getElementById('disease-suggestions');
+        const recommendBtn = document.getElementById('recommend-btn');
+        const recommendClearBtn = document.getElementById('recommend-clear-btn');
+        const recommenderOutput = document.getElementById('recommender-output');
+        const chatQueryInput = document.getElementById('chat-query');
+        const chatBtn = document.getElementById('chat-btn');
+        const chatClearBtn = document.getElementById('chat-clear-btn');
+        const chatOutput = document.getElementById('chat-output');
+        const clearAllBtn = document.getElementById('clear-all-btn');
+
+        let diseaseListEnglish = [];
+        let translatedDiseaseMap = {};
+
+        // ── Full Amharic translation map — no network required ──
+        const AM = {
+            // Hero
+            'AI-Powered Healthcare':        'AI-ሃይሎ የጤና አገልግሎት',
+            'Your Personal':                'የእርስዎ ግላዊ',
+            'Health Intelligence':          'የጤና ብልህነት',
+            'Dashboard':                    'ዳሽቦርድ',
+            'Diagnose symptoms, get personalized health plans, and consult our AI healthcare chatbot — all in one seamless platform.':
+                'ምልክቶችን ይለዩ፣ ግላዊ የጤና እቅዶችን ያግኙ፣ እና AI የጤና ቻትቦታችንን ያማክሩ — ሁሉም በአንድ ምቹ መድረክ።',
+            'Diseases':                     'በሽታዎች',
+            'Smart Tools':                  'ብልህ መሳሪያዎች',
+            'Languages':                    'ቋንቋዎች',
+            '✦ AI Powered':                 '✦ AI ሃይሎ',
+            'Patient Overview':             'የታካሚ አጠቃላይ እይታ',
+            'Real-time health insights':    'በቅጽበት የጤና ምልከታ',
+            'Heart Rate':                   'የልብ ምት',
+            'Blood Pressure':               'የደም ግፊት',
+            'Temperature':                  'የሙቀት መጠን',
+            'SpO₂':                         'SpO₂',
+            'Overall Health':               'አጠቃላይ ጤና',
+            'Diagnosis Accuracy':           'የምርመራ ትክክለኛነት',
+            // Features
+            'Symptom Analysis':             'የምልክት ትንተና',
+            'AI-powered disease prediction':'AI-ሃይሎ የበሽታ ትንበያ',
+            'Health Planning':              'የጤና ዕቅድ',
+            'Personalized care plans':      'ግላዊ የእንክብካቤ እቅዶች',
+            '24/7 AI Chatbot':              '24/7 AI ቻትቦት',
+            'Always available support':     'ሁልጊዜ ዝግጁ ድጋፍ',
+            // Context bar
+            'Your Age':                     'ዕድሜዎ',
+            'Role':                         'ሚና',
+            'ID Number':                    'መታወቂያ ቁጥር',
+            'Language':                     'ቋንቋ',
+            'Normal User':                  'ተራ ተጠቃሚ',
+            'Student':                      'ተማሪ',
+            'Doctor':                       'ዶክተር',
+            // Tabs
+            'Disease Predictor':            'በሽታ ትንበያ',
+            'Health Recommender':           'የጤና ምክር',
+            'Healthcare Chatbot':           'የጤና ቻትቦት',
+            // Panel: Predict
+            'Symptom-Based Disease Predictor': 'ምልክት-ተኮር የበሽታ ትንበያ',
+            'Enter your symptoms and our AI will identify possible conditions':
+                'ምልክቶችዎን ያስገቡ፣ AI ሊሆኑ የሚችሉ ሁኔታዎችን ይለያል',
+            'Symptoms (comma-separated)':   'ምልክቶች (በኮማ የተለዩ)',
+            '✦ Predict & Recommend':        '✦ ተንብይ እና ምከር',
+            '✕ Clear':                      '✕ አጽዳ',
+            // Panel: Recommender
+            'Personalized Health Recommender': 'ግላዊ የጤና ምክር ሰጪ',
+            'Get a tailored health management plan for any condition':
+                'ለማንኛውም ሁኔታ ብጁ የጤና አያያዝ እቅድ ያግኙ',
+            'Disease Name':                 'የበሽታ ስም',
+            '✦ Get Health Plan':            '✦ የጤና እቅድ ያግኙ',
+            // Panel: Chatbot
+            'AI Healthcare Assistant':      'AI የጤና ረዳት',
+            'Ask any health-related question and get instant, reliable answers':
+                'ማንኛውም የጤና ጥያቄ ይጠይቁ፣ ፈጣን እና አስተማማኝ መልስ ያግኙ',
+            'Your Question':                'ጥያቄዎ',
+            '✦ Ask AI':                     '✦ AI ጠይቅ',
+            '↺ Reset All':                  '↺ ሁሉንም ዳግም አስጀምር',
+            // Placeholders
+            'e.g. headache, vomiting':      'ለምሳሌ፡ ራስ ምታት፣ ማስታወክ',
+            'e.g. Asthma':                  'ለምሳሌ፡ አስም',
+            'e.g. Tell me about Asthma diet':'ለምሳሌ፡ ስለ አስም አመጋገብ ምክሮች ንገረኝ',
+            'Enter ID':                     'መታወቂያ ያስገቡ',
+            // Runtime messages
+            'Please enter symptoms.':       'እባክዎ ምልክቶችን ያስገቡ።',
+            'Please enter a query.':        'እባክዎ ጥያቄ ያስገቡ።',
+            'Access Denied: Information is not available for users under 18.':
+                'መዳረሻ ተከልክሏል፡ ለ18 ዓመት በታች ተጠቃሚዎች መረጃ አይሰጥም።',
+            'Access Denied: Invalid ID for Student role.':
+                'መዳረሻ ተከልክሏል፡ ልክ ያልሆነ መታወቂያ።',
+        };
+
+        function isAmharic() { return languageInput.value === 'Amharic'; }
+
+        function t(key) {
+            return isAmharic() && AM[key] ? AM[key] : key;
+        }
+
+        // Instantly swap all UI text — purely synchronous, zero network calls
+        function applyUIText() {
+            const am = isAmharic();
+
+            // data-translate elements
+            document.querySelectorAll('[data-translate]').forEach(el => {
+                el.textContent = t(el.getAttribute('data-translate'));
+            });
+
+            // Field labels (set by ID)
+            const labels = {
+                'predict-label':    'Symptoms (comma-separated)',
+                'recommender-label':'Disease Name',
+                'chatbot-label':    'Your Question'
+            };
+            Object.entries(labels).forEach(([id, key]) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = t(key);
+            });
+
+            // Placeholders
+            const phs = {
+                'symptoms':     'e.g. headache, vomiting',
+                'disease-input':'e.g. Asthma',
+                'chat-query':   'e.g. Tell me about Asthma diet',
+                'id-number':    'Enter ID'
+            };
+            Object.entries(phs).forEach(([id, key]) => {
+                const el = document.getElementById(id);
+                if (el) el.placeholder = t(key);
+            });
+
+            // html lang attribute
+            document.documentElement.lang = am ? 'am' : 'en';
+
+            populateDiseaseSuggestions();
+        }
+
+        // Keep updateUIText as async for disease list fetching on page load,
+        // but translation itself is now instant (no network).
+        async function updateUIText() {
+            applyUIText();
+        }
+
+        async function fetchDiseaseList() {
+            try {
+                const res = await fetch(`${API_URL}/diseases`, { headers: NGROK_HEADERS });
+                if (res.ok) { diseaseListEnglish = await res.json(); diseaseListEnglish.sort(); }
+            } catch(e) { diseaseListEnglish = []; }
+        }
+
+        function translateText(key) { return t(key); }
+
+        function openTab(name) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(name).classList.add('active');
+            document.querySelector(`.tab-btn[onclick="openTab('${name}')"]`).classList.add('active');
+        }
+
+        function populateDiseaseSuggestions() {
+            diseaseSuggestions.innerHTML = '';
+            diseaseListEnglish.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = capitalizeWords(translatedDiseaseMap[d] || d);
+                diseaseSuggestions.appendChild(opt);
+            });
+        }
+
+        function capitalizeWords(str) {
+            if (!str) return '';
+            return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        }
+
+        function formatOutputAsHtml(data) {
+            let html = '';
+            if (typeof data === 'string') return `<p>${data}</p>`;
+            if (typeof data === 'object' && data !== null) {
+                for (const key in data) {
+                    let val = data[key];
+                    if (typeof val === 'string' && val.startsWith('[') && val.endsWith(']')) {
+                        try {
+                            const parsed = JSON.parse(val.replace(/'/g, '"'));
+                            if (Array.isArray(parsed)) val = parsed;
+                            else if (val.includes(',')) val = val.substring(1, val.length-1).split(',').map(s => s.trim());
+                        } catch(e) {}
+                    }
+                    if (Array.isArray(val)) {
+                        html += `<div class="section-title">${key}</div><ul>`;
+                        val.forEach(item => html += `<li>${item}</li>`);
+                        html += `</ul>`;
+                    } else if (typeof val === 'string' && val.includes('\n')) {
+                        html += `<div class="section-title">${key}</div><p>${val.replace(/\n/g,'<br>')}</p>`;
+                    } else {
+                        html += `<div class="section-title">${key}</div><p>${val}</p>`;
+                    }
+                }
+            }
+            return html;
+        }
+
+        function accessDenied(output, msg) {
+            output.innerHTML = `<div class="error-msg">⚠️ ${msg}</div>`;
+        }
+
+        function checkAccess(age, role, idNum, output) {
+            if (age < 18) { accessDenied(output, translateText('Access Denied: Information is not available for users under 18.')); return false; }
+            if ((role === 'Student' && idNum !== '1111') || (role === 'Doctor' && idNum !== '0000')) {
+                accessDenied(output, translateText('Access Denied: Invalid ID for Student role.')); return false;
+            }
+            return true;
+        }
+
+        roleInput.addEventListener('change', e => {
+            idGroup.style.display = ['Student','Doctor'].includes(e.target.value) ? 'block' : 'none';
+            if (!['Student','Doctor'].includes(e.target.value)) idNumberInput.value = '';
+            ageInput.value = 25;
+        });
+
+        languageInput.addEventListener('change', () => {
+            applyUIText();   // instant — no network, no delay
+        });
+
+        predictBtn.addEventListener('click', async () => {
+            predictOutput.innerHTML = '';
+            const age = parseInt(ageInput.value), role = roleInput.value, lang = languageInput.value;
+            const symptoms = predictInput.value.trim(), idNum = idNumberInput.value.trim();
+            if (!checkAccess(age, role, idNum, predictOutput)) return;
+            if (!symptoms) { predictOutput.innerHTML = `<div class="error-msg">⚠️ ${translateText('Please enter symptoms.')}</div>`; return; }
+            predictOutput.innerHTML = `<p style="color:var(--teal-light); opacity:0.7">${isAmharic() ? 'ምልክቶችን በመተንተን ላይ…' : 'Analyzing symptoms…'}</p>`;
+            try {
+                const res = await fetch(`${API_URL}/predict`, {
+                    method:'POST', headers: NGROK_HEADERS,
+                    body: JSON.stringify({symptoms, age, role, language: lang})
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    let html = '';
+
+                    // ── Confidence cards (top 4 predicted diseases) ──
+                    const conditions = (data.predicted_conditions || []).slice(0, 4);
+                    if (conditions.length) {
+                        const ranks = isAmharic() ? ['#1 ዋና ትንበያ','#2 ትንበያ','#3 ትንበያ','#4 ትንበያ'] : ['#1 Top Match','#2 Match','#3 Match','#4 Match'];
+                        let cards = '';
+                        conditions.forEach((c, i) => {
+                            const rawConf = String(c.confidence || '0');
+                            let pct = parseFloat(rawConf.replace('%',''));
+                            if (!isNaN(pct) && pct <= 1) pct = Math.round(pct * 100);
+                            else pct = Math.round(pct) || 0;
+                            cards += `<div class="conf-card${i === 0 ? ' top' : ''}">
+                              <div class="conf-card-rank">${ranks[i] || '#'+(i+1)}</div>
+                              <div class="conf-card-name">${c.disease}</div>
+                              <div class="conf-bar-track">
+                                <div class="conf-bar-fill" data-pct="${pct}"></div>
+                              </div>
+                              <div class="conf-pct">${pct}%</div>
+                            </div>`;
+                        });
+                        html += `<div class="confidence-block">
+                          <div class="confidence-heading">&#128302; ' + (isAmharic() ? 'የትንበያ እምነት' : 'Prediction Confidence') + '</div>
+                          <div class="confidence-cards">${cards}</div>
+                        </div>`;
+                    }
+
+                    // ── Recommendations ──
+                    html += formatOutputAsHtml(data.recommendations);
+                    if (data.advice) html += `<div class="warn-msg">&#9888;&#65039; ${data.advice}</div>`;
+                    predictOutput.innerHTML = html;
+
+                    // Animate bars after render
+                    requestAnimationFrame(() => {
+                        predictOutput.querySelectorAll('.conf-bar-fill').forEach(bar => {
+                            bar.style.width = (bar.dataset.pct || 0) + '%';
+                        });
+                    });
+                } else {
+                    predictOutput.innerHTML = `<div class="error-msg">&#9888;&#65039; ${data.error || 'Unknown error'}</div>`;
+                }
+            } catch(e) {
+                predictOutput.innerHTML = `<div class="error-msg">&#9888;&#65039; ' + (isAmharic() ? 'ለማገናኘት አልተቻለም። አገልጋዩ እየሰራ መሆኑን ያረጋግጡ።' : 'Failed to connect. Ensure server is running and API_URL is set.') + '</div>`;
+            }
+        });
+
+        predictClearBtn.addEventListener('click', () => { predictInput.value=''; predictOutput.innerHTML=''; });
+
+        recommendBtn.addEventListener('click', async () => {
+            recommenderOutput.innerHTML = '';
+            const age = parseInt(ageInput.value), role = roleInput.value, lang = languageInput.value;
+            const disease = diseaseInput.value, idNum = idNumberInput.value.trim();
+            if (!checkAccess(age, role, idNum, recommenderOutput)) return;
+            recommenderOutput.innerHTML = `<p style="color:var(--teal-light); opacity:0.7">${isAmharic() ? 'የጤና እቅድ በማዘጋጀት ላይ…' : 'Generating health plan…'}</p>`;
+            try {
+                const res = await fetch(`${API_URL}/recommend`, {
+                    method:'POST', headers: NGROK_HEADERS,
+                    body: JSON.stringify({disease, age, role, language: lang})
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    let html = formatOutputAsHtml(data.recommendations);
+                    if (data.advice) html += `<div class="warn-msg">⚠️ ${data.advice}</div>`;
+                    recommenderOutput.innerHTML = html;
+                } else {
+                    recommenderOutput.innerHTML = `<div class="error-msg">⚠️ ${data.error || 'Unknown error'}</div>`;
+                }
+            } catch(e) {
+                recommenderOutput.innerHTML = `<div class="error-msg">⚠️ ' + (isAmharic() ? 'ለማገናኘት አልተቻለም። አገልጋዩ እየሰራ መሆኑን ያረጋግጡ።' : 'Failed to connect. Ensure server is running and API_URL is set.') + '</div>`;
+            }
+        });
+
+        recommendClearBtn.addEventListener('click', () => { diseaseInput.value=''; recommenderOutput.innerHTML=''; });
+
+        chatBtn.addEventListener('click', async () => {
+            chatOutput.innerHTML = '';
+            const age = parseInt(ageInput.value), role = roleInput.value, lang = languageInput.value;
+            const query = chatQueryInput.value.trim(), idNum = idNumberInput.value.trim();
+            if (!checkAccess(age, role, idNum, chatOutput)) return;
+            if (!query) { chatOutput.innerHTML = `<div class="error-msg">⚠️ ${translateText('Please enter a query.')}</div>`; return; }
+            chatOutput.innerHTML = `<p style="color:var(--teal-light); opacity:0.7">${isAmharic() ? 'AI በማማከር ላይ…' : 'Consulting AI…'}</p>`;
+            try {
+                const res = await fetch(`${API_URL}/chat`, {
+                    method:'POST', headers: NGROK_HEADERS,
+                    body: JSON.stringify({query, age, role, language: lang})
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    chatOutput.innerHTML = `<p>${data.response}</p>`;
+                } else {
+                    chatOutput.innerHTML = `<div class="error-msg">⚠️ ${data.error || 'Unknown error'}</div>`;
+                }
+            } catch(e) {
+                chatOutput.innerHTML = `<div class="error-msg">⚠️ ' + (isAmharic() ? 'ለማገናኘት አልተቻለም። አገልጋዩ እየሰራ መሆኑን ያረጋግጡ።' : 'Failed to connect. Ensure server is running and API_URL is set.') + '</div>`;
+            }
+        });
+
+        chatClearBtn.addEventListener('click', () => { chatQueryInput.value=''; chatOutput.innerHTML=''; });
+
+        clearAllBtn.addEventListener('click', () => {
+            predictInput.value=''; predictOutput.innerHTML='';
+            diseaseInput.value=''; recommenderOutput.innerHTML='';
+            chatQueryInput.value=''; chatOutput.innerHTML='';
+            ageInput.value=25; roleInput.value='Normal User';
+            idGroup.style.display='none'; idNumberInput.value='';
+            languageInput.value='English';
+            applyUIText();
+        });
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            fetchDiseaseList();   // fire-and-forget: disease autocomplete loads in background
+            applyUIText();        // instant — all translations are embedded
+            openTab('predict');
+        });
+        // ── Theme Toggle ──
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        let isDark = true;
+        themeToggleBtn.addEventListener('click', () => {
+            isDark = !isDark;
+            document.body.classList.toggle('light-mode', !isDark);
+            themeToggleBtn.textContent = isDark ? '🌙' : '☀️';
+        });
+
+        // ── Quick-Select Symptoms (English + Amharic) ──
+        const SYMPTOM_CATEGORIES_EN = {
+            "General":       ["Ache all over","Chills","Fatigue","Feeling ill","Fever","Hot flashes","Sweating","Weakness","Weight gain"],
+            "Pain":          ["Arm pain","Ankle pain","Back pain","Burning abdominal pain","Chest tightness","Cramps and spasms","Ear pain","Elbow pain","Foot or toe pain","Groin pain","Hand or finger pain","Headache","Hip pain","Hurts to breathe","Knee pain","Leg pain","Low back pain","Lower abdominal pain","Lower body pain","Neck pain","Pain during pregnancy","Pain in eye","Painful menstruation","Painful urination","Pelvic pain","Sharp abdominal pain","Sharp chest pain","Shoulder pain","Side pain","Sore throat","Suprapubic pain","Upper abdominal pain","Wrist pain"],
+            "Cardio / Resp": ["Abnormal breathing sounds","Decreased heart rate","Difficulty breathing","Fluid retention","Increased heart rate","Irregular heartbeat","Palpitations","Shortness of breath"],
+            "Neuro / Mental":["Abnormal involuntary movements","Anxiety and nervousness","Antisocial behavior","Delusions or hallucinations","Depression","Disturbance of memory","Dizziness","Drug abuse","Excessive anger","Fainting","Fears and phobias","Focal weakness","Hostile behavior","Insomnia","Loss of sensation","Low self-esteem","Obsessions and compulsions","Paresthesia","Problems with movement","Restlessness","Seizures","Temper problems"],
+            "Gastro":        ["Blood in stool","Changes in stool appearance","Constipation","Decreased appetite","Diarrhea","Difficulty in swallowing","Heartburn","Itching of the anus","Melena","Nausea","Rectal bleeding","Regurgitation","Stomach bloating","Vomiting","Vomiting blood"],
+            "Urinary":       ["Blood in urine","Frequent urination","Painful urination","Retention of urine","Unusual color or odor to urine"],
+            "Skin":          ["Abnormal appearing skin","Acne or pimples","Allergic reaction","Diaper rash","Itching of skin","Peeling or scaliness","Skin dryness","Skin growth","Skin irritation","Skin lesion","Skin moles","Skin pigmentation changes","Skin rash","Skin swelling","Warts"],
+            "Eye/Ear/Nose":  ["Coryza","Cough","Diminished hearing","Ear pain","Eye redness","Itchiness of eye","Lacrimation","Nasal congestion","Plugged feeling in ear","Pulling at ears","Redness in ear","Ringing in ear","Swollen eye","Swollen or red tonsils","White discharge from eye"],
+            "Musculo":       ["Arm weakness","Hand or finger weakness","Leg weakness","Peripheral edema","Leg swelling"],
+            "Reproductive":  ["Blood clots during menstrual periods","Heavy menstrual flow","Intermenstrual bleeding","Long menstrual periods","Pain during pregnancy","Pelvic pain","Problems during pregnancy","Spotting during pregnancy","Unpredictable menstruation","Uterine contractions","Vaginal discharge","Vaginal itching"],
+            "Other":         ["Arm lump or mass","Back mass or lump","Difficulty speaking","Hand or finger lump or mass","Irritable infant","Jaundice","Lack of growth","Neck mass","Rectal mass"]
+        };
+
+        // Amharic translations for category names
+        const CAT_AM = {
+            "General":        "አጠቃላይ",
+            "Pain":           "ህመም",
+            "Cardio / Resp":  "ልብ / መተንፈሻ",
+            "Neuro / Mental": "ነርቭ / አዕምሮ",
+            "Gastro":         "የምግብ መፈጨት",
+            "Urinary":        "የሽንት",
+            "Skin":           "ቆዳ",
+            "Eye/Ear/Nose":   "ዓይን/ጆሮ/አፍንጫ",
+            "Musculo":        "ጡንቻ",
+            "Reproductive":   "የመራቢያ",
+            "Other":          "ሌላ"
+        };
+
+        // Amharic translations for each symptom
+        const SYMPTOM_AM = {
+            "Ache all over": "ሙሉ ሰውነት ምቃት",
+            "Chills": "ብርድ",
+            "Fatigue": "ድካም",
+            "Feeling ill": "ስሜት መጥፎ",
+            "Fever": "ትኩሳት",
+            "Hot flashes": "ሙቀት መፍሰስ",
+            "Sweating": "ላብ",
+            "Weakness": "ድክመት",
+            "Weight gain": "ክብደት መጨመር",
+            "Arm pain": "የእጅ ህመም",
+            "Ankle pain": "የቁርጭምጭሚት ህመም",
+            "Back pain": "የጀርባ ህመም",
+            "Burning abdominal pain": "ሆድ ማቃጠል",
+            "Chest tightness": "ደረት መጠበቅ",
+            "Cramps and spasms": "ቁርጠት",
+            "Ear pain": "የጆሮ ህመም",
+            "Elbow pain": "የክርን ህመም",
+            "Foot or toe pain": "የእግር ህመም",
+            "Groin pain": "የዳሌ ህመም",
+            "Hand or finger pain": "የእጅ/ጣት ህመም",
+            "Headache": "ራስ ምታት",
+            "Hip pain": "የውርወራ ህመም",
+            "Hurts to breathe": "ሲተነፍሱ ህመም",
+            "Knee pain": "የጉልበት ህመም",
+            "Leg pain": "የእግር ህመም",
+            "Low back pain": "ታች ጀርባ ህመም",
+            "Lower abdominal pain": "ታች ሆድ ህመም",
+            "Lower body pain": "ታች ሰውነት ህመም",
+            "Neck pain": "የአንገት ህመም",
+            "Pain during pregnancy": "በእርግዝና ወቅት ህመም",
+            "Pain in eye": "የዓይን ህመም",
+            "Painful menstruation": "የወር አበባ ህመም",
+            "Painful urination": "ሽንት ሲሸኑ ህመም",
+            "Pelvic pain": "የዳሌ ህመም",
+            "Sharp abdominal pain": "ሆድ ላይ ስለት ህመም",
+            "Sharp chest pain": "ደረት ላይ ስለት ህመም",
+            "Shoulder pain": "የትከሻ ህመም",
+            "Side pain": "የጎን ህመም",
+            "Sore throat": "ጉሮሮ ህመም",
+            "Suprapubic pain": "ዝቅተኛ ሆድ ህመም",
+            "Upper abdominal pain": "ላይ ሆድ ህመም",
+            "Wrist pain": "የእጅ አንጓ ህመም",
+            "Abnormal breathing sounds": "ያልተለመደ የትንፋሽ ድምፅ",
+            "Decreased heart rate": "የልብ ምት መቀነስ",
+            "Difficulty breathing": "ለመተንፈስ ችግር",
+            "Fluid retention": "ፈሳሽ ማቆር",
+            "Increased heart rate": "የልብ ምት መጨመር",
+            "Irregular heartbeat": "ያልተስተካከለ የልብ ምት",
+            "Palpitations": "ልብ ምት ስሜት",
+            "Shortness of breath": "መተንፈስ ማጠር",
+            "Abnormal involuntary movements": "ያልተፈቀደ እንቅስቃሴ",
+            "Anxiety and nervousness": "ጭንቀት እና ነርቭ",
+            "Antisocial behavior": "ፀረ-ማህበራዊ ባህርይ",
+            "Delusions or hallucinations": "ቅዠት",
+            "Depression": "ድብርት",
+            "Disturbance of memory": "የማስታወስ ችግር",
+            "Dizziness": "ራስ ዞር",
+            "Drug abuse": "የአደንዛዥ ዕጽ አላግባብ",
+            "Excessive anger": "ከመጠን ያለፈ ቁጣ",
+            "Fainting": "ንቃተ ህሊና ማጣት",
+            "Fears and phobias": "ፍርሃት",
+            "Focal weakness": "ከፊል ድክመት",
+            "Hostile behavior": "ጠላትነት ባህርይ",
+            "Insomnia": "እንቅልፍ ማጣት",
+            "Loss of sensation": "ስሜት ማጣት",
+            "Low self-esteem": "ዝቅተኛ ራስን ዋጋ",
+            "Obsessions and compulsions": "ቀጣይ ሃሳቦች",
+            "Paresthesia": "ሽብሸባ ስሜት",
+            "Problems with movement": "እንቅስቃሴ ችግር",
+            "Restlessness": "ማሰቃቀር",
+            "Seizures": "ቅብጠት",
+            "Temper problems": "ቁጣ ችግር",
+            "Blood in stool": "ሰገራ ውስጥ ደም",
+            "Changes in stool appearance": "የሰገራ ለውጥ",
+            "Constipation": "ሆድ መጠፍጠፍ",
+            "Decreased appetite": "የምግብ ፍቅር መቀነስ",
+            "Diarrhea": "ተቅማጥ",
+            "Difficulty in swallowing": "ለመዋጥ ችግር",
+            "Heartburn": "ሆድ ማቃጠል",
+            "Itching of the anus": "የፊፊ ማሳከክ",
+            "Melena": "ጥቁር ሰገራ",
+            "Nausea": "ማቅለሽለሽ",
+            "Rectal bleeding": "ፊፊ መድማት",
+            "Regurgitation": "ምግብ መመለስ",
+            "Stomach bloating": "ሆድ ማበጥ",
+            "Vomiting": "ማስታወክ",
+            "Vomiting blood": "ደም ማስታወክ",
+            "Blood in urine": "ሽንት ውስጥ ደም",
+            "Frequent urination": "ተደጋጋሚ ሽንት",
+            "Painful urination": "ሽንት ህመም",
+            "Retention of urine": "ሽንት ማቆር",
+            "Unusual color or odor to urine": "ሽንት ያልተለመደ ቀለም/ሽታ",
+            "Abnormal appearing skin": "ያልተለመደ ቆዳ",
+            "Acne or pimples": "ሽፍታ",
+            "Allergic reaction": "አለርጂ",
+            "Diaper rash": "ዳይፐር ሽፍታ",
+            "Itching of skin": "ቆዳ ማሳከክ",
+            "Peeling or scaliness": "ቆዳ መላጥ",
+            "Skin dryness": "ቆዳ መድረቅ",
+            "Skin growth": "ቆዳ ዕድገት",
+            "Skin irritation": "ቆዳ ማብሰር",
+            "Skin lesion": "ቆዳ ቁስለት",
+            "Skin moles": "ቆዳ ነቀርሳ",
+            "Skin pigmentation changes": "ቆዳ ቀለም ለውጥ",
+            "Skin rash": "ቆዳ ሽፍታ",
+            "Skin swelling": "ቆዳ ማበጥ",
+            "Warts": "የቆዳ ዕንቁ",
+            "Coryza": "የምርጫ ፍሳሽ",
+            "Cough": "ሳል",
+            "Diminished hearing": "የመስሚያ ችግር",
+            "Eye redness": "ቀይ ዓይን",
+            "Itchiness of eye": "ዓይን ማሳከክ",
+            "Lacrimation": "እንባ መፍሰስ",
+            "Nasal congestion": "አፍንጫ መዘጋት",
+            "Plugged feeling in ear": "ጆሮ መዘጋት",
+            "Pulling at ears": "ጆሮ መጎተት",
+            "Redness in ear": "ጆሮ ቅላት",
+            "Ringing in ear": "ጆሮ ጩኸት",
+            "Swollen eye": "ዓይን ማበጥ",
+            "Swollen or red tonsils": "ቲዎንስ ማበጥ",
+            "White discharge from eye": "ዓይን ነጭ ፈሳሽ",
+            "Arm weakness": "የእጅ ድክመት",
+            "Hand or finger weakness": "የእጅ/ጣት ድክመት",
+            "Leg weakness": "የእግር ድክመት",
+            "Peripheral edema": "ዳርቻ ማበጥ",
+            "Leg swelling": "እግር ማበጥ",
+            "Blood clots during menstrual periods": "የወር አበባ ደም ቁስቁስ",
+            "Heavy menstrual flow": "ከባድ የወር አበባ",
+            "Intermenstrual bleeding": "ሁለት ወር አበባ መካከል መድማት",
+            "Long menstrual periods": "ረዥም ወር አበባ",
+            "Problems during pregnancy": "በእርግዝና ወቅት ችግር",
+            "Spotting during pregnancy": "በእርግዝና ወቅት ደም",
+            "Unpredictable menstruation": "ያልተስተካከለ ወር አበባ",
+            "Uterine contractions": "ማህፀን መጨናነቅ",
+            "Vaginal discharge": "የብልት ፈሳሽ",
+            "Vaginal itching": "ብልት ማሳከክ",
+            "Arm lump or mass": "እጅ ላይ እብጠት",
+            "Back mass or lump": "ጀርባ ላይ እብጠት",
+            "Difficulty speaking": "ለመናገር ችግር",
+            "Hand or finger lump or mass": "እጅ/ጣት ላይ እብጠት",
+            "Irritable infant": "ነፍስ ያለው ሕፃን",
+            "Jaundice": "ቢጫ በሽታ",
+            "Lack of growth": "እድገት ማጣት",
+            "Neck mass": "አንገት ላይ እብጠት",
+            "Rectal mass": "ፊፊ ዙሪያ እብጠት"
+        };
+
+        // Build per-language category data
+        function getCategories() {
+            const am = isAmharic();
+            const result = {};
+            for (const [cat, symptoms] of Object.entries(SYMPTOM_CATEGORIES_EN)) {
+                const catLabel = am ? (CAT_AM[cat] || cat) : cat;
+                result[catLabel] = am
+                    ? symptoms.map(s => ({ en: s, display: SYMPTOM_AM[s] || s }))
+                    : symptoms.map(s => ({ en: s, display: s }));
+            }
+            return result;
+        }
+
+        let activeCatLabel = Object.keys(getCategories())[0];
+        const catTabsEl = document.getElementById('cat-tabs');
+        const pillsEl = document.getElementById('symptom-pills');
+
+        function renderCatTabs() {
+            const cats = getCategories();
+            const keys = Object.keys(cats);
+            // Try to keep active cat if same position
+            if (!keys.includes(activeCatLabel)) activeCatLabel = keys[0];
+            catTabsEl.innerHTML = '';
+            keys.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = 'cat-tab' + (cat === activeCatLabel ? ' active' : '');
+                btn.textContent = cat;
+                btn.addEventListener('click', () => {
+                    activeCatLabel = cat;
+                    renderCatTabs();
+                    renderPills();
+                });
+                catTabsEl.appendChild(btn);
+            });
+        }
+
+        function getSelectedSymptoms() {
+            const val = predictInput.value.trim();
+            return val ? val.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [];
+        }
+
+        function renderPills() {
+            pillsEl.innerHTML = '';
+            const cats = getCategories();
+            const selected = getSelectedSymptoms();
+            (cats[activeCatLabel] || []).forEach(({ en, display }) => {
+                const pill = document.createElement('button');
+                const isSelected = selected.includes(en.toLowerCase());
+                pill.className = 'symptom-pill' + (isSelected ? ' selected' : '');
+                pill.textContent = isSelected ? '✓ ' + display : display;
+                pill.dataset.en = en;
+                pill.addEventListener('click', () => toggleSymptom(en));
+                pillsEl.appendChild(pill);
+            });
+        }
+
+        function toggleSymptom(enSym) {
+            let symptoms = getSelectedSymptoms();
+            const idx = symptoms.indexOf(enSym.toLowerCase());
+            if (idx === -1) symptoms.push(enSym.toLowerCase());
+            else symptoms.splice(idx, 1);
+            predictInput.value = symptoms.join(', ');
+            renderPills();
+        }
+
+        // Re-render pills when input changes manually
+        predictInput.addEventListener('input', () => renderPills());
+
+        // Re-render symptoms + "or type symptoms" divider text on language change
+        const originalApplyUIText = applyUIText;
+        languageInput.addEventListener('change', () => {
+            // Re-sync active cat key after language switch
+            const cats = getCategories();
+            const keys = Object.keys(cats);
+            activeCatLabel = keys[0];
+            renderCatTabs();
+            renderPills();
+            // Also translate the "or type symptoms" divider
+            const divider = document.querySelector('.or-divider');
+            if (divider) divider.textContent = isAmharic() ? 'ወይም ምልክቶችን ይተይቡ' : 'or type symptoms';
+            // Translate quick-select label
+            const ql = document.querySelector('.quick-select-label');
+            if (ql) ql.textContent = isAmharic() ? 'ምልክቶችን ፈጥኖ ይምረጡ:' : 'Quick-select symptoms:';
+        });
+
+        // Init
+        renderCatTabs();
+        renderPills();
+
+    </script>
+</body>
+</html>
