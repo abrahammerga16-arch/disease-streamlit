@@ -126,6 +126,8 @@
         body.light-mode .conf-card-name { color: #0f172a; }
         body.light-mode .conf-bar-track { background: rgba(0,0,0,0.08); }
         body.light-mode .hero-badge { background: rgba(13,148,136,0.12); border-color: rgba(13,148,136,0.35); }
+        body.light-mode .validation-error { border-color: rgba(239,68,68,0.5) !important; background: rgba(239,68,68,0.08) !important; }
+        body.light-mode .validation-success { border-color: rgba(16,185,129,0.5) !important; background: rgba(16,185,129,0.08) !important; }
 
         /* === THEME TOGGLE BUTTON === */
         .theme-toggle {
@@ -166,6 +168,33 @@
             color: var(--white);
             min-height: 100vh;
             overflow-x: hidden;
+        }
+
+        /* === VALIDATION FEEDBACK === */
+        .validation-feedback {
+            font-size: 0.7rem;
+            margin-top: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            display: none;
+        }
+        .validation-feedback.show { display: block; }
+        .validation-feedback.error {
+            color: #fca5a5;
+            background: rgba(239,68,68,0.15);
+        }
+        .validation-feedback.success {
+            color: #6ee7b7;
+            background: rgba(16,185,129,0.15);
+        }
+
+        .validation-error {
+            border-color: rgba(239,68,68,0.5) !important;
+            background: rgba(239,68,68,0.08) !important;
+        }
+        .validation-success {
+            border-color: rgba(16,185,129,0.5) !important;
+            background: rgba(16,185,129,0.08) !important;
         }
 
         /* === HERO HEADER === */
@@ -432,6 +461,7 @@
         }
 
         .context-field { flex: 1; min-width: 120px; }
+        .context-field-wrapper { flex: 1; min-width: 120px; }
 
         .ctx-input {
             width: 100%;
@@ -593,41 +623,42 @@
         }
 
         .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .btn-primary {
             background: linear-gradient(135deg, var(--teal), var(--teal-dark));
             color: var(--white);
             box-shadow: 0 4px 20px rgba(13,148,136,0.35);
         }
-        .btn-primary:hover { background: linear-gradient(135deg, var(--teal-light), var(--teal)); box-shadow: 0 6px 24px rgba(13,148,136,0.5); transform: translateY(-1px); }
+        .btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, var(--teal-light), var(--teal)); box-shadow: 0 6px 24px rgba(13,148,136,0.5); transform: translateY(-1px); }
 
         .btn-success {
             background: linear-gradient(135deg, #059669, #047857);
             color: var(--white);
             box-shadow: 0 4px 20px rgba(5,150,105,0.3);
         }
-        .btn-success:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-success:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
 
         .btn-blue {
             background: linear-gradient(135deg, #2563eb, #1d4ed8);
             color: var(--white);
             box-shadow: 0 4px 20px rgba(37,99,235,0.3);
         }
-        .btn-blue:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-blue:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
 
         .btn-ghost {
             background: rgba(255,255,255,0.06);
             border: 1px solid rgba(255,255,255,0.1);
             color: rgba(255,255,255,0.6);
         }
-        .btn-ghost:hover { background: rgba(255,255,255,0.1); color: var(--white); }
+        .btn-ghost:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: var(--white); }
 
         .btn-warning {
             background: rgba(245,158,11,0.12);
             border: 1px solid rgba(245,158,11,0.25);
             color: var(--accent);
         }
-        .btn-warning:hover { background: rgba(245,158,11,0.2); }
+        .btn-warning:hover:not(:disabled) { background: rgba(245,158,11,0.2); }
 
         /* Output area */
         .output-area {
@@ -986,776 +1017,394 @@
 
         <!-- Context Bar -->
         <div class="context-bar">
-            <div class="context-field" style="max-width:110px">
+            <div class="context-field-wrapper">
                 <div class="context-label" data-translate="Your Age">Your Age</div>
-                <input type="number" id="age" class="ctx-input" value="25" min="0">
+                <div>
+                    <input type="number" id="age" class="ctx-input" value="25" min="0" max="150" placeholder="Enter your age">
+                    <div class="validation-feedback" id="age-feedback"></div>
+                </div>
             </div>
-            <div class="context-field" style="max-width:160px">
+            <div class="context-field-wrapper">
                 <div class="context-label" data-translate="Role">Role</div>
-                <select id="role" class="ctx-input">
-                    <option value="Normal User" data-translate="Normal User">Normal User</option>
-                    <option value="Student" data-translate="Student">Student</option>
-                    <option value="Doctor" data-translate="Doctor">Doctor</option>
-                </select>
-            </div>
-            <div class="context-field" id="id-group" style="display:none; max-width:180px">
-                <div class="context-label" data-translate="ID Number">ID Number</div>
-                <input type="text" id="id-number" class="ctx-input" placeholder="Enter ID">
-            </div>
-            <div class="context-field" style="max-width:140px">
-                <div class="context-label" data-translate="Language">Language</div>
-                <select id="language" class="ctx-input">
-                    <option value="English">🌐 English</option>
-                    <option value="Amharic">🇪🇹 Amharic</option>
-                </select>
+                <div>
+                    <select id="role" class="ctx-input">
+                        <option value="" data-translate="Select a role">Select a role</option>
+                        <option value="Normal User" data-translate="Normal User">Normal User</option>
+                        <option value="Student" data-translate="Student">Student</option>
+                        <option value="Doctor" data-translate="Doctor">Doctor</option>
+                    </select>
+                    <div class="validation-feedback" id="role-feedback"></div>
+                </div>
             </div>
         </div>
 
-        <!-- Tabs -->
+        <!-- TAB NAVIGATION -->
         <div class="tabs-wrapper">
             <div class="tabs">
-                <button class="tab-btn active" onclick="openTab('predict')" data-key="Disease Predictor">
-                    <span class="tab-icon">🔬</span> <span data-translate="Disease Predictor">Disease Predictor</span>
+                <button class="tab-btn active" data-tab="diagnosis">
+                    <span class="tab-icon">🔍</span> Diagnosis
                 </button>
-                <button class="tab-btn" onclick="openTab('recommender')" data-key="Health Recommender">
-                    <span class="tab-icon">📋</span> <span data-translate="Health Recommender">Health Recommender</span>
+                <button class="tab-btn" data-tab="health-plan">
+                    <span class="tab-icon">📋</span> Health Plan
                 </button>
-                <button class="tab-btn" onclick="openTab('chatbot')" data-key="Healthcare Chatbot">
-                    <span class="tab-icon">💬</span> <span data-translate="Healthcare Chatbot">Healthcare Chatbot</span>
+                <button class="tab-btn" data-tab="chatbot">
+                    <span class="tab-icon">💬</span> AI Chatbot
                 </button>
             </div>
         </div>
 
-        <!-- Tab: Predict -->
-        <div id="predict" class="tab-panel active">
+        <!-- DIAGNOSIS TAB -->
+        <div id="diagnosis" class="tab-panel active">
             <div class="panel-card">
                 <div class="panel-header">
                     <div class="panel-icon icon-teal">🔬</div>
                     <div class="panel-header-text">
-                        <h3 data-translate="Symptom-Based Disease Predictor">Symptom-Based Disease Predictor</h3>
-                        <p data-translate="Enter your symptoms and our AI will identify possible conditions">Enter your symptoms and our AI will identify possible conditions</p>
+                        <h3>Symptom Diagnosis</h3>
+                        <p>Select your symptoms for AI-powered disease prediction</p>
                     </div>
                 </div>
-                <!-- Quick Select Symptoms -->
+
                 <div class="quick-select-wrapper">
-                    <div class="quick-select-label" data-translate="Quick-select symptoms:">Quick-select symptoms:</div>
-                    <div class="symptom-category-tabs" id="cat-tabs"></div>
-                    <div class="symptom-pills-container" id="symptom-pills"></div>
+                    <div class="quick-select-label">Quick Select Categories</div>
+                    <div class="symptom-category-tabs">
+                        <button class="cat-tab active" data-category="all">All</button>
+                        <button class="cat-tab" data-category="respiratory">Respiratory</button>
+                        <button class="cat-tab" data-category="digestive">Digestive</button>
+                        <button class="cat-tab" data-category="neurological">Neurological</button>
+                    </div>
                 </div>
 
-                <div class="or-divider">or type symptoms</div>
+                <div class="quick-select-label">Select Symptoms</div>
+                <div class="symptom-pills-container">
+                    <button class="symptom-pill" data-symptom="Cough">🫁 Cough</button>
+                    <button class="symptom-pill" data-symptom="Fever">🌡️ Fever</button>
+                    <button class="symptom-pill" data-symptom="Headache">🤕 Headache</button>
+                    <button class="symptom-pill" data-symptom="Fatigue">😴 Fatigue</button>
+                    <button class="symptom-pill" data-symptom="Nausea">🤢 Nausea</button>
+                    <button class="symptom-pill" data-symptom="Sore Throat">🗣️ Sore Throat</button>
+                    <button class="symptom-pill" data-symptom="Dizziness">🌀 Dizziness</button>
+                    <button class="symptom-pill" data-symptom="Body Aches">💪 Body Aches</button>
+                </div>
 
-                <label class="field-label" id="predict-label" for="symptoms">Symptoms (comma-separated)</label>
-                <input type="text" id="symptoms" class="field-input" placeholder="e.g. headache, fever, fatigue…">
                 <div class="btn-row">
-                    <button class="btn btn-primary" id="predict-btn" data-key="Predict & Recommend">
-                        <span data-translate="✦ Predict & Recommend">✦ Predict & Recommend</span>
-                    </button>
-                    <button class="btn btn-ghost" id="predict-clear-btn" data-key="Clear"><span data-translate="✕ Clear">✕ Clear</span></button>
+                    <button class="btn btn-primary" id="diagnose-btn">🔍 Get Diagnosis</button>
+                    <button class="btn btn-ghost" id="clear-symptoms">Clear All</button>
                 </div>
-                <div id="predict-output" class="output-area"></div>
+
+                <div class="output-area" id="diagnosis-output"></div>
             </div>
         </div>
 
-        <!-- Tab: Recommender -->
-        <div id="recommender" class="tab-panel">
+        <!-- HEALTH PLAN TAB -->
+        <div id="health-plan" class="tab-panel">
             <div class="panel-card">
                 <div class="panel-header">
                     <div class="panel-icon icon-amber">📋</div>
                     <div class="panel-header-text">
-                        <h3 data-translate="Personalized Health Recommender">Personalized Health Recommender</h3>
-                        <p data-translate="Get a tailored health management plan for any condition">Get a tailored health management plan for any condition</p>
+                        <h3>Personalized Health Plan</h3>
+                        <p>Generate a tailored care plan based on your health profile</p>
                     </div>
                 </div>
-                <label class="field-label" id="recommender-label" for="disease-input">Disease Name</label>
-                <input type="text" id="disease-input" list="disease-suggestions" class="field-input" placeholder="e.g. Asthma, Diabetes">
-                <datalist id="disease-suggestions"></datalist>
-                <div class="btn-row">
-                    <button class="btn btn-success" id="recommend-btn" data-key="Get Plan">
-                        <span data-translate="✦ Get Health Plan">✦ Get Health Plan</span>
-                    </button>
-                    <button class="btn btn-ghost" id="recommend-clear-btn" data-key="Clear"><span data-translate="✕ Clear">✕ Clear</span></button>
+
+                <div>
+                    <label class="field-label">Your Condition</label>
+                    <input type="text" class="field-input" id="condition" placeholder="e.g., Common Cold, Hypertension, etc.">
+
+                    <label class="field-label">Additional Notes</label>
+                    <input type="text" class="field-input" id="notes" placeholder="Any additional medical history or concerns...">
+
+                    <div class="btn-row">
+                        <button class="btn btn-success" id="generate-plan-btn">📋 Generate Plan</button>
+                    </div>
                 </div>
-                <div id="recommender-output" class="output-area"></div>
+
+                <div class="output-area" id="plan-output"></div>
             </div>
         </div>
 
-        <!-- Tab: Chatbot -->
+        <!-- CHATBOT TAB -->
         <div id="chatbot" class="tab-panel">
             <div class="panel-card">
                 <div class="panel-header">
                     <div class="panel-icon icon-blue">💬</div>
                     <div class="panel-header-text">
-                        <h3 data-translate="AI Healthcare Assistant">AI Healthcare Assistant</h3>
-                        <p data-translate="Ask any health-related question and get instant, reliable answers">Ask any health-related question and get instant, reliable answers</p>
+                        <h3>24/7 AI Healthcare Chatbot</h3>
+                        <p>Ask any health-related questions</p>
                     </div>
                 </div>
-                <label class="field-label" id="chatbot-label" for="chat-query">Your Question</label>
-                <input type="text" id="chat-query" class="field-input" placeholder="e.g. Tell me about Asthma diet recommendations">
-                <div class="btn-row">
-                    <button class="btn btn-blue" id="chat-btn" data-key="Ask Bot">
-                        <span data-translate="✦ Ask AI">✦ Ask AI</span>
-                    </button>
-                    <button class="btn btn-ghost" id="chat-clear-btn" data-key="Clear"><span data-translate="✕ Clear">✕ Clear</span></button>
-                </div>
-                <div id="chat-output" class="output-area"></div>
-            </div>
-        </div>
 
-        <!-- Bottom Bar -->
-        <div class="bottom-bar">
-            <button class="btn btn-warning" id="clear-all-btn" data-key="Clear All"><span data-translate="↺ Reset All">↺ Reset All</span></button>
+                <label class="field-label">Your Question</label>
+                <input type="text" class="field-input" id="chatbot-query" placeholder="Ask your health question here...">
+
+                <div class="btn-row">
+                    <button class="btn btn-blue" id="send-chat-btn">💬 Send Message</button>
+                </div>
+
+                <div class="output-area" id="chatbot-output"></div>
+            </div>
         </div>
 
     </main>
 
     <script>
-        // ── Groq API (free — get key at console.groq.com) ──
-        const GROQ_MODEL = 'llama-3.3-70b-versatile';
-        const GROQ_API_KEY = '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'; // ← replace with your key
-
-        async function callClaude(systemPrompt, userMessage) {
-            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${GROQ_API_KEY}`
+        // ===== VALIDATION UTILITIES =====
+        const ValidationManager = {
+            rules: {
+                age: (val) => {
+                    const num = parseInt(val);
+                    if (isNaN(num)) return { valid: false, msg: '❌ Age must be a number' };
+                    if (num < 0) return { valid: false, msg: '❌ Age cannot be negative' };
+                    if (num > 150) return { valid: false, msg: '❌ Age seems too high (max 150)' };
+                    if (num === 0) return { valid: false, msg: '❌ Please enter a valid age' };
+                    return { valid: true, msg: '✓ Age valid' };
                 },
-                body: JSON.stringify({
-                    model: GROQ_MODEL,
-                    max_tokens: 1000,
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userMessage }
-                    ]
-                })
-            });
-            if (!res.ok) throw new Error('API error ' + res.status);
-            const d = await res.json();
-            return d.choices[0].message.content;
-        }
+                role: (val) => {
+                    if (!val || val === '') return { valid: false, msg: '❌ Please select a role' };
+                    return { valid: true, msg: '✓ Role selected' };
+                }
+            },
 
-        // Elements
+            validate(fieldId, value) {
+                const rule = this.rules[fieldId];
+                if (!rule) return { valid: true };
+                return rule(value);
+            },
+
+            displayFeedback(fieldId, validation) {
+                const field = document.getElementById(fieldId);
+                const feedback = document.getElementById(`${fieldId}-feedback`);
+                
+                if (!field || !feedback) return;
+
+                field.classList.remove('validation-error', 'validation-success');
+                feedback.classList.remove('error', 'success', 'show');
+
+                if (validation.valid) {
+                    field.classList.add('validation-success');
+                    feedback.classList.add('success', 'show');
+                } else {
+                    field.classList.add('validation-error');
+                    feedback.classList.add('error', 'show');
+                }
+
+                feedback.textContent = validation.msg;
+            }
+        };
+
+        // ===== FORM VALIDATION =====
         const ageInput = document.getElementById('age');
-        const roleInput = document.getElementById('role');
-        const idGroup = document.getElementById('id-group');
-        const idNumberInput = document.getElementById('id-number');
-        const languageInput = document.getElementById('language');
-        const predictInput = document.getElementById('symptoms');
-        const predictBtn = document.getElementById('predict-btn');
-        const predictClearBtn = document.getElementById('predict-clear-btn');
-        const predictOutput = document.getElementById('predict-output');
-        const diseaseInput = document.getElementById('disease-input');
-        const diseaseSuggestions = document.getElementById('disease-suggestions');
-        const recommendBtn = document.getElementById('recommend-btn');
-        const recommendClearBtn = document.getElementById('recommend-clear-btn');
-        const recommenderOutput = document.getElementById('recommender-output');
-        const chatQueryInput = document.getElementById('chat-query');
-        const chatBtn = document.getElementById('chat-btn');
-        const chatClearBtn = document.getElementById('chat-clear-btn');
-        const chatOutput = document.getElementById('chat-output');
-        const clearAllBtn = document.getElementById('clear-all-btn');
+        const roleSelect = document.getElementById('role');
 
-        let diseaseListEnglish = [];
-        let translatedDiseaseMap = {};
-
-        // ── Full Amharic translation map — no network required ──
-        const AM = {
-            // Hero
-            'AI-Powered Healthcare':        'AI-ሃይሎ የጤና አገልግሎት',
-            'Your Personal':                'የእርስዎ ግላዊ',
-            'Health Intelligence':          'የጤና ብልህነት',
-            'Dashboard':                    'ዳሽቦርድ',
-            'Diagnose symptoms, get personalized health plans, and consult our AI healthcare chatbot — all in one seamless platform.':
-                'ምልክቶችን ይለዩ፣ ግላዊ የጤና እቅዶችን ያግኙ፣ እና AI የጤና ቻትቦታችንን ያማክሩ — ሁሉም በአንድ ምቹ መድረክ።',
-            'Diseases':                     'በሽታዎች',
-            'Smart Tools':                  'ብልህ መሳሪያዎች',
-            'Languages':                    'ቋንቋዎች',
-            '✦ AI Powered':                 '✦ AI ሃይሎ',
-            'Patient Overview':             'የታካሚ አጠቃላይ እይታ',
-            'Real-time health insights':    'በቅጽበት የጤና ምልከታ',
-            'Heart Rate':                   'የልብ ምት',
-            'Blood Pressure':               'የደም ግፊት',
-            'Temperature':                  'የሙቀት መጠን',
-            'SpO₂':                         'SpO₂',
-            'Overall Health':               'አጠቃላይ ጤና',
-            'Diagnosis Accuracy':           'የምርመራ ትክክለኛነት',
-            // Features
-            'Symptom Analysis':             'የምልክት ትንተና',
-            'AI-powered disease prediction':'AI-ሃይሎ የበሽታ ትንበያ',
-            'Health Planning':              'የጤና ዕቅድ',
-            'Personalized care plans':      'ግላዊ የእንክብካቤ እቅዶች',
-            '24/7 AI Chatbot':              '24/7 AI ቻትቦት',
-            'Always available support':     'ሁልጊዜ ዝግጁ ድጋፍ',
-            // Context bar
-            'Your Age':                     'ዕድሜዎ',
-            'Role':                         'ሚና',
-            'ID Number':                    'መታወቂያ ቁጥር',
-            'Language':                     'ቋንቋ',
-            'Normal User':                  'ተራ ተጠቃሚ',
-            'Student':                      'ተማሪ',
-            'Doctor':                       'ዶክተር',
-            // Tabs
-            'Disease Predictor':            'በሽታ ትንበያ',
-            'Health Recommender':           'የጤና ምክር',
-            'Healthcare Chatbot':           'የጤና ቻትቦት',
-            // Panel: Predict
-            'Symptom-Based Disease Predictor': 'ምልክት-ተኮር የበሽታ ትንበያ',
-            'Enter your symptoms and our AI will identify possible conditions':
-                'ምልክቶችዎን ያስገቡ፣ AI ሊሆኑ የሚችሉ ሁኔታዎችን ይለያል',
-            'Symptoms (comma-separated)':   'ምልክቶች (በኮማ የተለዩ)',
-            '✦ Predict & Recommend':        '✦ ተንብይ እና ምከር',
-            '✕ Clear':                      '✕ አጽዳ',
-            // Panel: Recommender
-            'Personalized Health Recommender': 'ግላዊ የጤና ምክር ሰጪ',
-            'Get a tailored health management plan for any condition':
-                'ለማንኛውም ሁኔታ ብጁ የጤና አያያዝ እቅድ ያግኙ',
-            'Disease Name':                 'የበሽታ ስም',
-            '✦ Get Health Plan':            '✦ የጤና እቅድ ያግኙ',
-            // Panel: Chatbot
-            'AI Healthcare Assistant':      'AI የጤና ረዳት',
-            'Ask any health-related question and get instant, reliable answers':
-                'ማንኛውም የጤና ጥያቄ ይጠይቁ፣ ፈጣን እና አስተማማኝ መልስ ያግኙ',
-            'Your Question':                'ጥያቄዎ',
-            '✦ Ask AI':                     '✦ AI ጠይቅ',
-            '↺ Reset All':                  '↺ ሁሉንም ዳግም አስጀምር',
-            // Placeholders
-            'e.g. headache, vomiting':      'ለምሳሌ፡ ራስ ምታት፣ ማስታወክ',
-            'e.g. Asthma':                  'ለምሳሌ፡ አስም',
-            'e.g. Tell me about Asthma diet':'ለምሳሌ፡ ስለ አስም አመጋገብ ምክሮች ንገረኝ',
-            'Enter ID':                     'መታወቂያ ያስገቡ',
-            // Runtime messages
-            'Please enter symptoms.':       'እባክዎ ምልክቶችን ያስገቡ።',
-            'Please enter a query.':        'እባክዎ ጥያቄ ያስገቡ።',
-            'Access Denied: Information is not available for users under 18.':
-                'መዳረሻ ተከልክሏል፡ ለ18 ዓመት በታች ተጠቃሚዎች መረጃ አይሰጥም።',
-            'Access Denied: Invalid ID for Student role.':
-                'መዳረሻ ተከልክሏል፡ ልክ ያልሆነ መታወቂያ።',
-        };
-
-        function isAmharic() { return languageInput.value === 'Amharic'; }
-
-        function t(key) {
-            return isAmharic() && AM[key] ? AM[key] : key;
-        }
-
-        // Instantly swap all UI text — purely synchronous, zero network calls
-        function applyUIText() {
-            const am = isAmharic();
-
-            // data-translate elements
-            document.querySelectorAll('[data-translate]').forEach(el => {
-                el.textContent = t(el.getAttribute('data-translate'));
+        if (ageInput) {
+            ageInput.addEventListener('blur', () => {
+                const validation = ValidationManager.validate('age', ageInput.value);
+                ValidationManager.displayFeedback('age', validation);
             });
 
-            // Field labels (set by ID)
-            const labels = {
-                'predict-label':    'Symptoms (comma-separated)',
-                'recommender-label':'Disease Name',
-                'chatbot-label':    'Your Question'
-            };
-            Object.entries(labels).forEach(([id, key]) => {
-                const el = document.getElementById(id);
-                if (el) el.textContent = t(key);
-            });
-
-            // Placeholders
-            const phs = {
-                'symptoms':     'e.g. headache, vomiting',
-                'disease-input':'e.g. Asthma',
-                'chat-query':   'e.g. Tell me about Asthma diet',
-                'id-number':    'Enter ID'
-            };
-            Object.entries(phs).forEach(([id, key]) => {
-                const el = document.getElementById(id);
-                if (el) el.placeholder = t(key);
-            });
-
-            // html lang attribute
-            document.documentElement.lang = am ? 'am' : 'en';
-
-            populateDiseaseSuggestions();
-        }
-
-        // Keep updateUIText as async for disease list fetching on page load,
-        // but translation itself is now instant (no network).
-        async function updateUIText() {
-            applyUIText();
-        }
-
-        async function fetchDiseaseList() {
-            // Built-in list — no network call needed
-            diseaseListEnglish = [
-                "Acne","AIDS","Alcoholic hepatitis","Allergy","Arthritis","Bronchial Asthma",
-                "Cervical spondylosis","Chicken pox","Chronic cholestasis","Common Cold","Dengue",
-                "Diabetes","Dimorphic hemorrhoids","Drug Reaction","Fungal infection","GERD",
-                "Gastroenteritis","Heart attack","Hepatitis A","Hepatitis B","Hepatitis C",
-                "Hepatitis D","Hepatitis E","Hypertension","Hyperthyroidism","Hypoglycemia",
-                "Hypothyroidism","Impetigo","Jaundice","Malaria","Migraine","Osteoarthritis",
-                "Paralysis (brain hemorrhage)","Peptic ulcer disease","Pneumonia","Psoriasis",
-                "Tuberculosis","Typhoid","Urinary tract infection","Varicose veins","Vertigo"
-            ].sort();
-        }
-
-        function translateText(key) { return t(key); }
-
-        function openTab(name) {
-            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(name).classList.add('active');
-            document.querySelector(`.tab-btn[onclick="openTab('${name}')"]`).classList.add('active');
-        }
-
-        function populateDiseaseSuggestions() {
-            diseaseSuggestions.innerHTML = '';
-            diseaseListEnglish.forEach(d => {
-                const opt = document.createElement('option');
-                opt.value = capitalizeWords(translatedDiseaseMap[d] || d);
-                diseaseSuggestions.appendChild(opt);
-            });
-        }
-
-        function capitalizeWords(str) {
-            if (!str) return '';
-            return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-        }
-
-        function formatOutputAsHtml(data) {
-            let html = '';
-            if (typeof data === 'string') return `<p>${data}</p>`;
-            if (typeof data === 'object' && data !== null) {
-                for (const key in data) {
-                    let val = data[key];
-                    if (typeof val === 'string' && val.startsWith('[') && val.endsWith(']')) {
-                        try {
-                            const parsed = JSON.parse(val.replace(/'/g, '"'));
-                            if (Array.isArray(parsed)) val = parsed;
-                            else if (val.includes(',')) val = val.substring(1, val.length-1).split(',').map(s => s.trim());
-                        } catch(e) {}
-                    }
-                    if (Array.isArray(val)) {
-                        html += `<div class="section-title">${key}</div><ul>`;
-                        val.forEach(item => html += `<li>${item}</li>`);
-                        html += `</ul>`;
-                    } else if (typeof val === 'string' && val.includes('\n')) {
-                        html += `<div class="section-title">${key}</div><p>${val.replace(/\n/g,'<br>')}</p>`;
-                    } else {
-                        html += `<div class="section-title">${key}</div><p>${val}</p>`;
-                    }
+            ageInput.addEventListener('input', () => {
+                if (ageInput.classList.contains('validation-error')) {
+                    const validation = ValidationManager.validate('age', ageInput.value);
+                    ValidationManager.displayFeedback('age', validation);
                 }
-            }
-            return html;
+            });
         }
 
-        function accessDenied(output, msg) {
-            output.innerHTML = `<div class="error-msg">⚠️ ${msg}</div>`;
+        if (roleSelect) {
+            roleSelect.addEventListener('change', () => {
+                const validation = ValidationManager.validate('role', roleSelect.value);
+                ValidationManager.displayFeedback('role', validation);
+            });
         }
 
-        function checkAccess(age, role, idNum, output) {
-            if (age < 18) { accessDenied(output, translateText('Access Denied: Information is not available for users under 18.')); return false; }
-            if ((role === 'Student' && idNum !== '1111') || (role === 'Doctor' && idNum !== '0000')) {
-                accessDenied(output, translateText('Access Denied: Invalid ID for Student role.')); return false;
-            }
-            return true;
-        }
-
-        roleInput.addEventListener('change', e => {
-            idGroup.style.display = ['Student','Doctor'].includes(e.target.value) ? 'block' : 'none';
-            if (!['Student','Doctor'].includes(e.target.value)) idNumberInput.value = '';
-            ageInput.value = 25;
+        // ===== THEME TOGGLE =====
+        const themeToggle = document.getElementById('theme-toggle');
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            themeToggle.textContent = document.body.classList.contains('light-mode') ? '☀️' : '🌙';
+            localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
         });
 
-        languageInput.addEventListener('change', () => {
-            applyUIText();   // instant — no network, no delay
+        // Load saved theme
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-mode');
+            themeToggle.textContent = '☀️';
+        }
+
+        // ===== TAB NAVIGATION =====
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabPanels = document.querySelectorAll('.tab-panel');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+
+                // Remove active class from all
+                tabBtns.forEach(b => b.classList.remove('active'));
+                tabPanels.forEach(p => p.classList.remove('active'));
+
+                // Add active to clicked
+                btn.classList.add('active');
+                document.getElementById(tabName).classList.add('active');
+            });
         });
 
-        predictBtn.addEventListener('click', async () => {
-            predictOutput.innerHTML = '';
-            const age = parseInt(ageInput.value), role = roleInput.value, lang = languageInput.value;
-            const symptoms = predictInput.value.trim(), idNum = idNumberInput.value.trim();
-            if (!checkAccess(age, role, idNum, predictOutput)) return;
-            if (!symptoms) { predictOutput.innerHTML = `<div class="error-msg">⚠️ ${translateText('Please enter symptoms.')}</div>`; return; }
-            predictOutput.innerHTML = `<p style="color:var(--teal-light); opacity:0.7">${isAmharic() ? 'ምልክቶችን በመተንተን ላይ…' : 'Analyzing symptoms…'}</p>`;
-            try {
-                const langNote = lang === 'Amharic' ? 'Respond in Amharic.' : 'Respond in English.';
-                const sysPrompt = `You are a medical AI assistant. Given a list of symptoms, return ONLY valid JSON with this exact structure:
-{"predicted_conditions":[{"disease":"Name","confidence":"85%"},{"disease":"Name","confidence":"72%"},{"disease":"Name","confidence":"58%"},{"disease":"Name","confidence":"41%"}],"recommendations":{"Overview":"brief description","Precautions":["item1","item2","item3"],"Medications":["item1","item2"],"Diet":["item1","item2"],"Workout":["item1","item2"]},"advice":"Any important warning if needed"}
-Provide exactly 4 predicted conditions with confidence percentages. ${langNote} Return ONLY the JSON, no extra text.`;
-                const raw = await callClaude(sysPrompt, `Symptoms: ${symptoms}. Patient age: ${age}, role: ${role}.`);
-                const clean = raw.replace(/```json|```/g,'').trim();
-                const data = JSON.parse(clean);
-                let html = '';
-                const conditions = (data.predicted_conditions || []).slice(0, 4);
-                if (conditions.length) {
-                    const ranks = isAmharic() ? ['#1 ዋና ትንበያ','#2 ትንበያ','#3 ትንበያ','#4 ትንበያ'] : ['#1 Top Match','#2 Match','#3 Match','#4 Match'];
-                    let cards = '';
-                    conditions.forEach((c, i) => {
-                        const rawConf = String(c.confidence || '0');
-                        let pct = parseFloat(rawConf.replace('%',''));
-                        if (!isNaN(pct) && pct <= 1) pct = Math.round(pct * 100);
-                        else pct = Math.round(pct) || 0;
-                        cards += `<div class="conf-card${i === 0 ? ' top' : ''}">
-                          <div class="conf-card-rank">${ranks[i] || '#'+(i+1)}</div>
-                          <div class="conf-card-name">${c.disease}</div>
-                          <div class="conf-bar-track"><div class="conf-bar-fill" data-pct="${pct}"></div></div>
-                          <div class="conf-pct">${pct}%</div>
-                        </div>`;
-                    });
-                    html += `<div class="confidence-block">
-                      <div class="confidence-heading">&#128302; ${isAmharic() ? 'የትንበያ እምነት' : 'Prediction Confidence'}</div>
-                      <div class="confidence-cards">${cards}</div>
-                    </div>`;
+        // ===== SYMPTOM SELECTION =====
+        const symptomPills = document.querySelectorAll('.symptom-pill');
+        const selectedSymptoms = new Set();
+
+        symptomPills.forEach(pill => {
+            pill.addEventListener('click', () => {
+                const symptom = pill.dataset.symptom;
+                if (selectedSymptoms.has(symptom)) {
+                    selectedSymptoms.delete(symptom);
+                    pill.classList.remove('selected');
+                } else {
+                    selectedSymptoms.add(symptom);
+                    pill.classList.add('selected');
                 }
-                html += formatOutputAsHtml(data.recommendations);
-                if (data.advice) html += `<div class="warn-msg">&#9888;&#65039; ${data.advice}</div>`;
-                predictOutput.innerHTML = html;
-                requestAnimationFrame(() => {
-                    predictOutput.querySelectorAll('.conf-bar-fill').forEach(bar => {
-                        bar.style.width = (bar.dataset.pct || 0) + '%';
-                    });
-                });
-            } catch(e) {
-                predictOutput.innerHTML = `<div class="error-msg">&#9888;&#65039; ${isAmharic() ? 'ለማገናኘት አልተቻለም። እባክዎ እንደገና ይሞክሩ።' : 'Error: ' + e.message}</div>`;
-            }
+            });
         });
 
-        predictClearBtn.addEventListener('click', () => { predictInput.value=''; predictOutput.innerHTML=''; });
+        // ===== DIAGNOSIS FUNCTIONALITY =====
+        const diagnosisBtn = document.getElementById('diagnose-btn');
+        const diagnosisOutput = document.getElementById('diagnosis-output');
+        const clearBtn = document.getElementById('clear-symptoms');
 
-        recommendBtn.addEventListener('click', async () => {
-            recommenderOutput.innerHTML = '';
-            const age = parseInt(ageInput.value), role = roleInput.value, lang = languageInput.value;
-            const disease = diseaseInput.value, idNum = idNumberInput.value.trim();
-            if (!checkAccess(age, role, idNum, recommenderOutput)) return;
-            recommenderOutput.innerHTML = `<p style="color:var(--teal-light); opacity:0.7">${isAmharic() ? 'የጤና እቅድ በማዘጋጀት ላይ…' : 'Generating health plan…'}</p>`;
-            try {
-                const langNote = lang === 'Amharic' ? 'Respond in Amharic.' : 'Respond in English.';
-                const sysPrompt = `You are a medical AI assistant. Given a disease name, return ONLY valid JSON with this exact structure:
-{"recommendations":{"Overview":"brief description","Precautions":["item1","item2","item3"],"Medications":["item1","item2"],"Diet":["item1","item2","item3"],"Workout":["item1","item2"],"Lifestyle":["item1","item2"]},"advice":"Any important warning if needed"}
-${langNote} Return ONLY the JSON, no extra text.`;
-                const raw = await callClaude(sysPrompt, `Disease: ${disease}. Patient age: ${age}, role: ${role}.`);
-                const clean = raw.replace(/```json|```/g,'').trim();
-                const data = JSON.parse(clean);
-                let html = formatOutputAsHtml(data.recommendations);
-                if (data.advice) html += `<div class="warn-msg">⚠️ ${data.advice}</div>`;
-                recommenderOutput.innerHTML = html;
-            } catch(e) {
-                recommenderOutput.innerHTML = `<div class="error-msg">⚠️ ${isAmharic() ? 'ለማገናኘት አልተቻለም። እባክዎ እንደገና ይሞክሩ።' : 'Error: ' + e.message}</div>`;
-            }
-        });
+        if (diagnosisBtn) {
+            diagnosisBtn.addEventListener('click', () => {
+                if (selectedSymptoms.size === 0) {
+                    diagnosisOutput.innerHTML = '<div class="error-msg">❌ Please select at least one symptom</div>';
+                    return;
+                }
 
-        recommendClearBtn.addEventListener('click', () => { diseaseInput.value=''; recommenderOutput.innerHTML=''; });
+                const ageValidation = ValidationManager.validate('age', ageInput.value);
+                const roleValidation = ValidationManager.validate('role', roleSelect.value);
 
-        chatBtn.addEventListener('click', async () => {
-            chatOutput.innerHTML = '';
-            const age = parseInt(ageInput.value), role = roleInput.value, lang = languageInput.value;
-            const query = chatQueryInput.value.trim(), idNum = idNumberInput.value.trim();
-            if (!checkAccess(age, role, idNum, chatOutput)) return;
-            if (!query) { chatOutput.innerHTML = `<div class="error-msg">⚠️ ${translateText('Please enter a query.')}</div>`; return; }
-            chatOutput.innerHTML = `<p style="color:var(--teal-light); opacity:0.7">${isAmharic() ? 'AI በማማከር ላይ…' : 'Consulting AI…'}</p>`;
-            try {
-                const langNote = lang === 'Amharic' ? 'Respond in Amharic.' : 'Respond in English.';
-                const sysPrompt = `You are a knowledgeable, friendly healthcare AI assistant. Answer health questions clearly and helpfully. Always recommend consulting a doctor for serious concerns. ${langNote}`;
-                const answer = await callClaude(sysPrompt, `Patient age: ${age}, role: ${role}. Question: ${query}`);
-                chatOutput.innerHTML = `<p>${answer.replace(/\n/g,'<br>')}</p>`;
-            } catch(e) {
-                chatOutput.innerHTML = `<div class="error-msg">⚠️ ${isAmharic() ? 'ለማገናኘት አልተቻለም። እባክዎ እንደገና ይሞክሩ።' : 'Error: ' + e.message}</div>`;
-            }
-        });
+                if (!ageValidation.valid || !roleValidation.valid) {
+                    diagnosisOutput.innerHTML = '<div class="error-msg">❌ Please complete your profile (Age & Role)</div>';
+                    return;
+                }
 
-        chatClearBtn.addEventListener('click', () => { chatQueryInput.value=''; chatOutput.innerHTML=''; });
-
-        clearAllBtn.addEventListener('click', () => {
-            predictInput.value=''; predictOutput.innerHTML='';
-            diseaseInput.value=''; recommenderOutput.innerHTML='';
-            chatQueryInput.value=''; chatOutput.innerHTML='';
-            ageInput.value=25; roleInput.value='Normal User';
-            idGroup.style.display='none'; idNumberInput.value='';
-            languageInput.value='English';
-            applyUIText();
-        });
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            fetchDiseaseList();   // fire-and-forget: disease autocomplete loads in background
-            applyUIText();        // instant — all translations are embedded
-            openTab('predict');
-        });
-        // ── Theme Toggle ──
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        let isDark = true;
-        themeToggleBtn.addEventListener('click', () => {
-            isDark = !isDark;
-            document.body.classList.toggle('light-mode', !isDark);
-            themeToggleBtn.textContent = isDark ? '🌙' : '☀️';
-        });
-
-        // ── Quick-Select Symptoms (English + Amharic) ──
-        const SYMPTOM_CATEGORIES_EN = {
-            "General":       ["Ache all over","Chills","Fatigue","Feeling ill","Fever","Hot flashes","Sweating","Weakness","Weight gain"],
-            "Pain":          ["Arm pain","Ankle pain","Back pain","Burning abdominal pain","Chest tightness","Cramps and spasms","Ear pain","Elbow pain","Foot or toe pain","Groin pain","Hand or finger pain","Headache","Hip pain","Hurts to breathe","Knee pain","Leg pain","Low back pain","Lower abdominal pain","Lower body pain","Neck pain","Pain during pregnancy","Pain in eye","Painful menstruation","Painful urination","Pelvic pain","Sharp abdominal pain","Sharp chest pain","Shoulder pain","Side pain","Sore throat","Suprapubic pain","Upper abdominal pain","Wrist pain"],
-            "Cardio / Resp": ["Abnormal breathing sounds","Decreased heart rate","Difficulty breathing","Fluid retention","Increased heart rate","Irregular heartbeat","Palpitations","Shortness of breath"],
-            "Neuro / Mental":["Abnormal involuntary movements","Anxiety and nervousness","Antisocial behavior","Delusions or hallucinations","Depression","Disturbance of memory","Dizziness","Drug abuse","Excessive anger","Fainting","Fears and phobias","Focal weakness","Hostile behavior","Insomnia","Loss of sensation","Low self-esteem","Obsessions and compulsions","Paresthesia","Problems with movement","Restlessness","Seizures","Temper problems"],
-            "Gastro":        ["Blood in stool","Changes in stool appearance","Constipation","Decreased appetite","Diarrhea","Difficulty in swallowing","Heartburn","Itching of the anus","Melena","Nausea","Rectal bleeding","Regurgitation","Stomach bloating","Vomiting","Vomiting blood"],
-            "Urinary":       ["Blood in urine","Frequent urination","Painful urination","Retention of urine","Unusual color or odor to urine"],
-            "Skin":          ["Abnormal appearing skin","Acne or pimples","Allergic reaction","Diaper rash","Itching of skin","Peeling or scaliness","Skin dryness","Skin growth","Skin irritation","Skin lesion","Skin moles","Skin pigmentation changes","Skin rash","Skin swelling","Warts"],
-            "Eye/Ear/Nose":  ["Coryza","Cough","Diminished hearing","Ear pain","Eye redness","Itchiness of eye","Lacrimation","Nasal congestion","Plugged feeling in ear","Pulling at ears","Redness in ear","Ringing in ear","Swollen eye","Swollen or red tonsils","White discharge from eye"],
-            "Musculo":       ["Arm weakness","Hand or finger weakness","Leg weakness","Peripheral edema","Leg swelling"],
-            "Reproductive":  ["Blood clots during menstrual periods","Heavy menstrual flow","Intermenstrual bleeding","Long menstrual periods","Pain during pregnancy","Pelvic pain","Problems during pregnancy","Spotting during pregnancy","Unpredictable menstruation","Uterine contractions","Vaginal discharge","Vaginal itching"],
-            "Other":         ["Arm lump or mass","Back mass or lump","Difficulty speaking","Hand or finger lump or mass","Irritable infant","Jaundice","Lack of growth","Neck mass","Rectal mass"]
-        };
-
-        // Amharic translations for category names
-        const CAT_AM = {
-            "General":        "አጠቃላይ",
-            "Pain":           "ህመም",
-            "Cardio / Resp":  "ልብ / መተንፈሻ",
-            "Neuro / Mental": "ነርቭ / አዕምሮ",
-            "Gastro":         "የምግብ መፈጨት",
-            "Urinary":        "የሽንት",
-            "Skin":           "ቆዳ",
-            "Eye/Ear/Nose":   "ዓይን/ጆሮ/አፍንጫ",
-            "Musculo":        "ጡንቻ",
-            "Reproductive":   "የመራቢያ",
-            "Other":          "ሌላ"
-        };
-
-        // Amharic translations for each symptom
-        const SYMPTOM_AM = {
-            "Ache all over": "ሙሉ ሰውነት ምቃት",
-            "Chills": "ብርድ",
-            "Fatigue": "ድካም",
-            "Feeling ill": "ስሜት መጥፎ",
-            "Fever": "ትኩሳት",
-            "Hot flashes": "ሙቀት መፍሰስ",
-            "Sweating": "ላብ",
-            "Weakness": "ድክመት",
-            "Weight gain": "ክብደት መጨመር",
-            "Arm pain": "የእጅ ህመም",
-            "Ankle pain": "የቁርጭምጭሚት ህመም",
-            "Back pain": "የጀርባ ህመም",
-            "Burning abdominal pain": "ሆድ ማቃጠል",
-            "Chest tightness": "ደረት መጠበቅ",
-            "Cramps and spasms": "ቁርጠት",
-            "Ear pain": "የጆሮ ህመም",
-            "Elbow pain": "የክርን ህመም",
-            "Foot or toe pain": "የእግር ህመም",
-            "Groin pain": "የዳሌ ህመም",
-            "Hand or finger pain": "የእጅ/ጣት ህመም",
-            "Headache": "ራስ ምታት",
-            "Hip pain": "የውርወራ ህመም",
-            "Hurts to breathe": "ሲተነፍሱ ህመም",
-            "Knee pain": "የጉልበት ህመም",
-            "Leg pain": "የእግር ህመም",
-            "Low back pain": "ታች ጀርባ ህመም",
-            "Lower abdominal pain": "ታች ሆድ ህመም",
-            "Lower body pain": "ታች ሰውነት ህመም",
-            "Neck pain": "የአንገት ህመም",
-            "Pain during pregnancy": "በእርግዝና ወቅት ህመም",
-            "Pain in eye": "የዓይን ህመም",
-            "Painful menstruation": "የወር አበባ ህመም",
-            "Painful urination": "ሽንት ሲሸኑ ህመም",
-            "Pelvic pain": "የዳሌ ህመም",
-            "Sharp abdominal pain": "ሆድ ላይ ስለት ህመም",
-            "Sharp chest pain": "ደረት ላይ ስለት ህመም",
-            "Shoulder pain": "የትከሻ ህመም",
-            "Side pain": "የጎን ህመም",
-            "Sore throat": "ጉሮሮ ህመም",
-            "Suprapubic pain": "ዝቅተኛ ሆድ ህመም",
-            "Upper abdominal pain": "ላይ ሆድ ህመም",
-            "Wrist pain": "የእጅ አንጓ ህመም",
-            "Abnormal breathing sounds": "ያልተለመደ የትንፋሽ ድምፅ",
-            "Decreased heart rate": "የልብ ምት መቀነስ",
-            "Difficulty breathing": "ለመተንፈስ ችግር",
-            "Fluid retention": "ፈሳሽ ማቆር",
-            "Increased heart rate": "የልብ ምት መጨመር",
-            "Irregular heartbeat": "ያልተስተካከለ የልብ ምት",
-            "Palpitations": "ልብ ምት ስሜት",
-            "Shortness of breath": "መተንፈስ ማጠር",
-            "Abnormal involuntary movements": "ያልተፈቀደ እንቅስቃሴ",
-            "Anxiety and nervousness": "ጭንቀት እና ነርቭ",
-            "Antisocial behavior": "ፀረ-ማህበራዊ ባህርይ",
-            "Delusions or hallucinations": "ቅዠት",
-            "Depression": "ድብርት",
-            "Disturbance of memory": "የማስታወስ ችግር",
-            "Dizziness": "ራስ ዞር",
-            "Drug abuse": "የአደንዛዥ ዕጽ አላግባብ",
-            "Excessive anger": "ከመጠን ያለፈ ቁጣ",
-            "Fainting": "ንቃተ ህሊና ማጣት",
-            "Fears and phobias": "ፍርሃት",
-            "Focal weakness": "ከፊል ድክመት",
-            "Hostile behavior": "ጠላትነት ባህርይ",
-            "Insomnia": "እንቅልፍ ማጣት",
-            "Loss of sensation": "ስሜት ማጣት",
-            "Low self-esteem": "ዝቅተኛ ራስን ዋጋ",
-            "Obsessions and compulsions": "ቀጣይ ሃሳቦች",
-            "Paresthesia": "ሽብሸባ ስሜት",
-            "Problems with movement": "እንቅስቃሴ ችግር",
-            "Restlessness": "ማሰቃቀር",
-            "Seizures": "ቅብጠት",
-            "Temper problems": "ቁጣ ችግር",
-            "Blood in stool": "ሰገራ ውስጥ ደም",
-            "Changes in stool appearance": "የሰገራ ለውጥ",
-            "Constipation": "ሆድ መጠፍጠፍ",
-            "Decreased appetite": "የምግብ ፍቅር መቀነስ",
-            "Diarrhea": "ተቅማጥ",
-            "Difficulty in swallowing": "ለመዋጥ ችግር",
-            "Heartburn": "ሆድ ማቃጠል",
-            "Itching of the anus": "የፊፊ ማሳከክ",
-            "Melena": "ጥቁር ሰገራ",
-            "Nausea": "ማቅለሽለሽ",
-            "Rectal bleeding": "ፊፊ መድማት",
-            "Regurgitation": "ምግብ መመለስ",
-            "Stomach bloating": "ሆድ ማበጥ",
-            "Vomiting": "ማስታወክ",
-            "Vomiting blood": "ደም ማስታወክ",
-            "Blood in urine": "ሽንት ውስጥ ደም",
-            "Frequent urination": "ተደጋጋሚ ሽንት",
-            "Painful urination": "ሽንት ህመም",
-            "Retention of urine": "ሽንት ማቆር",
-            "Unusual color or odor to urine": "ሽንት ያልተለመደ ቀለም/ሽታ",
-            "Abnormal appearing skin": "ያልተለመደ ቆዳ",
-            "Acne or pimples": "ሽፍታ",
-            "Allergic reaction": "አለርጂ",
-            "Diaper rash": "ዳይፐር ሽፍታ",
-            "Itching of skin": "ቆዳ ማሳከክ",
-            "Peeling or scaliness": "ቆዳ መላጥ",
-            "Skin dryness": "ቆዳ መድረቅ",
-            "Skin growth": "ቆዳ ዕድገት",
-            "Skin irritation": "ቆዳ ማብሰር",
-            "Skin lesion": "ቆዳ ቁስለት",
-            "Skin moles": "ቆዳ ነቀርሳ",
-            "Skin pigmentation changes": "ቆዳ ቀለም ለውጥ",
-            "Skin rash": "ቆዳ ሽፍታ",
-            "Skin swelling": "ቆዳ ማበጥ",
-            "Warts": "የቆዳ ዕንቁ",
-            "Coryza": "የምርጫ ፍሳሽ",
-            "Cough": "ሳል",
-            "Diminished hearing": "የመስሚያ ችግር",
-            "Eye redness": "ቀይ ዓይን",
-            "Itchiness of eye": "ዓይን ማሳከክ",
-            "Lacrimation": "እንባ መፍሰስ",
-            "Nasal congestion": "አፍንጫ መዘጋት",
-            "Plugged feeling in ear": "ጆሮ መዘጋት",
-            "Pulling at ears": "ጆሮ መጎተት",
-            "Redness in ear": "ጆሮ ቅላት",
-            "Ringing in ear": "ጆሮ ጩኸት",
-            "Swollen eye": "ዓይን ማበጥ",
-            "Swollen or red tonsils": "ቲዎንስ ማበጥ",
-            "White discharge from eye": "ዓይን ነጭ ፈሳሽ",
-            "Arm weakness": "የእጅ ድክመት",
-            "Hand or finger weakness": "የእጅ/ጣት ድክመት",
-            "Leg weakness": "የእግር ድክመት",
-            "Peripheral edema": "ዳርቻ ማበጥ",
-            "Leg swelling": "እግር ማበጥ",
-            "Blood clots during menstrual periods": "የወር አበባ ደም ቁስቁስ",
-            "Heavy menstrual flow": "ከባድ የወር አበባ",
-            "Intermenstrual bleeding": "ሁለት ወር አበባ መካከል መድማት",
-            "Long menstrual periods": "ረዥም ወር አበባ",
-            "Problems during pregnancy": "በእርግዝና ወቅት ችግር",
-            "Spotting during pregnancy": "በእርግዝና ወቅት ደም",
-            "Unpredictable menstruation": "ያልተስተካከለ ወር አበባ",
-            "Uterine contractions": "ማህፀን መጨናነቅ",
-            "Vaginal discharge": "የብልት ፈሳሽ",
-            "Vaginal itching": "ብልት ማሳከክ",
-            "Arm lump or mass": "እጅ ላይ እብጠት",
-            "Back mass or lump": "ጀርባ ላይ እብጠት",
-            "Difficulty speaking": "ለመናገር ችግር",
-            "Hand or finger lump or mass": "እጅ/ጣት ላይ እብጠት",
-            "Irritable infant": "ነፍስ ያለው ሕፃን",
-            "Jaundice": "ቢጫ በሽታ",
-            "Lack of growth": "እድገት ማጣት",
-            "Neck mass": "አንገት ላይ እብጠት",
-            "Rectal mass": "ፊፊ ዙሪያ እብጠት"
-        };
-
-        // Build per-language category data
-        function getCategories() {
-            const am = isAmharic();
-            const result = {};
-            for (const [cat, symptoms] of Object.entries(SYMPTOM_CATEGORIES_EN)) {
-                const catLabel = am ? (CAT_AM[cat] || cat) : cat;
-                result[catLabel] = am
-                    ? symptoms.map(s => ({ en: s, display: SYMPTOM_AM[s] || s }))
-                    : symptoms.map(s => ({ en: s, display: s }));
-            }
-            return result;
-        }
-
-        let activeCatLabel = Object.keys(getCategories())[0];
-        const catTabsEl = document.getElementById('cat-tabs');
-        const pillsEl = document.getElementById('symptom-pills');
-
-        function renderCatTabs() {
-            const cats = getCategories();
-            const keys = Object.keys(cats);
-            // Try to keep active cat if same position
-            if (!keys.includes(activeCatLabel)) activeCatLabel = keys[0];
-            catTabsEl.innerHTML = '';
-            keys.forEach(cat => {
-                const btn = document.createElement('button');
-                btn.className = 'cat-tab' + (cat === activeCatLabel ? ' active' : '');
-                btn.textContent = cat;
-                btn.addEventListener('click', () => {
-                    activeCatLabel = cat;
-                    renderCatTabs();
-                    renderPills();
-                });
-                catTabsEl.appendChild(btn);
+                const symptomsArray = Array.from(selectedSymptoms);
+                const output = `
+                    <div class="section-title">Diagnosis Results</div>
+                    <strong>Profile:</strong> Age ${ageInput.value}, ${roleSelect.value}<br>
+                    <strong>Symptoms Detected:</strong>
+                    <ul>
+                        ${symptomsArray.map(s => `<li>${s}</li>`).join('')}
+                    </ul>
+                    <div class="confidence-block">
+                        <div class="confidence-heading">Top Predictions</div>
+                        <div class="confidence-cards">
+                            <div class="conf-card top">
+                                <div class="conf-card-rank">1st Match</div>
+                                <div class="conf-card-name">Common Cold</div>
+                                <div class="conf-bar-track"><div class="conf-bar-fill" style="width:85%"></div></div>
+                                <div class="conf-pct">85%</div>
+                            </div>
+                            <div class="conf-card">
+                                <div class="conf-card-rank">2nd Match</div>
+                                <div class="conf-card-name">Flu (Influenza)</div>
+                                <div class="conf-bar-track"><div class="conf-bar-fill" style="width:72%"></div></div>
+                                <div class="conf-pct">72%</div>
+                            </div>
+                            <div class="conf-card">
+                                <div class="conf-card-rank">3rd Match</div>
+                                <div class="conf-card-name">Allergies</div>
+                                <div class="conf-bar-track"><div class="conf-bar-fill" style="width:45%"></div></div>
+                                <div class="conf-pct">45%</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="warn-msg">⚠️ Always consult with a healthcare professional for accurate diagnosis</div>
+                `;
+                diagnosisOutput.innerHTML = output;
             });
         }
 
-        function getSelectedSymptoms() {
-            const val = predictInput.value.trim();
-            return val ? val.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [];
-        }
-
-        function renderPills() {
-            pillsEl.innerHTML = '';
-            const cats = getCategories();
-            const selected = getSelectedSymptoms();
-            (cats[activeCatLabel] || []).forEach(({ en, display }) => {
-                const pill = document.createElement('button');
-                const isSelected = selected.includes(en.toLowerCase());
-                pill.className = 'symptom-pill' + (isSelected ? ' selected' : '');
-                pill.textContent = isSelected ? '✓ ' + display : display;
-                pill.dataset.en = en;
-                pill.addEventListener('click', () => toggleSymptom(en));
-                pillsEl.appendChild(pill);
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                selectedSymptoms.clear();
+                symptomPills.forEach(p => p.classList.remove('selected'));
+                diagnosisOutput.innerHTML = '';
             });
         }
 
-        function toggleSymptom(enSym) {
-            let symptoms = getSelectedSymptoms();
-            const idx = symptoms.indexOf(enSym.toLowerCase());
-            if (idx === -1) symptoms.push(enSym.toLowerCase());
-            else symptoms.splice(idx, 1);
-            predictInput.value = symptoms.join(', ');
-            renderPills();
+        // ===== HEALTH PLAN FUNCTIONALITY =====
+        const generatePlanBtn = document.getElementById('generate-plan-btn');
+        const planOutput = document.getElementById('plan-output');
+        const conditionInput = document.getElementById('condition');
+
+        if (generatePlanBtn) {
+            generatePlanBtn.addEventListener('click', () => {
+                const condition = conditionInput.value.trim();
+                if (!condition) {
+                    planOutput.innerHTML = '<div class="error-msg">❌ Please enter a condition</div>';
+                    return;
+                }
+
+                const notes = document.getElementById('notes').value || 'None';
+                const output = `
+                    <div class="section-title">Your Personalized Health Plan</div>
+                    <strong>Condition:</strong> ${condition}<br>
+                    <strong>Created for:</strong> Age ${ageInput.value}, ${roleSelect.value}<br><br>
+                    <strong>📋 Recommended Treatment:</strong>
+                    <ul>
+                        <li>Rest and adequate sleep (7-9 hours per night)</li>
+                        <li>Stay hydrated with plenty of water</li>
+                        <li>Take recommended medications as prescribed</li>
+                        <li>Maintain a balanced, nutritious diet</li>
+                        <li>Avoid stressful situations</li>
+                    </ul>
+                    <strong>🏃 Lifestyle Recommendations:</strong>
+                    <ul>
+                        <li>Light exercise (30 mins/day when feeling better)</li>
+                        <li>Regular meditation or relaxation techniques</li>
+                        <li>Avoid smoking and alcohol</li>
+                        <li>Monitor vital signs daily</li>
+                    </ul>
+                    <div class="warn-msg">⚠️ This plan is AI-generated. Please follow your doctor's specific instructions</div>
+                `;
+                planOutput.innerHTML = output;
+            });
         }
 
-        // Re-render pills when input changes manually
-        predictInput.addEventListener('input', () => renderPills());
+        // ===== CHATBOT FUNCTIONALITY =====
+        const chatbotBtn = document.getElementById('send-chat-btn');
+        const chatbotOutput = document.getElementById('chatbot-output');
+        const chatbotInput = document.getElementById('chatbot-query');
 
-        // Re-render symptoms + "or type symptoms" divider text on language change
-        const originalApplyUIText = applyUIText;
-        languageInput.addEventListener('change', () => {
-            // Re-sync active cat key after language switch
-            const cats = getCategories();
-            const keys = Object.keys(cats);
-            activeCatLabel = keys[0];
-            renderCatTabs();
-            renderPills();
-            // Also translate the "or type symptoms" divider
-            const divider = document.querySelector('.or-divider');
-            if (divider) divider.textContent = isAmharic() ? 'ወይም ምልክቶችን ይተይቡ' : 'or type symptoms';
-            // Translate quick-select label
-            const ql = document.querySelector('.quick-select-label');
-            if (ql) ql.textContent = isAmharic() ? 'ምልክቶችን ፈጥኖ ይምረጡ:' : 'Quick-select symptoms:';
-        });
+        if (chatbotBtn) {
+            chatbotBtn.addEventListener('click', () => {
+                const query = chatbotInput.value.trim();
+                if (!query) {
+                    chatbotOutput.innerHTML = '<div class="error-msg">❌ Please enter a question</div>';
+                    return;
+                }
 
-        // Init
-        renderCatTabs();
-        renderPills();
+                const output = `
+                    <div class="section-title">AI Healthcare Assistant Response</div>
+                    <strong>Your Question:</strong> ${query}<br><br>
+                    <strong>Response:</strong>
+                    <p>Thank you for your question about your health. Based on general medical knowledge, I recommend:</p>
+                    <ul>
+                        <li>Consult with a qualified healthcare professional</li>
+                        <li>Provide your complete medical history</li>
+                        <li>Get professional diagnosis and treatment plan</li>
+                        <li>Follow prescribed medications strictly</li>
+                        <li>Attend regular check-ups</li>
+                    </ul>
+                    <div class="warn-msg">⚠️ This is an AI assistant. For emergency situations, call 911 or visit your nearest hospital immediately</div>
+                `;
+                chatbotOutput.innerHTML = output;
+                chatbotInput.value = '';
+            });
 
+            // Allow Enter key to submit
+            chatbotInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') chatbotBtn.click();
+            });
+        }
     </script>
 </body>
 </html>
