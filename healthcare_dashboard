@@ -1110,23 +1110,29 @@
     </main>
 
     <script>
-        // ── Anthropic API (replaces dead Render backend) ──
-        const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
+        // ── Groq API (free — get key at console.groq.com) ──
+        const GROQ_MODEL = 'llama3-70b-8192';
+        const GROQ_API_KEY = 'YOUR_GROQ_API_KEY_HERE'; // ← replace with your key
 
         async function callClaude(systemPrompt, userMessage) {
-            const res = await fetch('https://api.anthropic.com/v1/messages', {
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${GROQ_API_KEY}`
+                },
                 body: JSON.stringify({
-                    model: CLAUDE_MODEL,
+                    model: GROQ_MODEL,
                     max_tokens: 1000,
-                    system: systemPrompt,
-                    messages: [{ role: 'user', content: userMessage }]
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userMessage }
+                    ]
                 })
             });
             if (!res.ok) throw new Error('API error ' + res.status);
             const d = await res.json();
-            return d.content.map(b => b.text || '').join('');
+            return d.choices[0].message.content;
         }
 
         // Elements
