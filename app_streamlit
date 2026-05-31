@@ -21,11 +21,8 @@ HTML_PATH = os.path.join(os.path.dirname(__file__), "healthcare_dashboard.html")
 with open(HTML_PATH, "r", encoding="utf-8") as f:
     html_content = f.read()
 
-# Inject the Anthropic API key from Streamlit secrets into the HTML
-api_key = st.secrets.get("ANTHROPIC_API_KEY", "")
-html_content = html_content.replace(
-    "headers: { 'Content-Type': 'application/json' }",
-    f"headers: {{ 'Content-Type': 'application/json', 'x-api-key': '{api_key}', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }}"
-)
+# Inject Groq API key from Streamlit secrets
+groq_key = st.secrets.get("GROQ_API_KEY", "")
+html_content = html_content.replace("YOUR_GROQ_API_KEY_HERE", groq_key)
 
 components.html(html_content, height=3800, scrolling=True)
