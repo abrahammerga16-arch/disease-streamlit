@@ -581,18 +581,34 @@ def integrated_prediction_system(
         columns=symptom_list,
     )
 
-    preds = []
-    for model, name in [(svc_model, "SVC"), (dt_model, "Decision Tree")]:
-        pred_idx = model.predict(feature_vector)[0]
-        disease  = le.inverse_transform([pred_idx])[0]
-        try:
-            proba = model.predict_proba(feature_vector)[0]
-            conf  = f"{proba[pred_idx] * 100:.1f}%"
-        except AttributeError:
-            conf = "N/A"
-        preds.append({"model": name, "disease": disease.title(), "confidence": conf})
+    preds = []          # list of {"model", "disease", "confidence", "top"}
 
-    top_disease = preds[0]["disease"]
+    for model, name in [(svc_model, "SVC"), (dt_model, "Decision Tree")]:
+        try:
+            proba    = model.predict_proba(feature_vector)[0]
+            top4_idx = np.argsort(proba)[::-1][:4]
+            for rank, idx in enumerate(top4_idx):
+                disease = le.inverse_transform([idx])[0]
+                conf    = f"{proba[idx] * 100:.1f}%"
+                preds.append({
+                    "model":      name,
+                    "disease":    disease.title(),
+                    "confidence": conf,
+                    "top":        rank == 0,
+                })
+        except AttributeError:
+            # Model has no predict_proba (e.g. SVC without probability=True)
+            pred_idx = model.predict(feature_vector)[0]
+            disease  = le.inverse_transform([pred_idx])[0]
+            preds.append({
+                "model":      name,
+                "disease":    disease.title(),
+                "confidence": "N/A",
+                "top":        True,
+            })
+
+    # Top disease = rank-1 prediction from SVC
+    top_disease = next(p["disease"] for p in preds if p["top"] and p["model"] == "SVC")
     top_key     = clean_disease_name(top_disease)
 
     recs, advice = role_based_recs(
@@ -695,12 +711,38 @@ def render_recommendations(recs: dict):
 
 
 def render_predictions(predictions: list):
-    for p in predictions:
-        st.markdown(
-            f"<span class='disease-badge'>{p['disease']}</span>"
-            f"<span class='conf-pill'>{p['model']} · {p['confidence']}</span>",
-            unsafe_allow_html=True,
-        )
+    """Display top-4 predictions for each model side by side."""
+    from itertools import groupby
+    col1, col2 = st.columns(2)
+    cols = {"SVC": col1, "Decision Tree": col2}
+
+    for model_name, group in groupby(predictions, key=lambda p: p["model"]):
+        items = list(group)
+        with cols.get(model_name, col1):
+            st.markdown(
+                f"<div style='background:rgba(22,27,34,0.7);border:1px solid rgba(88,166,255,0.2);"
+                f"border-radius:10px;padding:14px 16px;margin-bottom:8px'>"
+                f"<div style='color:#79c0ff;font-size:0.75rem;font-weight:700;letter-spacing:0.1em;"
+                f"text-transform:uppercase;margin-bottom:10px'>🤖 {model_name}</div>",
+                unsafe_allow_html=True,
+            )
+            rows_html = ""
+            for rank, p in enumerate(items):
+                badge_bg  = "linear-gradient(135deg,#1f6feb,#388bfd)" if rank == 0 else "rgba(33,38,45,0.8)"
+                badge_col = "#fff" if rank == 0 else "#8b949e"
+                bar_w     = p["confidence"].replace("%","") if p["confidence"] != "N/A" else "0"
+                rows_html += (
+                    f"<div style='display:flex;align-items:center;gap:10px;margin-bottom:8px'>"
+                    f"<span style='min-width:18px;color:#8b949e;font-size:0.75rem;font-weight:600'>#{rank+1}</span>"
+                    f"<span style='flex:1;background:{badge_bg};color:{badge_col};"
+                    f"padding:5px 12px;border-radius:16px;font-size:0.85rem;font-weight:600'>{p['disease']}</span>"
+                    f"<span style='min-width:48px;text-align:right;color:#58a6ff;font-size:0.82rem;font-weight:700'>{p['confidence']}</span>"
+                    f"</div>"
+                    f"<div style='height:3px;background:rgba(48,54,61,0.5);border-radius:2px;margin-bottom:6px'>"
+                    f"<div style='height:3px;width:{bar_w}%;background:linear-gradient(90deg,#1f6feb,#58a6ff);border-radius:2px'></div>"
+                    f"</div>"
+                )
+            st.markdown(rows_html + "</div>", unsafe_allow_html=True)
 
 
 def render_categorized_symptoms(categorized_symptoms: dict):
