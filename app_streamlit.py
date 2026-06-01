@@ -1,5 +1,5 @@
 """
-Integrated Healthcare Dashboard — Streamlit version
+Integrated Healthcare Dashboard — Streamlit version (Enhanced UI with Animations)
 Replicates the Google Colab notebook exactly:
   • Disease Predictor  (symptom input → ML prediction)
   • Health Recommender (disease dropdown → full health plan)
@@ -30,130 +30,302 @@ st.set_page_config(
 )
 
 # ──────────────────────────────────────────────
-# CUSTOM CSS  (clean medical aesthetic)
+# ENHANCED CUSTOM CSS WITH ANIMATIONS
 # ──────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&family=Poppins:wght@300;400;600;700&display=swap');
 
+/* ── Keyframe Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+@keyframes glow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(88, 166, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(88, 166, 255, 0.6);
+    }
+}
+
+/* ── Global Styles */
 html, body, [class*="css"] {
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Poppins', 'IBM Plex Sans', sans-serif;
+    scroll-behavior: smooth;
 }
 
-/* ── Main background */
-.stApp { background: #0d1117; color: #e6edf3; }
+/* ── Main background with gradient */
+.stApp {
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1f2d 100%);
+    color: #e6edf3;
+    animation: fadeInUp 0.8s ease-out;
+}
 
-/* ── Sidebar */
+/* ── Sidebar enhancement */
 section[data-testid="stSidebar"] {
-    background: #161b22;
-    border-right: 1px solid #30363d;
+    background: linear-gradient(180deg, #161b22 0%, #0f1419 100%);
+    border-right: 1px solid rgba(48, 54, 61, 0.5);
+    box-shadow: inset -1px 0 0 rgba(88, 166, 255, 0.1);
 }
-section[data-testid="stSidebar"] * { color: #e6edf3 !important; }
+section[data-testid="stSidebar"] * { 
+    color: #e6edf3 !important; 
+}
 
-/* ── Tabs */
+/* ── Tabs with animation */
 .stTabs [data-baseweb="tab-list"] {
-    background: #161b22;
-    border-radius: 8px;
-    padding: 4px;
+    background: rgba(22, 27, 34, 0.6);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 6px;
     gap: 4px;
+    border: 1px solid rgba(48, 54, 61, 0.3);
 }
+
 .stTabs [data-baseweb="tab"] {
     background: transparent;
     color: #8b949e;
-    border-radius: 6px;
+    border-radius: 8px;
     font-weight: 600;
     letter-spacing: 0.04em;
-    padding: 8px 20px;
+    padding: 10px 24px;
     border: none !important;
-}
-.stTabs [aria-selected="true"] {
-    background: #21262d !important;
-    color: #58a6ff !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.95rem;
 }
 
-/* ── Inputs */
+.stTabs [data-baseweb="tab"]:hover {
+    background: rgba(88, 166, 255, 0.1);
+    color: #58a6ff;
+}
+
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, #21262d 0%, #1f6feb 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(88, 166, 255, 0.25);
+}
+
+/* ── Input fields */
 .stTextInput input, .stSelectbox select, .stTextArea textarea,
 div[data-baseweb="select"] > div {
-    background: #21262d !important;
-    border: 1px solid #30363d !important;
+    background: rgba(33, 38, 45, 0.8) !important;
+    border: 1px solid rgba(48, 54, 61, 0.5) !important;
     color: #e6edf3 !important;
-    border-radius: 6px !important;
+    border-radius: 8px !important;
+    transition: all 0.3s ease !important;
+    font-size: 0.95rem !important;
 }
 
-/* ── Buttons */
+.stTextInput input:focus, .stSelectbox select:focus, .stTextArea textarea:focus,
+div[data-baseweb="select"] > div:focus-within {
+    border-color: #58a6ff !important;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2) !important;
+    background: rgba(33, 38, 45, 1) !important;
+}
+
+/* ── Buttons with animation */
 .stButton > button {
-    background: #238636;
+    background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
     color: #ffffff;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     font-weight: 600;
-    padding: 8px 20px;
-    transition: background 0.2s;
+    padding: 10px 24px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.95rem;
+    position: relative;
+    overflow: hidden;
 }
-.stButton > button:hover { background: #2ea043; }
 
-/* ── Result cards */
-.result-card {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 10px;
-    padding: 18px 22px;
-    margin-bottom: 14px;
+.stButton > button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
 }
+
+.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(46, 160, 67, 0.4);
+    background: linear-gradient(135deg, #2ea043 0%, #3fb950 100%);
+}
+
+.stButton > button:active {
+    transform: translateY(0);
+}
+
+/* ── Result cards with hover animation */
+.result-card {
+    background: linear-gradient(135deg, rgba(22, 27, 34, 0.8) 0%, rgba(33, 38, 45, 0.6) 100%);
+    border: 1px solid rgba(88, 166, 255, 0.2);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    animation: fadeInUp 0.6s ease-out;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.result-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(88, 166, 255, 0.1), transparent);
+    transition: left 0.6s;
+}
+
+.result-card:hover {
+    border-color: rgba(88, 166, 255, 0.4);
+    box-shadow: 0 8px 32px rgba(88, 166, 255, 0.15);
+    transform: translateY(-4px);
+    background: linear-gradient(135deg, rgba(33, 38, 45, 0.9) 0%, rgba(31, 111, 235, 0.1) 100%);
+}
+
 .result-card h4 {
     color: #58a6ff;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.82rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
+    animation: slideInLeft 0.5s ease-out;
 }
-.result-card p, .result-card li { color: #c9d1d9; font-size: 0.95rem; }
 
-/* ── Disease badge */
+.result-card p, .result-card li { 
+    color: #c9d1d9; 
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* ── Disease badge with animation */
 .disease-badge {
     display: inline-block;
-    background: #1f6feb;
+    background: linear-gradient(135deg, #1f6feb 0%, #388bfd 100%);
     color: #fff;
-    border-radius: 20px;
-    padding: 4px 14px;
+    border-radius: 24px;
+    padding: 6px 18px;
     font-weight: 600;
     font-size: 1rem;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
+    margin-right: 8px;
+    animation: slideInLeft 0.4s ease-out;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(31, 111, 235, 0.3);
+}
+
+.disease-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(31, 111, 235, 0.5);
 }
 
 /* ── Confidence pill */
 .conf-pill {
     display: inline-block;
-    background: #21262d;
-    border: 1px solid #30363d;
-    border-radius: 12px;
-    padding: 2px 10px;
+    background: linear-gradient(135deg, rgba(33, 38, 45, 0.9) 0%, rgba(88, 166, 255, 0.15) 100%);
+    border: 1px solid rgba(88, 166, 255, 0.3);
+    border-radius: 16px;
+    padding: 4px 14px;
     font-size: 0.8rem;
-    color: #8b949e;
+    color: #58a6ff;
     margin-left: 8px;
+    font-weight: 600;
+    animation: slideInRight 0.4s ease-out;
+    transition: all 0.3s ease;
+}
+
+.conf-pill:hover {
+    background: linear-gradient(135deg, rgba(88, 166, 255, 0.2) 0%, rgba(88, 166, 255, 0.3) 100%);
+    border-color: #58a6ff;
 }
 
 /* ── Warning / advice banner */
 .advice-banner {
-    background: #2d1800;
+    background: linear-gradient(135deg, rgba(45, 24, 0, 0.8) 0%, rgba(240, 136, 62, 0.1) 100%);
     border-left: 4px solid #f0883e;
-    padding: 10px 16px;
-    border-radius: 0 6px 6px 0;
+    padding: 12px 18px;
+    border-radius: 0 8px 8px 0;
     color: #f0883e;
     font-size: 0.9rem;
-    margin-top: 12px;
+    margin-top: 16px;
+    animation: slideInLeft 0.5s ease-out;
+    transition: all 0.3s ease;
+}
+
+.advice-banner:hover {
+    border-left-color: #ffa657;
+    color: #ffa657;
 }
 
 /* ── Chat bubble */
 .chat-bot {
-    background: #21262d;
-    border-left: 3px solid #58a6ff;
-    padding: 12px 16px;
-    border-radius: 0 8px 8px 0;
+    background: linear-gradient(135deg, rgba(33, 38, 45, 0.9) 0%, rgba(31, 111, 235, 0.1) 100%);
+    border-left: 4px solid #58a6ff;
+    padding: 16px 20px;
+    border-radius: 0 12px 12px 0;
     color: #c9d1d9;
     font-size: 0.95rem;
-    margin-top: 10px;
+    margin-top: 12px;
+    animation: slideInLeft 0.5s ease-out;
+    transition: all 0.3s ease;
+    line-height: 1.6;
+    box-shadow: inset 0 1px 3px rgba(88, 166, 255, 0.1);
+}
+
+.chat-bot:hover {
+    border-left-color: #79c0ff;
+    box-shadow: inset 0 1px 3px rgba(88, 166, 255, 0.2);
 }
 
 /* ── Section header */
@@ -163,24 +335,106 @@ div[data-baseweb="select"] > div {
     font-size: 0.75rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    border-bottom: 1px solid #30363d;
-    padding-bottom: 6px;
-    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(88, 166, 255, 0.2);
+    padding-bottom: 8px;
+    margin-bottom: 18px;
+    animation: slideInLeft 0.4s ease-out;
+    font-weight: 700;
 }
 
-/* ── Number widget */
-.stNumberInput input { background: #21262d !important; color: #e6edf3 !important; }
+/* ── Number input */
+.stNumberInput input { 
+    background: rgba(33, 38, 45, 0.8) !important; 
+    color: #e6edf3 !important;
+    border: 1px solid rgba(48, 54, 61, 0.5) !important;
+    border-radius: 8px !important;
+    transition: all 0.3s ease !important;
+}
 
 /* ── Slider */
-.stSlider .st-bk { background: #58a6ff; }
+.stSlider .st-bk { 
+    background: linear-gradient(90deg, #1f6feb, #58a6ff) !important;
+}
+
+.stSlider .st-ao {
+    background: #21262d !important;
+    border: 2px solid #58a6ff !important;
+}
 
 /* ── Access denied */
 .access-denied {
-    background: #2d0e0e;
+    background: linear-gradient(135deg, rgba(45, 14, 14, 0.8) 0%, rgba(248, 81, 73, 0.1) 100%);
     border-left: 4px solid #f85149;
-    padding: 10px 16px;
-    border-radius: 0 6px 6px 0;
+    padding: 12px 18px;
+    border-radius: 0 8px 8px 0;
     color: #f85149;
+    animation: slideInLeft 0.5s ease-out;
+    transition: all 0.3s ease;
+}
+
+.access-denied:hover {
+    border-left-color: #fa7a78;
+    color: #fa7a78;
+}
+
+/* ── Divider */
+hr {
+    border-color: rgba(88, 166, 255, 0.1) !important;
+}
+
+/* ── Smooth transitions for text */
+p, span, li {
+    transition: color 0.3s ease;
+}
+
+/* ── Loading animation */
+.loading-spinner {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ── Link styling */
+a {
+    color: #58a6ff;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #79c0ff;
+    text-decoration: underline;
+}
+
+/* ── Main header */
+.main-header {
+    text-align: center;
+    animation: fadeInUp 0.8s ease-out;
+    margin-bottom: 32px;
+}
+
+.main-header-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 2.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #58a6ff, #79c0ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.02em;
+}
+
+.main-header-subtitle {
+    color: #8b949e;
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    margin-top: 8px;
+}
+
+/* ── Responsive adjustments */
+@media (max-width: 768px) {
+    .disease-badge, .conf-pill {
+        display: block;
+        margin: 6px 0;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -331,7 +585,7 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 # ──────────────────────────────────────────────
 # ACCESS CONTROL
-# ──────────────────────────────────────────────
+# ──────────────���───────────────────────────────
 def check_access(age: int, role: str, user_id: str, lang: str):
     if age < 18:
         return False, t("Access Denied: Information is not available for users under 18.", lang)
@@ -598,18 +852,19 @@ def render_predictions(predictions: list):
 # SIDEBAR — GLOBAL CONTROLS
 # ──────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 🏥 Healthcare Dashboard")
+    st.markdown("<h2 style='text-align:center;margin-bottom:24px'>🏥 Healthcare Dashboard</h2>", 
+                unsafe_allow_html=True)
     st.markdown("---")
-    language = st.selectbox("🌐 Language", ["English", "Amharic"])
+    language = st.selectbox("🌐 Language", ["English", "Amharic"], label_visibility="collapsed")
     st.markdown("---")
-    age = st.number_input("Your Age", min_value=1, max_value=120, value=25, step=1)
-    role = st.selectbox("Your Role", ["Normal User", "Doctor", "Student"])
+    age = st.number_input("👤 Your Age", min_value=1, max_value=120, value=25, step=1)
+    role = st.selectbox("👨‍⚕️ Your Role", ["Normal User", "Doctor", "Student"], label_visibility="collapsed")
     user_id = ""
     if role in ("Doctor", "Student"):
         placeholder = "Doctor ID: 0000" if role == "Doctor" else "Student ID: 1111"
-        user_id = st.text_input("ID Number", placeholder=placeholder, type="password")
+        user_id = st.text_input("🔐 ID Number", placeholder=placeholder, type="password", label_visibility="collapsed")
     st.markdown("---")
-    threshold = st.slider("Similarity Threshold", 0.3, 0.9, 0.6, 0.05,
+    threshold = st.slider("⚙️ Similarity Threshold", 0.3, 0.9, 0.6, 0.05,
                           help="Minimum confidence for symptom/disease matching")
     st.markdown("---")
     st.caption("⚕️ This system provides general health information only. "
@@ -666,14 +921,9 @@ tfidf_vec, sym_matrix, dis_matrix = build_tfidf_index(
 # HEADER
 # ──────────────────────────────────────────────
 st.markdown("""
-<div style='text-align:center;padding:24px 0 8px'>
-  <span style='font-family:"IBM Plex Mono",monospace;font-size:2.2rem;
-               font-weight:700;color:#58a6ff;letter-spacing:0.04em'>
-    🏥 Integrated Healthcare Dashboard
-  </span><br>
-  <span style='color:#8b949e;font-size:0.9rem'>
-    Disease Prediction · Health Recommendations · AI Chatbot
-  </span>
+<div class='main-header'>
+  <div class='main-header-title'>🏥 Integrated Healthcare Dashboard</div>
+  <div class='main-header-subtitle'>Disease Prediction · Health Recommendations · AI Chatbot</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -691,11 +941,11 @@ tab1, tab2, tab3 = st.tabs([
 # TAB 1 — DISEASE PREDICTOR
 # ══════════════════════════════════════════════
 with tab1:
-    st.markdown("<div class='section-header'>Symptom Input</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-header'>📋 Symptom Input</div>", unsafe_allow_html=True)
     col_a, col_b = st.columns([3, 1])
     with col_a:
         symptoms_input = st.text_area(
-            t("Symptoms:", language),
+            "Enter your symptoms:",
             placeholder="e.g. headache, fever, vomiting, fatigue",
             height=100,
             key="symptoms_input",
@@ -713,7 +963,7 @@ with tab1:
         if not symptoms_input.strip():
             st.warning(t("Please enter symptoms.", language))
         else:
-            with st.spinner("Analysing symptoms…"):
+            with st.spinner("🔍 Analysing symptoms…"):
                 result, err = integrated_prediction_system(
                     symptoms_input, age, role, user_id, language,
                     main_df, le, svc_model, dt_model,
@@ -732,19 +982,19 @@ with tab1:
     if "predict_result" in st.session_state:
         res = st.session_state["predict_result"]
         st.markdown("---")
-        st.markdown("<div class='section-header'>Matched Symptoms</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-header'>✅ Matched Symptoms</div>", unsafe_allow_html=True)
         if res["matched_symptoms"]:
             st.markdown(" · ".join(
-                f"<span style='background:#21262d;padding:2px 8px;border-radius:4px;"
-                f"font-size:0.85rem;color:#58a6ff'>{s}</span>"
+                f"<span style='background:linear-gradient(135deg,rgba(33,38,45,0.9),rgba(88,166,255,0.2));padding:4px 12px;border-radius:6px;"
+                f"font-size:0.85rem;color:#58a6ff;border:1px solid rgba(88,166,255,0.3)'>{s}</span>"
                 for s in res["matched_symptoms"]
             ), unsafe_allow_html=True)
 
-        st.markdown("<br><div class='section-header'>Predicted Conditions</div>",
+        st.markdown("<br><div class='section-header'>🎯 Predicted Conditions</div>",
                     unsafe_allow_html=True)
         render_predictions(res["predicted_conditions"])
 
-        st.markdown("<br><div class='section-header'>Health Plan for Top Prediction</div>",
+        st.markdown("<br><div class='section-header'>📊 Health Plan for Top Prediction</div>",
                     unsafe_allow_html=True)
         render_recommendations(res["recommendations"])
 
@@ -757,14 +1007,15 @@ with tab1:
 # TAB 2 — HEALTH RECOMMENDER
 # ══════════════════════════════════════════════
 with tab2:
-    st.markdown("<div class='section-header'>Select a Disease</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-header'>🏥 Select a Disease</div>", unsafe_allow_html=True)
 
     sorted_diseases = sorted(disease_names)
     selected_disease = st.selectbox(
-        t("Disease:", language),
+        "Disease:",
         options=sorted_diseases,
         format_func=lambda x: x.title(),
         key="rec_disease",
+        label_visibility="collapsed",
     )
 
     col_r1, col_r2 = st.columns([1, 5])
@@ -777,7 +1028,7 @@ with tab2:
         st.session_state.pop("rec_advice", None)
 
     if rec_btn:
-        with st.spinner("Fetching health plan…"):
+        with st.spinner("📥 Fetching health plan…"):
             recs, advice = health_recommender(
                 selected_disease, age, role, user_id, language,
                 description_map, diets_map, medications_map,
@@ -793,7 +1044,7 @@ with tab2:
     if "rec_result" in st.session_state:
         st.markdown("---")
         st.markdown(
-            f"<div class='section-header'>Health Plan — {selected_disease.title()}</div>",
+            f"<div class='section-header'>💊 Health Plan — {selected_disease.title()}</div>",
             unsafe_allow_html=True,
         )
         render_recommendations(st.session_state["rec_result"])
@@ -808,15 +1059,16 @@ with tab2:
 # TAB 3 — CHATBOT
 # ══════════════════════════════════════════════
 with tab3:
-    st.markdown("<div class='section-header'>Healthcare Chatbot</div>",
+    st.markdown("<div class='section-header'>💬 Healthcare Chatbot</div>",
                 unsafe_allow_html=True)
     greeting = t("Hello! How can I help you with health information today?", language)
     st.markdown(f"<div class='chat-bot'>🤖 {greeting}</div>", unsafe_allow_html=True)
 
     chat_query = st.text_input(
-        t("Query:", language),
+        "Your question:",
         placeholder="e.g. What diet should I follow for Asthma?",
         key="chat_query",
+        label_visibility="collapsed",
     )
     col_c1, col_c2 = st.columns([1, 6])
     with col_c1:
@@ -830,7 +1082,7 @@ with tab3:
         if not chat_query.strip():
             st.warning(t("Please enter a query.", language))
         else:
-            with st.spinner("Thinking…"):
+            with st.spinner("🤔 Thinking…"):
                 reply = chatbot_response(
                     chat_query, age, role, user_id, language,
                     description_map, diets_map, medications_map,
