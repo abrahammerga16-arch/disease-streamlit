@@ -17,13 +17,21 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Get Groq API key from Streamlit secrets (NO DEFAULT VALUE - SECURITY FIX)
-groq_key = st.secrets.get("GROQ_API_KEY")
+# Use the provided Groq API key
+groq_key = "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"
+
+# Fallback to environment variable or secrets if needed
+if not groq_key or groq_key.startswith("gsk_"):
+    groq_key_env = os.getenv("GROQ_API_KEY")
+    groq_key_secrets = st.secrets.get("GROQ_API_KEY", None)
+    groq_key = groq_key_secrets or groq_key_env or groq_key
+
 if not groq_key:
     st.error(
-        "⚠️ **GROQ_API_KEY not found in Streamlit secrets.**\n\n"
-        "Go to your app's **Settings → Secrets** and add:\n\n"
-        "```toml\nGROQ_API_KEY = \"gsk_your_key_here\"\n```\n\n"
+        "⚠️ **GROQ_API_KEY not found.**\n\n"
+        "Please provide a valid Groq API key via:\n"
+        "1. Environment variable `GROQ_API_KEY`\n"
+        "2. Streamlit secrets at **Settings → Secrets**\n\n"
         "Get a free key at [console.groq.com](https://console.groq.com)."
     )
     st.stop()
@@ -45,6 +53,7 @@ except FileNotFoundError:
 html_with_key = f"""
 <script>
     window.GROQ_API_KEY = '{groq_key}';
+    console.log('✓ Groq API Key injected successfully');
 </script>
 {html_content}
 """
