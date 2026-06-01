@@ -8,14 +8,13 @@ Replicates the Google Colab notebook exactly:
   • English ↔ Amharic UI
 """
 
-import os, ast, warnings, re
+import os, warnings
 import numpy as np
 import pandas as pd
 import joblib
 import streamlit as st
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics.pairwise import cosine_similarity
-from sentence_transformers import SentenceTransformer
 
 warnings.filterwarnings("ignore")
 
@@ -314,6 +313,7 @@ def load_models():
 
 @st.cache_resource(show_spinner="Loading semantic model…")
 def load_semantic_model():
+    from sentence_transformers import SentenceTransformer
     return SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 
 
