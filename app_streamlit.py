@@ -214,6 +214,10 @@ AMHARIC = {
     "Please enter a query.": "እባክዎ ጥያቄ ያስገቡ።",
     "medical_advice_disclaimer":
         "ማንኛውንም መድሃኒት ከመውሰድዎ በፊት ወይም ከባድ ምልክቶች ካጋጠሙዎት ሁልጊዜ ሐኪም ያማክሩ።",
+    "🔒 Medication details are restricted. Please consult a licensed doctor.":
+        "🔒 የመድሃኒት መረጃ የተገደበ ነው። እባክዎ ፈቃድ ያለው ሐኪም ያማክሩ።",
+    "ℹ️ Full medication details are only available to Doctors.":
+        "ℹ️ ሙሉ የመድሃኒት መረጃ ለሐኪሞች ብቻ ይገኛል።",
 }
 
 
@@ -338,6 +342,78 @@ def check_access(age: int, role: str, user_id: str, lang: str):
     return True, ""
 
 
+
+# ──────────────────────────────────────────────
+# ROLE-BASED OUTPUT FILTER
+# ──────────────────────────────────────────────
+def role_based_recs(
+    role: str, lang: str, key: str,
+    description_map, diets_map, medications_map, precautions_map, workout_map
+):
+    """
+    Returns a dict of health info filtered by role:
+
+    Normal User — Description + Precautions + Workout only.
+                  Dietary plan is shown as a general tip (first sentence only).
+                  Medications are hidden with a redirect to see a doctor.
+
+    Student     — Description + Precautions + Workout + full Diet.
+                  Medications shown as drug class names only (first word of each).
+
+    Doctor      — Full unrestricted output: all fields complete.
+    """
+    desc     = translate_content(description_map.get(key, "N/A"), lang)
+    diet     = translate_content(diets_map.get(key, "N/A"), lang)
+    meds     = translate_content(medications_map.get(key, "N/A"), lang)
+    precs    = translate_content(precautions_map.get(key, []), lang)
+    workout  = translate_content(workout_map.get(key, "N/A"), lang)
+
+    if role == "Doctor":
+        return {
+            t("Description", lang):      desc,
+            t("Dietary Plan", lang):     diet,
+            t("Medications", lang):      meds,
+            t("Precautions", lang):      precs,
+            t("Workout/Activity", lang): workout,
+        }, ""
+
+    elif role == "Student":
+        # Show drug class hint only — first word of each medication
+        if isinstance(meds, str) and meds != "N/A":
+            meds_limited = ", ".join(
+                word.split()[0] for word in meds.split(",") if word.strip()
+            ) + " (drug classes only — full details restricted)"
+        else:
+            meds_limited = "Full medication details restricted to Doctors only."
+        return {
+            t("Description", lang):      desc,
+            t("Dietary Plan", lang):     diet,
+            t("Medications", lang):      meds_limited,
+            t("Precautions", lang):      precs,
+            t("Workout/Activity", lang): workout,
+        }, "ℹ️ Full medication details are only available to Doctors."
+
+    else:  # Normal User
+        # Diet: general tip — first sentence only
+        if isinstance(diet, str) and diet != "N/A":
+            diet_limited = diet.split(".")[0].strip() + ". (Full dietary plan restricted — consult a nutritionist.)"
+        else:
+            diet_limited = "Eat balanced meals and stay hydrated. Consult a nutritionist for a personalised plan."
+
+        # Medications: completely hidden
+        meds_hidden = "🔒 Medication details are restricted. Please consult a licensed doctor."
+
+        advice = ("⚠️ This information is for general awareness only. "
+                  "Always consult a qualified doctor before taking any medication.")
+        return {
+            t("Description", lang):      desc,
+            t("Dietary Plan", lang):     diet_limited,
+            t("Medications", lang):      meds_hidden,
+            t("Precautions", lang):      precs,
+            t("Workout/Activity", lang): workout,
+        }, advice
+
+
 # ──────────────────────────────────────────────
 # PREDICTION SYSTEM
 # ──────────────────────────────────────────────
@@ -406,19 +482,10 @@ def integrated_prediction_system(
     top_disease = preds[0]["disease"]
     top_key = clean_disease_name(top_disease)
 
-    recs = {
-        t("Description", lang):     translate_content(description_map.get(top_key, "N/A"), lang),
-        t("Dietary Plan", lang):    translate_content(diets_map.get(top_key, "N/A"), lang),
-        t("Medications", lang):     translate_content(medications_map.get(top_key, "N/A"), lang),
-        t("Precautions", lang):     translate_content(precautions_map.get(top_key, []), lang),
-        t("Workout/Activity", lang): translate_content(workout_map.get(top_key, "N/A"), lang),
-    }
-
-    # Advice for Normal User role
-    advice = ""
-    if role == "Normal User":
-        advice = t("medical_advice_disclaimer", lang) if lang == "Amharic" else \
-            "⚠️ Always consult a doctor before taking any medication or if symptoms are severe."
+    recs, advice = role_based_recs(
+        role, lang, top_key,
+        description_map, diets_map, medications_map, precautions_map, workout_map
+    )
 
     matched_display = [s.replace("_", " ").title() for s in matched_symptoms]
     return {
@@ -442,17 +509,10 @@ def health_recommender(
         return None, msg
 
     key = clean_disease_name(disease_name)
-    recs = {
-        t("Description", lang):     translate_content(description_map.get(key, "N/A"), lang),
-        t("Dietary Plan", lang):    translate_content(diets_map.get(key, "N/A"), lang),
-        t("Medications", lang):     translate_content(medications_map.get(key, "N/A"), lang),
-        t("Precautions", lang):     translate_content(precautions_map.get(key, []), lang),
-        t("Workout/Activity", lang): translate_content(workout_map.get(key, "N/A"), lang),
-    }
-
-    advice = ""
-    if role == "Normal User":
-        advice = "⚠️ Always consult a doctor before taking medication or if symptoms are severe."
+    recs, advice = role_based_recs(
+        role, lang, key,
+        description_map, diets_map, medications_map, precautions_map, workout_map
+    )
     return recs, advice
 
 
