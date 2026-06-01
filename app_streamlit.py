@@ -15,6 +15,7 @@ import joblib
 import streamlit as st
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 warnings.filterwarnings("ignore")
 
@@ -311,18 +312,17 @@ def load_models():
     return svc, dt, le
 
 
-@st.cache_resource(show_spinner="Loading semantic model…")
-def load_semantic_model():
-    from sentence_transformers import SentenceTransformer
-    return SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+@st.cache_resource(show_spinner="Building symptom index…")
+def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
+    """TF-IDF based similarity — no torch required."""
+    sym_texts = [s.replace("_", " ") for s in symptom_list]
+    dis_texts = [d.replace("_", " ") for d in disease_names]
+    all_texts = sym_texts + dis_texts
 
-
-@st.cache_data(show_spinner=False)
-def compute_embeddings(symptom_list: tuple, disease_names: tuple):
-    model = load_semantic_model()
-    s_emb = model.encode(list(symptom_list), show_progress_bar=False)
-    d_emb = model.encode(list(disease_names), show_progress_bar=False)
-    return s_emb, d_emb
+    vec = TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 4)).fit(all_texts)
+    sym_matrix = vec.transform(sym_texts).toarray()
+    dis_matrix = vec.transform(dis_texts).toarray()
+    return vec, sym_matrix, dis_matrix
 
 
 # ──────────────────────────────────────────────
@@ -356,7 +356,8 @@ def integrated_prediction_system(
     medications_map: dict,
     precautions_map: dict,
     workout_map: dict,
-    symptom_embeddings,
+    tfidf_vec,
+    sym_matrix,
     threshold: float = 0.6,
 ):
     ok, msg = check_access(age, role, user_id, lang)
@@ -364,9 +365,8 @@ def integrated_prediction_system(
         return None, msg
 
     symptom_list = list(main_df.drop(columns=["diseases"]).columns)
-    semantic_model = load_semantic_model()
 
-    # Parse user symptoms → match to dataset columns
+    # Parse user symptoms → match to dataset columns via TF-IDF
     raw_symptoms = [s.strip().lower().replace(" ", "_") for s in user_input.split(",") if s.strip()]
     matched_symptoms = set()
 
@@ -375,9 +375,9 @@ def integrated_prediction_system(
         if raw in symptom_list:
             matched_symptoms.add(raw)
             continue
-        # semantic fallback
-        raw_emb = semantic_model.encode([raw.replace("_", " ")])
-        sims = cosine_similarity(raw_emb, symptom_embeddings)[0]
+        # TF-IDF fallback
+        raw_vec = tfidf_vec.transform([raw.replace("_", " ")]).toarray()
+        sims = cosine_similarity(raw_vec, sym_matrix)[0]
         best_idx = int(np.argmax(sims))
         if sims[best_idx] >= threshold:
             matched_symptoms.add(symptom_list[best_idx])
@@ -462,16 +462,15 @@ def health_recommender(
 def chatbot_response(
     query: str, age: int, role: str, user_id: str, lang: str,
     description_map, diets_map, medications_map, precautions_map, workout_map,
-    disease_names, disease_embeddings,
+    disease_names, tfidf_vec, dis_matrix,
     threshold: float = 0.55,
 ):
     ok, msg = check_access(age, role, user_id, lang)
     if not ok:
         return msg
 
-    semantic_model = load_semantic_model()
-    q_emb = semantic_model.encode([query])
-    sims = cosine_similarity(q_emb, disease_embeddings)[0]
+    q_vec = tfidf_vec.transform([query]).toarray()
+    sims = cosine_similarity(q_vec, dis_matrix)[0]
     best_idx = int(np.argmax(sims))
     best_sim = sims[best_idx]
 
@@ -599,7 +598,7 @@ svc_model, dt_model, le = load_models()
 symptom_list  = list(main_df.drop(columns=["diseases"]).columns)
 disease_names = list(description_map.keys())
 
-symptom_embeddings, disease_embeddings = compute_embeddings(
+tfidf_vec, sym_matrix, dis_matrix = build_tfidf_index(
     tuple(symptom_list), tuple(disease_names)
 )
 
@@ -660,7 +659,7 @@ with tab1:
                     main_df, le, svc_model, dt_model,
                     description_map, diets_map, medications_map,
                     precautions_map, workout_map,
-                    symptom_embeddings, threshold,
+                    tfidf_vec, sym_matrix, threshold,
                 )
             if err:
                 st.markdown(
@@ -776,7 +775,7 @@ with tab3:
                     chat_query, age, role, user_id, language,
                     description_map, diets_map, medications_map,
                     precautions_map, workout_map,
-                    disease_names, disease_embeddings,
+                    disease_names, tfidf_vec, dis_matrix,
                     threshold,
                 )
             st.session_state["chat_response"] = reply
