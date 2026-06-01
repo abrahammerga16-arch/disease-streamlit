@@ -1003,35 +1003,51 @@ def render_predictions(predictions: list):
         )
 
 
-def render_categorized_symptoms(categorized_symptoms, symptom_list):
-    """Render symptoms organized by category with expandable sections."""
-    for category, symptoms in categorized_symptoms.items():
+def render_categorized_symptoms(categorized_symptoms, symptom_list, symptoms_input_key):
+    """Render symptoms organized by category with proper Streamlit integration."""
+    col1, col2 = st.columns([1, 1])
+    
+    for idx, (category, symptoms) in enumerate(categorized_symptoms.items()):
         if not symptoms:
             continue
         
-        st.markdown(f"<div class='symptom-category'>", unsafe_allow_html=True)
-        st.markdown(f"<div class='symptom-category-title'>{category} ({len(symptoms)})</div>", 
-                   unsafe_allow_html=True)
+        # Alternate columns for better layout
+        target_col = col1 if idx % 2 == 0 else col2
         
-        chips_html = "<div class='symptom-chips-container'>"
-        for symptom in sorted(symptoms):
-            symptom_display = symptom.replace("_", " ").title()
-            chips_html += f"""
-            <span class='symptom-chip' onclick="
-                var textarea = document.querySelector('textarea[key=symptoms_input]') || document.querySelector('textarea');
-                if(textarea) {{
-                    var current = textarea.value.trim();
-                    var newSymptom = '{symptom.lower().replace(' ', '_')}';
-                    if(!current.includes(newSymptom)) {{
-                        textarea.value = current ? current + ', ' + newSymptom : newSymptom;
-                        textarea.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                    }}
-                }}
-            ">{symptom_display}</span>
-            """
-        chips_html += "</div>"
-        st.markdown(chips_html, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        with target_col:
+            st.markdown(f"<div class='symptom-category'>", unsafe_allow_html=True)
+            st.markdown(f"<div class='symptom-category-title'>{category}</div>", unsafe_allow_html=True)
+            
+            # Create buttons for each symptom in this category
+            buttons_per_row = 2
+            symptom_list_sorted = sorted(symptoms)
+            
+            for i in range(0, len(symptom_list_sorted), buttons_per_row):
+                btn_col1, btn_col2 = st.columns(2)
+                
+                with btn_col1:
+                    if i < len(symptom_list_sorted):
+                        symptom = symptom_list_sorted[i]
+                        symptom_display = symptom.replace("_", " ").title()
+                        if st.button(symptom_display, key=f"sym_{i}", use_container_width=True):
+                            if "symptoms_selected" not in st.session_state:
+                                st.session_state.symptoms_selected = []
+                            if symptom not in st.session_state.symptoms_selected:
+                                st.session_state.symptoms_selected.append(symptom)
+                                st.rerun()
+                
+                with btn_col2:
+                    if i + 1 < len(symptom_list_sorted):
+                        symptom = symptom_list_sorted[i + 1]
+                        symptom_display = symptom.replace("_", " ").title()
+                        if st.button(symptom_display, key=f"sym_{i+1}", use_container_width=True):
+                            if "symptoms_selected" not in st.session_state:
+                                st.session_state.symptoms_selected = []
+                            if symptom not in st.session_state.symptoms_selected:
+                                st.session_state.symptoms_selected.append(symptom)
+                                st.rerun()
+            
+            st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────────────
@@ -1132,18 +1148,32 @@ tab1, tab2, tab3 = st.tabs([
 with tab1:
     st.markdown("<div class='section-header'>📋 Select Symptoms by Category</div>", unsafe_allow_html=True)
     
+    # Initialize session state for selected symptoms
+    if "symptoms_selected" not in st.session_state:
+        st.session_state.symptoms_selected = []
+    
     # Categorized Symptoms Display
     st.markdown("<div style='margin-bottom: 16px'><strong style='color:#79c0ff; font-size:1.1rem'>💊 All Symptoms by Type</strong></div>", unsafe_allow_html=True)
-    render_categorized_symptoms(categorized_symptoms, symptom_list)
+    render_categorized_symptoms(categorized_symptoms, symptom_list, "symptoms_input")
     
     st.markdown("---")
+    
+    # Display selected symptoms as badges
+    if st.session_state.symptoms_selected:
+        st.markdown("**Selected Symptoms:**")
+        cols = st.columns(len(st.session_state.symptoms_selected) if len(st.session_state.symptoms_selected) <= 5 else 5)
+        for idx, symptom in enumerate(st.session_state.symptoms_selected):
+            with cols[idx % 5]:
+                if st.button(f"✕ {symptom.replace('_', ' ').title()}", key=f"remove_{idx}", use_container_width=True):
+                    st.session_state.symptoms_selected.remove(symptom)
+                    st.rerun()
     
     col_a, col_b = st.columns([3, 1])
     with col_a:
         symptoms_input = st.text_area(
-            "Selected Symptoms:",
-            placeholder="Click symptoms above or type: headache, fever, cough, vomiting",
-            height=120,
+            "Or type symptoms manually:",
+            placeholder="e.g. headache, fever, cough, vomiting",
+            height=100,
             key="symptoms_input",
         )
     with col_b:
@@ -1154,15 +1184,23 @@ with tab1:
 
     if clear_btn:
         st.session_state.pop("predict_result", None)
+        st.session_state.symptoms_selected = []
         st.rerun()
 
     if predict_btn:
-        if not symptoms_input.strip():
+        # Combine selected symptoms with manual input
+        combined_input = symptoms_input
+        if st.session_state.symptoms_selected:
+            combined_input = ", ".join(st.session_state.symptoms_selected)
+            if symptoms_input.strip():
+                combined_input += ", " + symptoms_input
+        
+        if not combined_input.strip():
             st.warning(t("Please enter symptoms.", language))
         else:
             with st.spinner("🔍 Analysing symptoms…"):
                 result, err = integrated_prediction_system(
-                    symptoms_input, age, role, user_id, language,
+                    combined_input, age, role, user_id, language,
                     main_df, le, svc_model, dt_model,
                     description_map, diets_map, medications_map,
                     precautions_map, workout_map,
