@@ -7,6 +7,8 @@ Replicates the Google Colab notebook exactly:
   • Role / Age / ID access control
   • English ↔ Amharic UI
 """
+import os
+st.write("Files found:", os.listdir("."))
 
 import os, ast, warnings, re
 import numpy as np
