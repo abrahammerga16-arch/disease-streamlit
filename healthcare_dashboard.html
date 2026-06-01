@@ -798,11 +798,13 @@ predictBtn.addEventListener('click', async () => {
     if (!symptoms) { predictOutput.innerHTML = `<div class="error-msg">⚠️ ${isAmharic()?'እባክዎ ምልክቶችን ያስገቡ።':'Please enter symptoms.'}</div>`; return; }
     predictOutput.innerHTML = `<p style="color:var(--teal-light);opacity:.7">${isAmharic()?'ምልክቶችን በመተንተን ላይ…':'Analyzing symptoms…'}</p>`;
     try {
-        const langNote = lang === 'Amharic' ? 'Respond in Amharic.' : 'Respond in English.';
+        const langNote = lang === 'Amharic'
+            ? 'IMPORTANT: The JSON structure and all keys must stay in English exactly as shown. Only write the STRING VALUES (descriptions, list items, disease names, advice text) in Amharic. Never translate JSON keys. Never wrap output in markdown.'
+            : 'All values should be in English.';
         // FIXED: explicit instruction to always include Overview as a non-empty string
-        const sysPrompt = `You are a medical AI assistant. Given a list of symptoms, return ONLY valid JSON with this exact structure:
+        const sysPrompt = `You are a medical AI assistant. Given a list of symptoms, return ONLY a raw JSON object with this exact structure — no markdown, no backticks, no explanation:
 {"predicted_conditions":[{"disease":"Name","confidence":"85%"},{"disease":"Name","confidence":"72%"},{"disease":"Name","confidence":"58%"},{"disease":"Name","confidence":"41%"}],"recommendations":{"Overview":"2-3 sentence plain-text description of the most likely condition and what the patient should know","Precautions":["item1","item2","item3"],"Medications":["item1","item2"],"Diet":["item1","item2"],"Workout":["item1","item2"]},"advice":"Any important warning if needed"}
-Rules: Always include exactly 4 predicted_conditions with confidence percentages. The Overview field MUST be a non-empty plain-text string of 2-3 sentences. ${langNote} Return ONLY the JSON object, no markdown, no extra text.`;
+Rules: Always include exactly 4 predicted_conditions with confidence percentages. The Overview field MUST be a non-empty plain-text string of 2-3 sentences. ${langNote}`;
         const raw = await callClaude(sysPrompt, `Symptoms: ${symptoms}. Patient age: ${age}, role: ${role}.`);
         const clean = raw.replace(/```json|```/g,'').trim();
         const data = JSON.parse(clean);
@@ -830,7 +832,7 @@ Rules: Always include exactly 4 predicted_conditions with confidence percentages
         predictOutput.innerHTML = html;
         requestAnimationFrame(() => { predictOutput.querySelectorAll('.conf-bar-fill').forEach(bar => { bar.style.width=(bar.dataset.pct||0)+'%'; }); });
     } catch(e) {
-        predictOutput.innerHTML = `<div class="error-msg">⚠️ ${isAmharic()?'ለማገናኘት አልተቻለም።':'Error: '+e.message}</div>`;
+        predictOutput.innerHTML = `<div class="error-msg">⚠️ ${isAmharic()?'ምላሹን ማስኬድ አልተቻለም — እንደገና ይሞክሩ።':'Error: '+e.message}</div>`;
     }
 });
 
@@ -846,11 +848,13 @@ recommendBtn.addEventListener('click', async () => {
     if (!disease.trim()) { recommenderOutput.innerHTML=`<div class="error-msg">⚠️ ${isAmharic()?'እባክዎ የበሽታ ስም ያስገቡ።':'Please enter a disease name.'}</div>`; return; }
     recommenderOutput.innerHTML = `<p style="color:var(--teal-light);opacity:.7">${isAmharic()?'የጤና እቅድ በማዘጋጀት ላይ…':'Generating health plan…'}</p>`;
     try {
-        const langNote = lang === 'Amharic' ? 'Respond in Amharic.' : 'Respond in English.';
+        const langNote = lang === 'Amharic'
+            ? 'IMPORTANT: The JSON structure and all keys must stay in English exactly as shown. Only write the STRING VALUES (descriptions, list items, advice text) in Amharic. Never translate JSON keys. Never wrap output in markdown.'
+            : 'All values should be in English.';
         // FIXED: explicit instruction to always include Overview as a non-empty string
-        const sysPrompt = `You are a medical AI assistant. Given a disease name, return ONLY valid JSON with this exact structure:
+        const sysPrompt = `You are a medical AI assistant. Given a disease name, return ONLY a raw JSON object with this exact structure — no markdown, no backticks, no explanation:
 {"recommendations":{"Overview":"2-3 sentence plain-text description of the disease and key things the patient should understand","Precautions":["item1","item2","item3"],"Medications":["item1","item2"],"Diet":["item1","item2","item3"],"Workout":["item1","item2"],"Lifestyle":["item1","item2"]},"advice":"Any important warning if needed"}
-Rules: The Overview field MUST be a non-empty plain-text string of 2-3 sentences. ${langNote} Return ONLY the JSON object, no markdown, no extra text.`;
+Rules: The Overview field MUST be a non-empty plain-text string of 2-3 sentences. ${langNote}`;
         const raw = await callClaude(sysPrompt, `Disease: ${disease}. Patient age: ${age}, role: ${role}.`);
         const clean = raw.replace(/```json|```/g,'').trim();
         const data = JSON.parse(clean);
@@ -859,7 +863,7 @@ Rules: The Overview field MUST be a non-empty plain-text string of 2-3 sentences
         if (data.advice) html += `<div class="warn-msg">⚠️ ${data.advice}</div>`;
         recommenderOutput.innerHTML = html;
     } catch(e) {
-        recommenderOutput.innerHTML = `<div class="error-msg">⚠️ ${isAmharic()?'ለማገናኘት አልተቻለም።':'Error: '+e.message}</div>`;
+        recommenderOutput.innerHTML = `<div class="error-msg">⚠️ ${isAmharic()?'ምላሹን ማስኬድ አልተቻለም — እንደገና ይሞክሩ።':'Error: '+e.message}</div>`;
     }
 });
 
@@ -875,14 +879,14 @@ chatBtn.addEventListener('click', async () => {
     if (!query) { chatOutput.innerHTML=`<div class="error-msg">⚠️ ${isAmharic()?'እባክዎ ጥያቄ ያስገቡ።':'Please enter a query.'}</div>`; return; }
     chatOutput.innerHTML = `<p style="color:var(--teal-light);opacity:.7">${isAmharic()?'AI በማማከር ላይ…':'Consulting AI…'}</p>`;
     try {
-        const langNote = lang === 'Amharic' ? 'Respond in Amharic.' : 'Respond in English.';
+        const langNote = lang === 'Amharic' ? 'You must respond entirely in Amharic language.' : 'Respond in English.';
         const privileged = isPrivilegedUser();
         const roleContext = privileged ? `The user is a verified ${role} with full access to medical details including medications and diet.` : 'The user is a general user — provide general health information only, avoid specific medication dosages.';
         const sysPrompt = `You are a knowledgeable, friendly healthcare AI assistant. ${roleContext} Always recommend consulting a doctor for serious concerns. ${langNote}`;
         const answer = await callClaude(sysPrompt, `Patient age: ${age}, role: ${role}. Question: ${query}`);
         chatOutput.innerHTML = `<p>${answer.replace(/\n/g,'<br>')}</p>`;
     } catch(e) {
-        chatOutput.innerHTML = `<div class="error-msg">⚠️ ${isAmharic()?'ለማገናኘት አልተቻለም።':'Error: '+e.message}</div>`;
+        chatOutput.innerHTML = `<div class="error-msg">⚠️ ${isAmharic()?'ምላሹን ማስኬድ አልተቻለም — እንደገና ይሞክሩ።':'Error: '+e.message}</div>`;
     }
 });
 
