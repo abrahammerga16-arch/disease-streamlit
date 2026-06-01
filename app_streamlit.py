@@ -107,6 +107,17 @@ st.markdown("""
     }
 }
 
+@keyframes expandHeight {
+    from {
+        max-height: 0;
+        opacity: 0;
+    }
+    to {
+        max-height: 500px;
+        opacity: 1;
+    }
+}
+
 /* ── Global Styles */
 html, body, [class*="css"] {
     font-family: 'Poppins', 'IBM Plex Sans', sans-serif;
@@ -214,6 +225,33 @@ div[data-baseweb="select"] > div:focus-within {
 
 .stButton > button:active {
     transform: translateY(0);
+}
+
+/* ── Category Container */
+.symptom-category {
+    background: linear-gradient(135deg, rgba(33, 38, 45, 0.7) 0%, rgba(22, 27, 34, 0.5) 100%);
+    border: 1px solid rgba(88, 166, 255, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+    animation: fadeInUp 0.5s ease-out;
+}
+
+.symptom-category-title {
+    color: #79c0ff;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.3s ease;
+}
+
+.symptom-category-title:hover {
+    color: #58a6ff;
+    transform: translateX(2px);
 }
 
 /* ── Quick symptom chips */
@@ -653,6 +691,55 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 
 # ──────────────────────────────────────────────
+# SYMPTOM CATEGORIZATION
+# ──────────────────────────────────────────────
+def categorize_symptoms(symptom_list):
+    """Categorize symptoms by type based on keywords."""
+    categories = {
+        "🧠 Neurological": [],
+        "🫀 Cardiovascular": [],
+        "🫁 Respiratory": [],
+        "🤢 Gastrointestinal": [],
+        "🦴 Musculoskeletal": [],
+        "🌡️ General": [],
+        "👁️ Eye & ENT": [],
+        "🩺 Skin": [],
+    }
+    
+    neuro_keywords = ["headache", "migraine", "dizziness", "vertigo", "confusion", "memory", "seizure", "tremor"]
+    cardio_keywords = ["chest", "heart", "pulse", "blood pressure", "arrhythmia", "palpitation"]
+    resp_keywords = ["cough", "breath", "shortness", "asthma", "wheeze", "cold", "flu", "sneeze"]
+    gastro_keywords = ["vomit", "nausea", "diarrhea", "constipation", "stomach", "pain", "appetite", "indigestion"]
+    muscul_keywords = ["pain", "muscle", "joint", "arthritis", "back", "neck", "stiff", "cramp", "swelling"]
+    general_keywords = ["fever", "fatigue", "tiredness", "weakness", "chills", "sweat", "malaise"]
+    eye_keywords = ["eye", "ear", "nose", "throat", "vision", "hearing", "rash", "sore"]
+    skin_keywords = ["rash", "itching", "burn", "wound", "acne", "dermatitis", "eczema"]
+    
+    for symptom in symptom_list:
+        symptom_lower = symptom.lower().replace("_", " ")
+        
+        if any(kw in symptom_lower for kw in neuro_keywords):
+            categories["🧠 Neurological"].append(symptom)
+        elif any(kw in symptom_lower for kw in cardio_keywords):
+            categories["🫀 Cardiovascular"].append(symptom)
+        elif any(kw in symptom_lower for kw in resp_keywords):
+            categories["🫁 Respiratory"].append(symptom)
+        elif any(kw in symptom_lower for kw in gastro_keywords):
+            categories["🤢 Gastrointestinal"].append(symptom)
+        elif any(kw in symptom_lower for kw in muscul_keywords):
+            categories["🦴 Musculoskeletal"].append(symptom)
+        elif any(kw in symptom_lower for kw in eye_keywords):
+            categories["👁️ Eye & ENT"].append(symptom)
+        elif any(kw in symptom_lower for kw in skin_keywords):
+            categories["🩺 Skin"].append(symptom)
+        else:
+            categories["🌡️ General"].append(symptom)
+    
+    # Remove empty categories
+    return {k: v for k, v in categories.items() if v}
+
+
+# ──────────────────────────────────────────────
 # ACCESS CONTROL
 # ──────────────────────────────────────────────
 def check_access(age: int, role: str, user_id: str, lang: str):
@@ -916,6 +1003,37 @@ def render_predictions(predictions: list):
         )
 
 
+def render_categorized_symptoms(categorized_symptoms, symptom_list):
+    """Render symptoms organized by category with expandable sections."""
+    for category, symptoms in categorized_symptoms.items():
+        if not symptoms:
+            continue
+        
+        st.markdown(f"<div class='symptom-category'>", unsafe_allow_html=True)
+        st.markdown(f"<div class='symptom-category-title'>{category} ({len(symptoms)})</div>", 
+                   unsafe_allow_html=True)
+        
+        chips_html = "<div class='symptom-chips-container'>"
+        for symptom in sorted(symptoms):
+            symptom_display = symptom.replace("_", " ").title()
+            chips_html += f"""
+            <span class='symptom-chip' onclick="
+                var textarea = document.querySelector('textarea[key=symptoms_input]') || document.querySelector('textarea');
+                if(textarea) {{
+                    var current = textarea.value.trim();
+                    var newSymptom = '{symptom.lower().replace(' ', '_')}';
+                    if(!current.includes(newSymptom)) {{
+                        textarea.value = current ? current + ', ' + newSymptom : newSymptom;
+                        textarea.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    }}
+                }}
+            ">{symptom_display}</span>
+            """
+        chips_html += "</div>"
+        st.markdown(chips_html, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+
 # ──────────────────────────────────────────────
 # SIDEBAR — GLOBAL CONTROLS
 # ──────────────────────────────────────────────
@@ -985,6 +1103,9 @@ tfidf_vec, sym_matrix, dis_matrix = build_tfidf_index(
     tuple(symptom_list), tuple(disease_names)
 )
 
+# Categorize symptoms
+categorized_symptoms = categorize_symptoms(symptom_list)
+
 # ──────────────────────────────────────────────
 # HEADER
 # ──────────────────────────────────────────────
@@ -1009,48 +1130,27 @@ tab1, tab2, tab3 = st.tabs([
 # TAB 1 — DISEASE PREDICTOR
 # ══════════════════════════════════════════════
 with tab1:
-    st.markdown("<div class='section-header'>📋 Symptom Input</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-header'>📋 Select Symptoms by Category</div>", unsafe_allow_html=True)
     
-    # Quick Select Symptoms
-    st.markdown("<div style='margin-bottom: 12px'><strong style='color:#58a6ff'>⚡ Quick Select Common Symptoms</strong></div>", unsafe_allow_html=True)
+    # Categorized Symptoms Display
+    st.markdown("<div style='margin-bottom: 16px'><strong style='color:#79c0ff; font-size:1.1rem'>💊 All Symptoms by Type</strong></div>", unsafe_allow_html=True)
+    render_categorized_symptoms(categorized_symptoms, symptom_list)
     
-    # Get top 12 most common symptoms
-    common_symptoms = sorted(symptom_list)[:12]
-    
-    # Create quick select buttons
-    quick_select_html = "<div class='symptom-chips-container'>"
-    for symptom in common_symptoms:
-        symptom_display = symptom.replace("_", " ").title()
-        quick_select_html += f"""
-        <button class='symptom-chip' onclick="
-            var textarea = document.querySelector('textarea[key=symptoms_input]') || document.querySelector('textarea');
-            if(textarea) {{
-                var current = textarea.value.trim();
-                var newSymptom = '{symptom_display.lower().replace(' ', '_')}';
-                textarea.value = current ? current + ', ' + newSymptom : newSymptom;
-                textarea.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            }}
-        ">{symptom_display}</button>
-        """
-    quick_select_html += "</div>"
-    st.markdown(quick_select_html, unsafe_allow_html=True)
-    
-    # Selected symptoms display
-    st.markdown("<div style='margin: 16px 0'><strong style='color:#58a6ff'>📌 Selected Symptoms</strong></div>", unsafe_allow_html=True)
+    st.markdown("---")
     
     col_a, col_b = st.columns([3, 1])
     with col_a:
         symptoms_input = st.text_area(
-            "Enter your symptoms:",
-            placeholder="e.g. headache, fever, vomiting, fatigue (or click quick select above)",
-            height=100,
+            "Selected Symptoms:",
+            placeholder="Click symptoms above or type: headache, fever, cough, vomiting",
+            height=120,
             key="symptoms_input",
         )
     with col_b:
         st.markdown("<br>", unsafe_allow_html=True)
         predict_btn = st.button(t("Predict & Recommend", language), key="predict_btn",
                                 use_container_width=True)
-        clear_btn   = st.button("🗑️ Clear", key="clear_predict", use_container_width=True)
+        clear_btn   = st.button("🗑️ Clear All", key="clear_predict", use_container_width=True)
 
     if clear_btn:
         st.session_state.pop("predict_result", None)
