@@ -19,7 +19,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 warnings.filterwarnings("ignore")
 
-# ────────────────────────────────────────���─────
+# ──────────────────────────────────────────────
 # PAGE CONFIG
 # ──────────────────────────────────────────────
 st.set_page_config(
@@ -30,7 +30,7 @@ st.set_page_config(
 )
 
 # ──────────────────────────────────────────────
-# CUSTOM CSS WITH ANIMATIONS (clean medical aesthetic)
+# CUSTOM CSS  (clean medical aesthetic)
 # ──────────────────────────────────────────────
 st.markdown("""
 <style>
@@ -65,12 +65,10 @@ section[data-testid="stSidebar"] * { color: #e6edf3 !important; }
     letter-spacing: 0.04em;
     padding: 8px 20px;
     border: none !important;
-    transition: all 0.3s ease;
 }
 .stTabs [aria-selected="true"] {
     background: #21262d !important;
     color: #58a6ff !important;
-    transform: scale(1.05);
 }
 
 /* ── Inputs */
@@ -80,12 +78,6 @@ div[data-baseweb="select"] > div {
     border: 1px solid #30363d !important;
     color: #e6edf3 !important;
     border-radius: 6px !important;
-    transition: all 0.3s ease !important;
-}
-.stTextInput input:focus, .stSelectbox select:focus, .stTextArea textarea:focus,
-div[data-baseweb="select"] > div:focus-within {
-    border-color: #58a6ff !important;
-    box-shadow: 0 0 10px rgba(88, 166, 255, 0.2) !important;
 }
 
 /* ── Buttons */
@@ -96,96 +88,18 @@ div[data-baseweb="select"] > div:focus-within {
     border-radius: 6px;
     font-weight: 600;
     padding: 8px 20px;
-    transition: all 0.3s ease;
+    transition: background 0.2s;
 }
-.stButton > button:hover { 
-    background: #2ea043;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(46, 160, 67, 0.3);
-}
-.stButton > button:active {
-    transform: translateY(0);
-}
+.stButton > button:hover { background: #2ea043; }
 
-/* ── Animations */
-@keyframes slideInDown {
-    from { opacity: 0; transform: translateY(-30px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slideInUp {
-    from { opacity: 0; transform: translateY(30px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-@keyframes glow {
-    0%, 100% { box-shadow: 0 0 10px rgba(88, 166, 255, 0.3); }
-    50% { box-shadow: 0 0 20px rgba(88, 166, 255, 0.6); }
-}
-
-@keyframes shimmer {
-    0% { background-position: -1000px 0; }
-    100% { background-position: 1000px 0; }
-}
-
-@keyframes scaleIn {
-    from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-}
-
-/* ── Animated Header */
-.animated-header {
-    animation: slideInDown 0.8s ease-out;
-    text-align: center;
-    padding: 24px 0 8px;
-}
-
-.animated-header .title {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: #58a6ff;
-    letter-spacing: 0.04em;
-    animation: fadeIn 1s ease-out;
-}
-
-.animated-header .subtitle {
-    color: #8b949e;
-    font-size: 0.9rem;
-    animation: fadeIn 1.5s ease-out;
-}
-
-/* ── Result cards with animation */
+/* ── Result cards */
 .result-card {
     background: #161b22;
     border: 1px solid #30363d;
     border-radius: 10px;
     padding: 18px 22px;
     margin-bottom: 14px;
-    animation: slideInUp 0.6s ease-out;
-    transition: all 0.3s ease;
 }
-.result-card:hover {
-    border-color: #58a6ff;
-    box-shadow: 0 8px 24px rgba(88, 166, 255, 0.15);
-    transform: translateY(-2px);
-}
-
 .result-card h4 {
     color: #58a6ff;
     font-family: 'IBM Plex Mono', monospace;
@@ -193,173 +107,80 @@ div[data-baseweb="select"] > div:focus-within {
     letter-spacing: 0.12em;
     text-transform: uppercase;
     margin-bottom: 8px;
-    animation: fadeIn 0.8s ease-out;
 }
-.result-card p, .result-card li { 
-    color: #c9d1d9; 
-    font-size: 0.95rem;
-    animation: fadeIn 1s ease-out;
-}
+.result-card p, .result-card li { color: #c9d1d9; font-size: 0.95rem; }
 
-/* ── Disease badge with animation */
+/* ── Disease badge */
 .disease-badge {
     display: inline-block;
-    background: linear-gradient(135deg, #1f6feb 0%, #1854d6 100%);
+    background: #1f6feb;
     color: #fff;
     border-radius: 20px;
-    padding: 6px 16px;
+    padding: 4px 14px;
     font-weight: 600;
     font-size: 1rem;
     margin-bottom: 6px;
-    margin-right: 10px;
-    animation: scaleIn 0.5s ease-out;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-.disease-badge:hover {
-    transform: scale(1.05);
-    box-shadow: 0 8px 16px rgba(31, 111, 235, 0.4);
 }
 
-/* ── Confidence pill with pulse */
+/* ── Confidence pill */
 .conf-pill {
     display: inline-block;
     background: #21262d;
     border: 1px solid #30363d;
     border-radius: 12px;
-    padding: 4px 12px;
+    padding: 2px 10px;
     font-size: 0.8rem;
-    color: #58a6ff;
+    color: #8b949e;
     margin-left: 8px;
-    animation: fadeIn 0.7s ease-out;
-    transition: all 0.3s ease;
-}
-.conf-pill:hover {
-    border-color: #58a6ff;
-    background: rgba(88, 166, 255, 0.1);
 }
 
 /* ── Warning / advice banner */
 .advice-banner {
     background: #2d1800;
     border-left: 4px solid #f0883e;
-    padding: 12px 18px;
+    padding: 10px 16px;
     border-radius: 0 6px 6px 0;
     color: #f0883e;
     font-size: 0.9rem;
     margin-top: 12px;
-    animation: slideInUp 0.6s ease-out;
-    transition: all 0.3s ease;
-}
-.advice-banner:hover {
-    box-shadow: 0 8px 16px rgba(240, 136, 62, 0.15);
-    transform: translateX(4px);
 }
 
 /* ── Chat bubble */
 .chat-bot {
     background: #21262d;
-    border-left: 4px solid #58a6ff;
-    padding: 14px 18px;
+    border-left: 3px solid #58a6ff;
+    padding: 12px 16px;
     border-radius: 0 8px 8px 0;
     color: #c9d1d9;
     font-size: 0.95rem;
-    margin-top: 12px;
-    margin-bottom: 12px;
-    animation: slideInUp 0.6s ease-out;
-    transition: all 0.3s ease;
-}
-.chat-bot:hover {
-    border-left-color: #79c0ff;
-    box-shadow: 0 8px 16px rgba(88, 166, 255, 0.15);
-    transform: translateX(4px);
+    margin-top: 10px;
 }
 
-/* ── Section header with underline animation */
+/* ── Section header */
 .section-header {
     color: #58a6ff;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.75rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    border-bottom: 2px solid #30363d;
-    padding-bottom: 8px;
-    margin-bottom: 18px;
-    position: relative;
-    animation: slideInDown 0.6s ease-out;
-}
-.section-header::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    height: 2px;
-    background: #58a6ff;
-    animation: slideInLeft 0.8s ease-out;
-}
-
-@keyframes slideInLeft {
-    from { width: 0; }
-    to { width: 100%; }
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 6px;
+    margin-bottom: 16px;
 }
 
 /* ── Number widget */
-.stNumberInput input { 
-    background: #21262d !important; 
-    color: #e6edf3 !important;
-    transition: all 0.3s ease !important;
-}
+.stNumberInput input { background: #21262d !important; color: #e6edf3 !important; }
 
 /* ── Slider */
-.stSlider .st-bk { 
-    background: #58a6ff;
-    transition: all 0.3s ease;
-}
+.stSlider .st-bk { background: #58a6ff; }
 
 /* ── Access denied */
 .access-denied {
     background: #2d0e0e;
     border-left: 4px solid #f85149;
-    padding: 12px 18px;
+    padding: 10px 16px;
     border-radius: 0 6px 6px 0;
     color: #f85149;
-    animation: slideInUp 0.6s ease-out;
-    animation-iteration-count: 1;
-}
-
-/* ── Matched symptoms display */
-.matched-symptom-badge {
-    display: inline-block;
-    background: linear-gradient(135deg, #21262d 0%, #161b22 100%);
-    border: 1px solid #58a6ff;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    color: #58a6ff;
-    margin-right: 6px;
-    margin-bottom: 6px;
-    animation: scaleIn 0.5s ease-out;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-.matched-symptom-badge:hover {
-    background: rgba(88, 166, 255, 0.1);
-    transform: scale(1.08);
-}
-
-/* ── Loading animation */
-.loading-spinner {
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* ── Smooth transitions for all interactive elements */
-* {
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -749,7 +570,7 @@ def chatbot_response(
 
 
 # ──────────────────────────────────────────────
-# RENDER HELPERS WITH ANIMATIONS
+# RENDER HELPERS
 # ──────────────────────────────────────────────
 def render_recommendations(recs: dict):
     for label, value in recs.items():
@@ -842,12 +663,17 @@ tfidf_vec, sym_matrix, dis_matrix = build_tfidf_index(
 )
 
 # ──────────────────────────────────────────────
-# ANIMATED HEADER
+# HEADER
 # ──────────────────────────────────────────────
 st.markdown("""
-<div class='animated-header'>
-  <div class='title'>🏥 Integrated Healthcare Dashboard</div>
-  <div class='subtitle'>Disease Prediction · Health Recommendations · AI Chatbot</div>
+<div style='text-align:center;padding:24px 0 8px'>
+  <span style='font-family:"IBM Plex Mono",monospace;font-size:2.2rem;
+               font-weight:700;color:#58a6ff;letter-spacing:0.04em'>
+    🏥 Integrated Healthcare Dashboard
+  </span><br>
+  <span style='color:#8b949e;font-size:0.9rem'>
+    Disease Prediction · Health Recommendations · AI Chatbot
+  </span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -908,8 +734,9 @@ with tab1:
         st.markdown("---")
         st.markdown("<div class='section-header'>Matched Symptoms</div>", unsafe_allow_html=True)
         if res["matched_symptoms"]:
-            st.markdown(" ".join(
-                f"<span class='matched-symptom-badge'>{s}</span>"
+            st.markdown(" · ".join(
+                f"<span style='background:#21262d;padding:2px 8px;border-radius:4px;"
+                f"font-size:0.85rem;color:#58a6ff'>{s}</span>"
                 for s in res["matched_symptoms"]
             ), unsafe_allow_html=True)
 
