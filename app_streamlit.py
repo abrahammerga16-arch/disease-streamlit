@@ -93,6 +93,20 @@ st.markdown("""
     }
 }
 
+@keyframes pop {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
 /* ── Global Styles */
 html, body, [class*="css"] {
     font-family: 'Poppins', 'IBM Plex Sans', sans-serif;
@@ -200,6 +214,57 @@ div[data-baseweb="select"] > div:focus-within {
 
 .stButton > button:active {
     transform: translateY(0);
+}
+
+/* ── Quick symptom chips */
+.symptom-chip {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(31, 111, 235, 0.8) 0%, rgba(88, 166, 255, 0.6) 100%);
+    color: #ffffff;
+    border: 1px solid rgba(88, 166, 255, 0.4);
+    border-radius: 20px;
+    padding: 8px 16px;
+    margin: 4px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: pop 0.4s ease-out;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.symptom-chip:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 20px rgba(88, 166, 255, 0.4);
+    background: linear-gradient(135deg, rgba(56, 139, 253, 0.9) 0%, rgba(79, 192, 255, 0.8) 100%);
+    border-color: rgba(88, 166, 255, 0.8);
+}
+
+.symptom-chip:active {
+    transform: translateY(-1px) scale(0.98);
+}
+
+.symptom-chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+    animation: fadeInUp 0.5s ease-out;
+}
+
+/* ── Selected symptom badges */
+.selected-symptom {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(46, 160, 67, 0.8) 0%, rgba(63, 185, 80, 0.6) 100%);
+    color: #ffffff;
+    border: 1px solid rgba(63, 185, 80, 0.5);
+    border-radius: 20px;
+    padding: 6px 12px;
+    margin: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    animation: pop 0.4s ease-out;
 }
 
 /* ── Result cards with hover animation */
@@ -435,6 +500,10 @@ a:hover {
         display: block;
         margin: 6px 0;
     }
+    .symptom-chip {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -585,7 +654,7 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 # ──────────────────────────────────────────────
 # ACCESS CONTROL
-# ──────────────���───────────────────────────────
+# ──────────────────────────────────────────────
 def check_access(age: int, role: str, user_id: str, lang: str):
     if age < 18:
         return False, t("Access Denied: Information is not available for users under 18.", lang)
@@ -594,7 +663,6 @@ def check_access(age: int, role: str, user_id: str, lang: str):
     if role == "Doctor" and user_id != "0000":
         return False, t("Access Denied: Invalid ID for Doctor role.", lang)
     return True, ""
-
 
 
 # ──────────────────────────────────────────────
@@ -942,11 +1010,39 @@ tab1, tab2, tab3 = st.tabs([
 # ══════════════════════════════════════════════
 with tab1:
     st.markdown("<div class='section-header'>📋 Symptom Input</div>", unsafe_allow_html=True)
+    
+    # Quick Select Symptoms
+    st.markdown("<div style='margin-bottom: 12px'><strong style='color:#58a6ff'>⚡ Quick Select Common Symptoms</strong></div>", unsafe_allow_html=True)
+    
+    # Get top 12 most common symptoms
+    common_symptoms = sorted(symptom_list)[:12]
+    
+    # Create quick select buttons
+    quick_select_html = "<div class='symptom-chips-container'>"
+    for symptom in common_symptoms:
+        symptom_display = symptom.replace("_", " ").title()
+        quick_select_html += f"""
+        <button class='symptom-chip' onclick="
+            var textarea = document.querySelector('textarea[key=symptoms_input]') || document.querySelector('textarea');
+            if(textarea) {{
+                var current = textarea.value.trim();
+                var newSymptom = '{symptom_display.lower().replace(' ', '_')}';
+                textarea.value = current ? current + ', ' + newSymptom : newSymptom;
+                textarea.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            }}
+        ">{symptom_display}</button>
+        """
+    quick_select_html += "</div>"
+    st.markdown(quick_select_html, unsafe_allow_html=True)
+    
+    # Selected symptoms display
+    st.markdown("<div style='margin: 16px 0'><strong style='color:#58a6ff'>📌 Selected Symptoms</strong></div>", unsafe_allow_html=True)
+    
     col_a, col_b = st.columns([3, 1])
     with col_a:
         symptoms_input = st.text_area(
             "Enter your symptoms:",
-            placeholder="e.g. headache, fever, vomiting, fatigue",
+            placeholder="e.g. headache, fever, vomiting, fatigue (or click quick select above)",
             height=100,
             key="symptoms_input",
         )
@@ -958,6 +1054,7 @@ with tab1:
 
     if clear_btn:
         st.session_state.pop("predict_result", None)
+        st.rerun()
 
     if predict_btn:
         if not symptoms_input.strip():
