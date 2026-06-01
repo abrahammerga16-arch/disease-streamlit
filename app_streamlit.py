@@ -705,64 +705,36 @@ def render_predictions(predictions: list):
 
 def render_categorized_symptoms(categorized_symptoms: dict):
     """
-    Render symptoms by category using Streamlit-native containers.
-
-    FIX: The original code opened an HTML <div> via st.markdown, then placed
-    Streamlit widgets (st.columns / st.button) inside it, then tried to close
-    the div with another st.markdown.  Streamlit renders each markdown block
-    independently, so the widgets were never inside those divs and the HTML was
-    malformed.  This version uses st.container() for grouping and a single
-    st.markdown for the styled category header only.
-
-    FIX: Button keys now include a sanitised form of the category name so keys
-    are unique across all categories (the original used bare indices which
-    caused DuplicateWidgetID errors when multiple categories shared the same
-    symptom positions).
+    Compact symptom picker: one expander per category containing a multiselect.
+    Chosen symptoms are merged into st.session_state.symptoms_selected.
+    Each expander is collapsed by default so the page stays short.
     """
     col1, col2 = st.columns(2)
-
-    for cat_idx, (category, symptoms) in enumerate(categorized_symptoms.items()):
+    items = list(categorized_symptoms.items())
+    for cat_idx, (category, symptoms) in enumerate(items):
         if not symptoms:
             continue
-
-        target_col = col1 if cat_idx % 2 == 0 else col2
-
-        # Sanitise category name for use in widget keys
         cat_key = category.encode("ascii", "ignore").decode().strip().replace(" ", "_").lower()
-
+        target_col = col1 if cat_idx % 2 == 0 else col2
         with target_col:
-            with st.container():
-                st.markdown(
-                    f"<div class='symptom-category-header'>{category}</div>",
-                    unsafe_allow_html=True,
+            with st.expander(category, expanded=False):
+                options = sorted(symptoms)
+                labels  = [s.replace("_", " ").title() for s in options]
+                chosen  = st.multiselect(
+                    "Pick symptoms",
+                    options=labels,
+                    default=[s.replace("_", " ").title()
+                             for s in options
+                             if s in st.session_state.symptoms_selected],
+                    key=f"ms_{cat_key}",
+                    label_visibility="collapsed",
                 )
-                symptom_list_sorted = sorted(symptoms)
-                for i in range(0, len(symptom_list_sorted), 2):
-                    btn_col1, btn_col2 = st.columns(2)
-
-                    with btn_col1:
-                        sym = symptom_list_sorted[i]
-                        # FIX: key includes category prefix to avoid duplicates
-                        if st.button(
-                            sym.replace("_", " ").title(),
-                            key=f"sym_{cat_key}_{i}",
-                            use_container_width=True,
-                        ):
-                            if sym not in st.session_state.symptoms_selected:
-                                st.session_state.symptoms_selected.append(sym)
-                                st.rerun()
-
-                    with btn_col2:
-                        if i + 1 < len(symptom_list_sorted):
-                            sym2 = symptom_list_sorted[i + 1]
-                            if st.button(
-                                sym2.replace("_", " ").title(),
-                                key=f"sym_{cat_key}_{i+1}",
-                                use_container_width=True,
-                            ):
-                                if sym2 not in st.session_state.symptoms_selected:
-                                    st.session_state.symptoms_selected.append(sym2)
-                                    st.rerun()
+                # Sync back to session state
+                for label, raw in zip(labels, options):
+                    if label in chosen and raw not in st.session_state.symptoms_selected:
+                        st.session_state.symptoms_selected.append(raw)
+                    elif label not in chosen and raw in st.session_state.symptoms_selected:
+                        st.session_state.symptoms_selected.remove(raw)
 
 
 # ──────────────────────────────────────────────
@@ -872,41 +844,22 @@ tab1, tab2, tab3 = st.tabs([
 # TAB 1 — DISEASE PREDICTOR
 # ══════════════════════════════════════════════
 with tab1:
-    st.markdown(
-        "<div class='section-header'>📋 Select Symptoms by Category</div>",
-        unsafe_allow_html=True,
-    )
-
     # Initialise session state
     if "symptoms_selected" not in st.session_state:
         st.session_state.symptoms_selected = []
 
-    st.markdown(
-        "<div style='margin-bottom:16px'>"
-        "<strong style='color:#79c0ff;font-size:1.1rem'>💊 All Symptoms by Type</strong>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
+    with st.expander("📋 Browse symptoms by category", expanded=False):
+        render_categorized_symptoms(categorized_symptoms)
 
-    # FIX: removed unused `symptom_list` and `symptoms_input_key` arguments
-    render_categorized_symptoms(categorized_symptoms)
-
-    st.markdown("---")
-
-    # Show selected symptom badges with remove buttons
+    # Compact inline pill summary (deselect via expander multiselect)
     if st.session_state.symptoms_selected:
-        st.markdown("**Selected Symptoms:**")
-        n = len(st.session_state.symptoms_selected)
-        cols = st.columns(min(n, 5))
-        for idx, symptom in enumerate(st.session_state.symptoms_selected):
-            with cols[idx % 5]:
-                if st.button(
-                    f"✕ {symptom.replace('_', ' ').title()}",
-                    key=f"remove_{idx}",
-                    use_container_width=True,
-                ):
-                    st.session_state.symptoms_selected.remove(symptom)
-                    st.rerun()
+        pills = " ".join(
+            f"<span style='background:rgba(31,111,235,0.25);color:#79c0ff;"
+            f"padding:2px 10px;border-radius:12px;font-size:0.8rem;margin:2px;"
+            f"display:inline-block'>{s.replace('_',' ').title()}</span>"
+            for s in st.session_state.symptoms_selected
+        )
+        st.markdown(f"**Selected:** {pills}", unsafe_allow_html=True)
 
     col_a, col_b = st.columns([3, 1])
     with col_a:
@@ -986,17 +939,13 @@ with tab1:
         )
         render_predictions(res["predicted_conditions"])
 
-        st.markdown(
-            "<br><div class='section-header'>📊 Health Plan for Top Prediction</div>",
-            unsafe_allow_html=True,
-        )
-        render_recommendations(res["recommendations"])
-
-        if res["advice"]:
-            st.markdown(
-                f"<div class='advice-banner'>{res['advice']}</div>",
-                unsafe_allow_html=True,
-            )
+        with st.expander(f"📊 Health Plan — {res['top_disease']}", expanded=True):
+            render_recommendations(res["recommendations"])
+            if res["advice"]:
+                st.markdown(
+                    f"<div class='advice-banner'>{res['advice']}</div>",
+                    unsafe_allow_html=True,
+                )
 
 
 # ══════════════════════════════════════════════
@@ -1043,17 +992,13 @@ with tab2:
             st.session_state["rec_advice"] = advice
 
     if "rec_result" in st.session_state:
-        st.markdown("---")
-        st.markdown(
-            f"<div class='section-header'>💊 Health Plan — {selected_disease.title()}</div>",
-            unsafe_allow_html=True,
-        )
-        render_recommendations(st.session_state["rec_result"])
-        if st.session_state.get("rec_advice"):
-            st.markdown(
-                f"<div class='advice-banner'>{st.session_state['rec_advice']}</div>",
-                unsafe_allow_html=True,
-            )
+        with st.expander(f"💊 Health Plan — {selected_disease.title()}", expanded=True):
+            render_recommendations(st.session_state["rec_result"])
+            if st.session_state.get("rec_advice"):
+                st.markdown(
+                    f"<div class='advice-banner'>{st.session_state['rec_advice']}</div>",
+                    unsafe_allow_html=True,
+                )
 
 
 # ══════════════════════════════════════════════
