@@ -79,6 +79,8 @@
         body.light-mode .validation-feedback { color: rgba(15,23,42,.6); }
         body.light-mode .ctx-input.input-error { border-color: var(--danger) !important; background: rgba(239,68,68,.06) !important; box-shadow: 0 0 0 3px rgba(239,68,68,.12) !important; }
         body.light-mode .ctx-input.input-success { border-color: var(--success) !important; background: rgba(16,185,129,.06) !important; box-shadow: 0 0 0 3px rgba(16,185,129,.12) !important; }
+        /* Overview block light mode */
+        body.light-mode .overview-block { background: rgba(13,148,136,.07) !important; border-left-color: var(--teal-dark) !important; color: rgba(15,23,42,.85) !important; }
 
         .theme-toggle {
             position: fixed; top: 18px; right: 20px; z-index: 999;
@@ -161,7 +163,6 @@
         .validation-feedback.vf-success { color:#6ee7b7; }
         .validation-feedback.vf-warning { color:#fcd34d; }
         .validation-feedback.vf-info { color:rgba(255,255,255,.45); }
-
         .validation-feedback .vf-icon { font-size:.75rem; }
 
         /* ID strength bar */
@@ -229,6 +230,18 @@
         .output-area li { padding:6px 0 6px 18px; position:relative; border-bottom:1px solid rgba(255,255,255,.04); color:rgba(255,255,255,.75); }
         .output-area li::before { content:'→'; position:absolute; left:0; color:var(--teal); }
         .output-area p { margin-bottom:10px; }
+
+        /* ── OVERVIEW BLOCK ── */
+        .overview-block {
+            background: rgba(13,148,136,.09);
+            border-left: 3px solid var(--teal-light);
+            border-radius: 0 10px 10px 0;
+            padding: 14px 18px;
+            margin-bottom: 18px;
+            color: rgba(255,255,255,.92);
+            line-height: 1.65;
+            font-size: .92rem;
+        }
 
         .section-title { font-size:.75rem; text-transform:uppercase; letter-spacing:.1em; color:var(--teal); font-weight:700; border-bottom:1px solid rgba(13,148,136,.2); padding-bottom:8px; margin-bottom:12px; margin-top:16px; }
         .section-title:first-child { margin-top:0; }
@@ -509,7 +522,6 @@ const AM = {
     'Your Question':'ጥያቄዎ','✦ Ask AI':'✦ AI ጠይቅ','↺ Reset All':'↺ ሁሉንም ዳግም አስጀምር',
     'e.g. headache, vomiting':'ለምሳሌ፡ ራስ ምታት፣ ማስታወክ','e.g. Asthma':'ለምሳሌ፡ አስም','e.g. Tell me about Asthma diet':'ለምሳሌ፡ ስለ አስም አመጋገብ ምክሮች ንገረኝ','Enter ID':'መታወቂያ ያስገቡ',
     'Quick-select symptoms:':'ምልክቶችን ፈጥኖ ይምረጡ:','or type symptoms':'ወይም ምልክቶችን ይተይቡ',
-    // validation
     'Age 18–150 accepted':'ዕድሜ 18–150 ተቀባይነት አለው','Role selected':'ሚና ተመርጧል','English selected':'እንግሊዝኛ ተመርጧል','Amharic selected':'አማርኛ ተመርጧል',
     'Valid adult age':'ትክክለኛ ጎልማሳ ዕድሜ','Age too low — must be 18+':'ዕድሜ በጣም ዝቅ ነው — 18+ መሆን አለበት',
     'Age too high — max 150':'ዕድሜ በጣም ከፍ ነው — ከ150 አይበልጥ','Age is required':'ዕድሜ ያስፈልጋል',
@@ -518,7 +530,6 @@ const AM = {
     'Invalid student ID — use 1111':'ልክ ያልሆነ የተማሪ መታወቂያ — 1111 ይጠቀሙ','Invalid doctor ID — use 0000':'ልክ ያልሆነ የዶክተር መታወቂያ — 0000 ይጠቀሙ',
     'All fields valid':'ሁሉም መስኮች ትክክለኛ ናቸው','Please fix the errors above':'እባክዎ ከላይ ያሉ ስህተቶችን ያስተካክሉ',
     'Age must be 18+ for access':'ለመዳረስ ዕድሜ 18+ መሆን አለበት',
-    // restricted content
     'Medications & Diet: restricted to Students & Doctors':'መድሃኒቶች እና አመጋገብ: ለተማሪዎች እና ዶክተሮች ብቻ',
     '🔒 This section is visible only to verified Students and Doctors.':'🔒 ይህ ክፍል ለተረጋገጡ ተማሪዎች እና ዶክተሮች ብቻ ይታያል።',
 };
@@ -564,7 +575,7 @@ function validateAge() {
 
 function validateID() {
     const role = roleInput.value;
-    if (!['Student','Doctor'].includes(role)) return true; // no ID needed
+    if (!['Student','Doctor'].includes(role)) return true;
     const idFb = document.getElementById('id-feedback');
     const fill = document.getElementById('id-strength-fill');
     const val = idNumberInput.value.trim();
@@ -579,7 +590,6 @@ function validateID() {
         fill.style.width = '0'; fill.style.background = '';
         return false;
     }
-    // partial match progress
     let matchLen = 0;
     for (let i = 0; i < Math.min(val.length, expected.length); i++) {
         if (val[i] === expected[i]) matchLen++; else break;
@@ -606,20 +616,16 @@ function validateID() {
 function validateAll() {
     const ageOk = validateAge();
     const idOk = validateID();
-    const allOk = ageOk && idOk;
-
-    // Update summary
     validationSummary.classList.remove('show','vs-error','vs-success','vs-warning');
     if (!ageOk || !idOk) {
         validationSummary.classList.add('show','vs-error');
         validationSummary.innerHTML = `<span>⚠</span> ${t('Please fix the errors above')}`;
     } else {
-        // show brief success then hide
         validationSummary.classList.add('show','vs-success');
         validationSummary.innerHTML = `<span>✓</span> ${t('All fields valid')}`;
         setTimeout(() => validationSummary.classList.remove('show'), 2500);
     }
-    return allOk;
+    return ageOk && idOk;
 }
 
 function isPrivilegedUser() {
@@ -628,7 +634,6 @@ function isPrivilegedUser() {
     return idNumberInput.value.trim() === VALID_IDS[role];
 }
 
-// Live validation events
 ageInput.addEventListener('input', () => { validateAge(); updateSummaryQuiet(); });
 ageInput.addEventListener('blur', validateAll);
 idNumberInput.addEventListener('input', () => { validateID(); updateSummaryQuiet(); });
@@ -667,7 +672,6 @@ languageInput.addEventListener('change', () => {
     const msg = isAmharic() ? 'Amharic selected' : 'English selected';
     setFieldState(languageInput, langFb, 'success', '✓', msg);
     document.getElementById('lang-feedback-text').textContent = t(msg);
-    // re-render symptoms
     const cats = getCategories();
     activeCatLabel = Object.keys(cats)[0];
     renderCatTabs(); renderPills();
@@ -681,7 +685,6 @@ languageInput.addEventListener('change', () => {
 // ══════════════════════════════════════════
 
 function applyUIText() {
-    const am = isAmharic();
     document.querySelectorAll('[data-translate]').forEach(el => {
         el.textContent = t(el.getAttribute('data-translate'));
     });
@@ -689,7 +692,7 @@ function applyUIText() {
     Object.entries(labels).forEach(([id,key]) => { const el=document.getElementById(id); if(el) el.textContent=t(key); });
     const phs = { 'symptoms':'e.g. headache, vomiting', 'disease-input':'e.g. Asthma', 'chat-query':'e.g. Tell me about Asthma diet', 'id-number':'Enter ID' };
     Object.entries(phs).forEach(([id,key]) => { const el=document.getElementById(id); if(el) el.placeholder=t(key); });
-    document.documentElement.lang = am ? 'am' : 'en';
+    document.documentElement.lang = isAmharic() ? 'am' : 'en';
     populateDiseaseSuggestions();
 }
 
@@ -711,45 +714,58 @@ function openTab(name) {
     document.querySelector(`.tab-btn[onclick="openTab('${name}')"]`).classList.add('active');
 }
 
+// ══════════════════════════════════════════
+// FORMAT OUTPUT — FIXED VERSION
+// Overview renders first, always, as a styled block
+// ══════════════════════════════════════════
 function formatOutputAsHtml(data, isPrivileged) {
     let html = '';
-    if (typeof data === 'string') return `<p>${data}</p>`;
-    if (typeof data === 'object' && data !== null) {
-        for (const key in data) {
-            let val = data[key];
-            const isRestricted = ['Medications','Diet','medications','diet','Medication','medication'].includes(key);
+    if (!data || typeof data !== 'object') return data ? `<p>${data}</p>` : '';
 
-            if (typeof val === 'string' && val.startsWith('[') && val.endsWith(']')) {
-                try {
-                    const parsed = JSON.parse(val.replace(/'/g,'"'));
-                    if (Array.isArray(parsed)) val = parsed;
-                    else if (val.includes(',')) val = val.substring(1,val.length-1).split(',').map(s=>s.trim());
-                } catch(e) {}
-            }
+    // Render Overview first — always, outside the loop
+    const overviewKey = Object.keys(data).find(k => k.toLowerCase() === 'overview');
+    if (overviewKey && data[overviewKey]) {
+        html += `<div class="section-title">${overviewKey}</div>`;
+        html += `<div class="overview-block">${data[overviewKey]}</div>`;
+    }
 
-            if (isRestricted) {
-                const restrictedLabel = isAmharic()
-                    ? (key.toLowerCase().includes('med') ? 'መድሃኒቶች' : 'አመጋገብ')
-                    : key;
-                if (!isPrivileged) {
-                    // Show locked overlay
-                    html += `<div class="section-title">${restrictedLabel} <span class="restricted-badge">🔒 ${isAmharic()?'ለተማሪ/ዶክተር':'Student/Doctor only'}</span></div>
-                    <div class="restricted-overlay"><p>${t('🔒 This section is visible only to verified Students and Doctors.')}</p></div>`;
-                    continue;
-                }
-                // Privileged — show normally with badge
-                html += `<div class="section-title">${restrictedLabel} <span class="restricted-badge" style="background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:#6ee7b7">✓ ${isAmharic()?'ተረጋግጧል':'Verified'}</span></div>`;
-            } else {
-                html += `<div class="section-title">${key}</div>`;
-            }
+    for (const key in data) {
+        if (key.toLowerCase() === 'overview') continue; // already rendered above
 
-            if (Array.isArray(val)) {
-                html += `<ul>`; val.forEach(item=>html+=`<li>${item}</li>`); html += `</ul>`;
-            } else if (typeof val === 'string' && val.includes('\n')) {
-                html += `<p>${val.replace(/\n/g,'<br>')}</p>`;
-            } else {
-                html += `<p>${val}</p>`;
+        let val = data[key];
+        const keyLower = key.toLowerCase();
+        const isRestricted = ['medications','diet','medication'].includes(keyLower);
+
+        // Parse stringified arrays safely
+        if (typeof val === 'string' && val.startsWith('[') && val.endsWith(']')) {
+            try {
+                const parsed = JSON.parse(val.replace(/'/g, '"'));
+                if (Array.isArray(parsed)) val = parsed;
+            } catch(e) {
+                if (val.includes(',')) val = val.substring(1, val.length - 1).split(',').map(s => s.trim());
             }
+        }
+
+        if (isRestricted) {
+            const restrictedLabel = isAmharic()
+                ? (keyLower.includes('med') ? 'መድሃኒቶች' : 'አመጋገብ')
+                : key;
+            if (!isPrivileged) {
+                html += `<div class="section-title">${restrictedLabel} <span class="restricted-badge">🔒 ${isAmharic()?'ለተማሪ/ዶክተር':'Student/Doctor only'}</span></div>
+                <div class="restricted-overlay"><p>${t('🔒 This section is visible only to verified Students and Doctors.')}</p></div>`;
+                continue;
+            }
+            html += `<div class="section-title">${restrictedLabel} <span class="restricted-badge" style="background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.3);color:#6ee7b7">✓ ${isAmharic()?'ተረጋግጧል':'Verified'}</span></div>`;
+        } else {
+            html += `<div class="section-title">${key}</div>`;
+        }
+
+        if (Array.isArray(val)) {
+            html += `<ul>`; val.forEach(item => html += `<li>${item}</li>`); html += `</ul>`;
+        } else if (typeof val === 'string' && val.includes('\n')) {
+            html += `<p>${val.replace(/\n/g,'<br>')}</p>`;
+        } else {
+            html += `<p>${val}</p>`;
         }
     }
     return html;
@@ -783,9 +799,10 @@ predictBtn.addEventListener('click', async () => {
     predictOutput.innerHTML = `<p style="color:var(--teal-light);opacity:.7">${isAmharic()?'ምልክቶችን በመተንተን ላይ…':'Analyzing symptoms…'}</p>`;
     try {
         const langNote = lang === 'Amharic' ? 'Respond in Amharic.' : 'Respond in English.';
+        // FIXED: explicit instruction to always include Overview as a non-empty string
         const sysPrompt = `You are a medical AI assistant. Given a list of symptoms, return ONLY valid JSON with this exact structure:
-{"predicted_conditions":[{"disease":"Name","confidence":"85%"},{"disease":"Name","confidence":"72%"},{"disease":"Name","confidence":"58%"},{"disease":"Name","confidence":"41%"}],"recommendations":{"Overview":"brief description","Precautions":["item1","item2","item3"],"Medications":["item1","item2"],"Diet":["item1","item2"],"Workout":["item1","item2"]},"advice":"Any important warning if needed"}
-Provide exactly 4 predicted conditions with confidence percentages. ${langNote} Return ONLY the JSON, no extra text.`;
+{"predicted_conditions":[{"disease":"Name","confidence":"85%"},{"disease":"Name","confidence":"72%"},{"disease":"Name","confidence":"58%"},{"disease":"Name","confidence":"41%"}],"recommendations":{"Overview":"2-3 sentence plain-text description of the most likely condition and what the patient should know","Precautions":["item1","item2","item3"],"Medications":["item1","item2"],"Diet":["item1","item2"],"Workout":["item1","item2"]},"advice":"Any important warning if needed"}
+Rules: Always include exactly 4 predicted_conditions with confidence percentages. The Overview field MUST be a non-empty plain-text string of 2-3 sentences. ${langNote} Return ONLY the JSON object, no markdown, no extra text.`;
         const raw = await callClaude(sysPrompt, `Symptoms: ${symptoms}. Patient age: ${age}, role: ${role}.`);
         const clean = raw.replace(/```json|```/g,'').trim();
         const data = JSON.parse(clean);
@@ -830,9 +847,10 @@ recommendBtn.addEventListener('click', async () => {
     recommenderOutput.innerHTML = `<p style="color:var(--teal-light);opacity:.7">${isAmharic()?'የጤና እቅድ በማዘጋጀት ላይ…':'Generating health plan…'}</p>`;
     try {
         const langNote = lang === 'Amharic' ? 'Respond in Amharic.' : 'Respond in English.';
+        // FIXED: explicit instruction to always include Overview as a non-empty string
         const sysPrompt = `You are a medical AI assistant. Given a disease name, return ONLY valid JSON with this exact structure:
-{"recommendations":{"Overview":"brief description","Precautions":["item1","item2","item3"],"Medications":["item1","item2"],"Diet":["item1","item2","item3"],"Workout":["item1","item2"],"Lifestyle":["item1","item2"]},"advice":"Any important warning if needed"}
-${langNote} Return ONLY the JSON, no extra text.`;
+{"recommendations":{"Overview":"2-3 sentence plain-text description of the disease and key things the patient should understand","Precautions":["item1","item2","item3"],"Medications":["item1","item2"],"Diet":["item1","item2","item3"],"Workout":["item1","item2"],"Lifestyle":["item1","item2"]},"advice":"Any important warning if needed"}
+Rules: The Overview field MUST be a non-empty plain-text string of 2-3 sentences. ${langNote} Return ONLY the JSON object, no markdown, no extra text.`;
         const raw = await callClaude(sysPrompt, `Disease: ${disease}. Patient age: ${age}, role: ${role}.`);
         const clean = raw.replace(/```json|```/g,'').trim();
         const data = JSON.parse(clean);
@@ -877,7 +895,6 @@ clearAllBtn.addEventListener('click', () => {
     ageInput.value=25; roleInput.value='Normal User';
     idGroup.style.display='none'; idNumberInput.value='';
     languageInput.value='English';
-    // Reset feedback states
     setFieldState(ageInput, document.getElementById('age-feedback'), 'success', '✓', 'Valid adult age');
     setFieldState(roleInput, document.getElementById('role-feedback'), 'success', '✓', 'Role selected');
     setFieldState(languageInput, document.getElementById('lang-feedback'), 'success', '✓', 'English selected');
@@ -913,7 +930,7 @@ const SYMPTOM_CATEGORIES_EN = {
 };
 
 const CAT_AM = {"General":"አጠቃላይ","Pain":"ህመም","Cardio / Resp":"ልብ / መተንፈሻ","Neuro / Mental":"ነርቭ / አዕምሮ","Gastro":"የምግብ መፈጨት","Urinary":"የሽንት","Skin":"ቆዳ","Eye/Ear/Nose":"ዓይን/ጆሮ/አፍንጫ","Musculo":"ጡንቻ","Reproductive":"የመራቢያ","Other":"ሌላ"};
-const SYMPTOM_AM = {"Ache all over":"ሙሉ ሰውነት ምቃት","Chills":"ብርድ","Fatigue":"ድካም","Feeling ill":"ስሜት መጥፎ","Fever":"ትኩሳት","Hot flashes":"ሙቀት መፍሰስ","Sweating":"ላብ","Weakness":"ድክመት","Weight gain":"ክብደት መጨመር","Arm pain":"የእጅ ህመም","Ankle pain":"የቁርጭምጭሚት ህመም","Back pain":"የጀርባ ህመም","Burning abdominal pain":"ሆድ ማቃጠል","Chest tightness":"ደረት መጠበቅ","Cramps and spasms":"ቁርጠት","Ear pain":"የጆሮ ህመም","Elbow pain":"የክርን ህመም","Foot or toe pain":"የእግር ህመም","Groin pain":"የዳሌ ህመም","Hand or finger pain":"የእጅ/ጣት ህመም","Headache":"ራስ ምታት","Hip pain":"የውርወራ ህመም","Hurts to breathe":"ሲተነፍሱ ህመም","Knee pain":"የጉልበት ህመም","Leg pain":"የእግር ህመም","Low back pain":"ታች ጀርባ ህመም","Lower abdominal pain":"ታች ሆድ ህመም","Lower body pain":"ታች ሰውነት ህመም","Neck pain":"የአንገት ህመም","Pain during pregnancy":"በእርግዝና ወቅት ህመም","Pain in eye":"የዓይን ህመም","Painful menstruation":"የወር አበባ ህመም","Painful urination":"ሽንት ሲሸኑ ህመም","Pelvic pain":"የዳሌ ህመም","Sharp abdominal pain":"ሆድ ላይ ስለት ህመም","Sharp chest pain":"ደረት ላይ ስለት ህመም","Shoulder pain":"የትከሻ ህመም","Side pain":"የጎን ህመም","Sore throat":"ጉሮሮ ህመም","Suprapubic pain":"ዝቅተኛ ሆድ ህመም","Upper abdominal pain":"ላይ ሆድ ህመም","Wrist pain":"የእጅ አንጓ ህመም","Abnormal breathing sounds":"ያልተለመደ የትንፋሽ ድምፅ","Decreased heart rate":"የልብ ምት መቀነስ","Difficulty breathing":"ለመተንፈስ ችግር","Fluid retention":"ፈሳሽ ማቆር","Increased heart rate":"የልብ ምት መጨመር","Irregular heartbeat":"ያልተስተካከለ የልብ ምት","Palpitations":"ልብ ምት ስሜት","Shortness of breath":"መተንፈስ ማጠር","Abnormal involuntary movements":"ያልተፈቀደ እንቅስቃሴ","Anxiety and nervousness":"ጭንቀት እና ነርቭ","Antisocial behavior":"ፀረ-ማህበራዊ ባህርይ","Delusions or hallucinations":"ቅዠት","Depression":"ድብርት","Disturbance of memory":"የማስታወስ ችግር","Dizziness":"ራስ ዞር","Drug abuse":"የአደንዛዥ ዕጽ አላግባብ","Excessive anger":"ከመጠን ያለፈ ቁጣ","Fainting":"ንቃተ ህሊና ማጣት","Fears and phobias":"ፍርሃት","Focal weakness":"ከፊል ድክመት","Hostile behavior":"ጠላትነት ባህርይ","Insomnia":"እንቅልፍ ማጣት","Loss of sensation":"ስሜት ማጣት","Low self-esteem":"ዝቅተኛ ራስን ዋጋ","Obsessions and compulsions":"ቀጣይ ሃሳቦች","Paresthesia":"ሽብሸባ ስሜት","Problems with movement":"እንቅስቃሴ ችግር","Restlessness":"ማሰቃቀር","Seizures":"ቅብጠት","Temper problems":"ቁጣ ችግር","Blood in stool":"ሰገራ ውስጥ ደም","Changes in stool appearance":"የሰገራ ለውጥ","Constipation":"ሆድ መጠፍጠፍ","Decreased appetite":"የምግብ ፍቅር መቀነስ","Diarrhea":"ተቅማጥ","Difficulty in swallowing":"ለመዋጥ ችግር","Heartburn":"ሆድ ማቃጠል","Itching of the anus":"የፊፊ ማሳከክ","Melena":"ጥቁር ሰገራ","Nausea":"ማቅለሽለሽ","Rectal bleeding":"ፊፊ መድማት","Regurgitation":"ምግብ መመለስ","Stomach bloating":"ሆድ ማበጥ","Vomiting":"ማስታወክ","Vomiting blood":"ደም ማስታወክ","Blood in urine":"ሽንት ውስጥ ደም","Frequent urination":"ተደጋጋሚ ሽንት","Retention of urine":"ሽንት ማቆር","Unusual color or odor to urine":"ሽንት ያልተለመደ ቀለም/ሽታ","Abnormal appearing skin":"ያልተለመደ ቆዳ","Acne or pimples":"ሽፍታ","Allergic reaction":"አለርጂ","Diaper rash":"ዳይፐር ሽፍታ","Itching of skin":"ቆዳ ማሳከክ","Peeling or scaliness":"ቆዳ መላጥ","Skin dryness":"ቆዳ መድረቅ","Skin growth":"ቆዳ ዕድገት","Skin irritation":"ቆዳ ማብሰር","Skin lesion":"ቆዳ ቁስለት","Skin moles":"ቆዳ ነቀርሳ","Skin pigmentation changes":"ቆዳ ቀለም ለውጥ","Skin rash":"ቆዳ ሽፍታ","Skin swelling":"ቆዳ ማበጥ","Warts":"የቆዳ ዕንቁ","Coryza":"የምርጫ ፍሳሽ","Cough":"ሳል","Diminished hearing":"የመስሚያ ችግር","Eye redness":"ቀይ ዓይን","Itchiness of eye":"ዓይን ማሳከክ","Lacrimation":"እንባ መፍሰስ","Nasal congestion":"አፍንጫ መዘጋት","Plugged feeling in ear":"ጆሮ መዘጋት","Pulling at ears":"ጆሮ መጎተት","Redness in ear":"ጆሮ ቅላት","Ringing in ear":"ጆሮ ጩኸት","Swollen eye":"ዓይን ማበጥ","Swollen or red tonsils":"ቲዎንስ ማበጥ","White discharge from eye":"ዓይን ነጭ ፈሳሽ","Arm weakness":"የእጅ ድክመት","Hand or finger weakness":"የእጅ/ጣት ድክመት","Leg weakness":"የእግር ድክመት","Peripheral edema":"ዳርቻ ማበጥ","Leg swelling":"እግር ማበጥ","Blood clots during menstrual periods":"የወር አበባ ደም ቁስቁስ","Heavy menstrual flow":"ከባድ የወር አበባ","Intermenstrual bleeding":"ሁለት ወር አበባ መካከል መድማት","Long menstrual periods":"ረዥም ወር አበባ","Problems during pregnancy":"በእርግዝና ወቅት ችግር","Spotting during pregnancy":"በእርግዝና ወቅት ደም","Unpredictable menstruation":"ያልተስተካከለ ወር አበባ","Uterine contractions":"ማህፀን መጨናነቅ","Vaginal discharge":"የብልት ፈሳሽ","Vaginal itching":"ብልት ማሳከክ","Arm lump or mass":"እጅ ላይ እብጠት","Back mass or lump":"ጀርባ ላይ እብጠት","Difficulty speaking":"ለመናገር ችግር","Hand or finger lump or mass":"እጅ/ጣት ላይ እብጠት","Irritable infant":"ነፍስ ያለው ሕፃን","Jaundice":"ቢጫ በሽታ","Lack of growth":"እድገት ማጣት","Neck mass":"አንገት ላይ እብጠት","Rectal mass":"ፊፊ ዙሪያ እብጠት"};
+const SYMPTOM_AM = {"Ache all over":"ሙሉ ሰውነት ምቃት","Chills":"ብርድ","Fatigue":"ድካም","Feeling ill":"ስሜት መጥፎ","Fever":"ትኩሳት","Hot flashes":"ሙቀት መፍሰስ","Sweating":"ላብ","Weakness":"ድክመት","Weight gain":"ክብደት መጨመር","Arm pain":"የእጅ ህመም","Ankle pain":"የቁርጭምጭሚት ህመም","Back pain":"የጀርባ ህመም","Burning abdominal pain":"ሆድ ማቃጠል","Chest tightness":"ደረት መጠበቅ","Cramps and spasms":"ቁርጠት","Ear pain":"የጆሮ ህመም","Elbow pain":"የክርን ህመም","Foot or toe pain":"የእግር ህመም","Groin pain":"የዳሌ ህመም","Hand or finger pain":"የእጅ/ጣት ህመም","Headache":"ራስ ምታት","Hip pain":"የውርወራ ህመም","Hurts to breathe":"ሲተነፈሱ ህመም","Knee pain":"የጉልበት ህመም","Leg pain":"የእግር ህመም","Low back pain":"ታች ጀርባ ህመም","Lower abdominal pain":"ታች ሆድ ህመም","Lower body pain":"ታች ሰውነት ህመም","Neck pain":"የአንገት ህመም","Pain during pregnancy":"በእርግዝና ወቅት ህመም","Pain in eye":"የዓይን ህመም","Painful menstruation":"የወር አበባ ህመም","Painful urination":"ሽንት ሲሸኑ ህመም","Pelvic pain":"የዳሌ ህመም","Sharp abdominal pain":"ሆድ ላይ ስለት ህመም","Sharp chest pain":"ደረት ላይ ስለት ህመም","Shoulder pain":"የትከሻ ህመም","Side pain":"የጎን ህመም","Sore throat":"ጉሮሮ ህመም","Suprapubic pain":"ዝቅተኛ ሆድ ህመም","Upper abdominal pain":"ላይ ሆድ ህመም","Wrist pain":"የእጅ አንጓ ህመም","Abnormal breathing sounds":"ያልተለመደ የትንፋሽ ድምፅ","Decreased heart rate":"የልብ ምት መቀነስ","Difficulty breathing":"ለመተንፈስ ችግር","Fluid retention":"ፈሳሽ ማቆር","Increased heart rate":"የልብ ምት መጨመር","Irregular heartbeat":"ያልተስተካከለ የልብ ምት","Palpitations":"ልብ ምት ስሜት","Shortness of breath":"መተንፈስ ማጠር","Abnormal involuntary movements":"ያልተፈቀደ እንቅስቃሴ","Anxiety and nervousness":"ጭንቀት እና ነርቭ","Antisocial behavior":"ፀረ-ማህበራዊ ባህርይ","Delusions or hallucinations":"ቅዠት","Depression":"ድብርት","Disturbance of memory":"የማስታወስ ችግር","Dizziness":"ራስ ዞር","Drug abuse":"የአደንዛዥ ዕጽ አላግባብ","Excessive anger":"ከመጠን ያለፈ ቁጣ","Fainting":"ንቃተ ህሊና ማጣት","Fears and phobias":"ፍርሃት","Focal weakness":"ከፊል ድክመት","Hostile behavior":"ጠላትነት ባህርይ","Insomnia":"እንቅልፍ ማጣት","Loss of sensation":"ስሜት ማጣት","Low self-esteem":"ዝቅተኛ ራስን ዋጋ","Obsessions and compulsions":"ቀጣይ ሃሳቦች","Paresthesia":"ሽብሸባ ስሜት","Problems with movement":"እንቅስቃሴ ችግር","Restlessness":"ማሰቃቀር","Seizures":"ቅብጠት","Temper problems":"ቁጣ ችግር","Blood in stool":"ሰገራ ውስጥ ደም","Changes in stool appearance":"የሰገራ ለውጥ","Constipation":"ሆድ መጠፍጠፍ","Decreased appetite":"የምግብ ፍቅር መቀነስ","Diarrhea":"ተቅማጥ","Difficulty in swallowing":"ለመዋጥ ችግር","Heartburn":"ሆድ ማቃጠል","Itching of the anus":"የፊፊ ማሳከክ","Melena":"ጥቁር ሰገራ","Nausea":"ማቅለሽለሽ","Rectal bleeding":"ፊፊ መድማት","Regurgitation":"ምግብ መመለስ","Stomach bloating":"ሆድ ማበጥ","Vomiting":"ማስታወክ","Vomiting blood":"ደም ማስታወክ","Blood in urine":"ሽንት ውስጥ ደም","Frequent urination":"ተደጋጋሚ ሽንት","Retention of urine":"ሽንት ማቆር","Unusual color or odor to urine":"ሽንት ያልተለመደ ቀለም/ሽታ","Abnormal appearing skin":"ያልተለመደ ቆዳ","Acne or pimples":"ሽፍታ","Allergic reaction":"አለርጂ","Diaper rash":"ዳይፐር ሽፍታ","Itching of skin":"ቆዳ ማሳከክ","Peeling or scaliness":"ቆዳ መላጥ","Skin dryness":"ቆዳ መድረቅ","Skin growth":"ቆዳ ዕድገት","Skin irritation":"ቆዳ ማብሰር","Skin lesion":"ቆዳ ቁስለት","Skin moles":"ቆዳ ነቀርሳ","Skin pigmentation changes":"ቆዳ ቀለም ለውጥ","Skin rash":"ቆዳ ሽፍታ","Skin swelling":"ቆዳ ማበጥ","Warts":"የቆዳ ዕንቁ","Coryza":"የምርጫ ፍሳሽ","Cough":"ሳል","Diminished hearing":"የመስሚያ ችግር","Eye redness":"ቀይ ዓይን","Itchiness of eye":"ዓይን ማሳከክ","Lacrimation":"እንባ መፍሰስ","Nasal congestion":"አፍንጫ መዘጋት","Plugged feeling in ear":"ጆሮ መዘጋት","Pulling at ears":"ጆሮ መጎተት","Redness in ear":"ጆሮ ቅላት","Ringing in ear":"ጆሮ ጩኸት","Swollen eye":"ዓይን ማበጥ","Swollen or red tonsils":"ቲዎንስ ማበጥ","White discharge from eye":"ዓይን ነጭ ፈሳሽ","Arm weakness":"የእጅ ድክመት","Hand or finger weakness":"የእጅ/ጣት ድክመት","Leg weakness":"የእግር ድክመት","Peripheral edema":"ዳርቻ ማበጥ","Leg swelling":"እግር ማበጥ","Blood clots during menstrual periods":"የወር አበባ ደም ቁስቁስ","Heavy menstrual flow":"ከባድ የወር አበባ","Intermenstrual bleeding":"ሁለት ወር አበባ መካከል መድማት","Long menstrual periods":"ረዥም ወር አበባ","Problems during pregnancy":"በእርግዝና ወቅት ችግር","Spotting during pregnancy":"በእርግዝና ወቅት ደም","Unpredictable menstruation":"ያልተስተካከለ ወር አበባ","Uterine contractions":"ማህፀን መጨናነቅ","Vaginal discharge":"የብልት ፈሳሽ","Vaginal itching":"ብልት ማሳከክ","Arm lump or mass":"እጅ ላይ እብጠት","Back mass or lump":"ጀርባ ላይ እብጠት","Difficulty speaking":"ለመናገር ችግር","Hand or finger lump or mass":"እጅ/ጣት ላይ እብጠት","Irritable infant":"ነፍስ ያለው ሕፃን","Jaundice":"ቢጫ በሽታ","Lack of growth":"እድገት ማጣት","Neck mass":"አንገት ላይ እብጠት","Rectal mass":"ፊፊ ዙሪያ እብጠት"};
 
 function getCategories() {
     const am = isAmharic();
@@ -978,7 +995,6 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchDiseaseList();
     applyUIText();
     openTab('predict');
-    // Initial validation state
     setFieldState(ageInput, document.getElementById('age-feedback'), 'success', '✓', 'Valid adult age');
     setFieldState(roleInput, document.getElementById('role-feedback'), 'success', '✓', 'Role selected');
     setFieldState(languageInput, document.getElementById('lang-feedback'), 'success', '✓', 'English selected');
