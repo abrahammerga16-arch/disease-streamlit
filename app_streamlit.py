@@ -517,7 +517,7 @@ def render_quick_select_symptoms(lang: str) -> None:
         "seizures": "ቅብጠት", "tremors": "መርበድበድ",
         "fainting": "ዋዛ ማጣት", "numbness": "ደንዘዝ ስሜት",
         "blurred vision": "ደበዘዘ ዕይታ",
-        "nausea": "ማቅለሽለሽ", "vomiting": "ማስታወክ", "diarrhea": "ተቅማጥ",
+        "nausea": "ማቅለሽлеш", "vomiting": "ማስታወክ", "diarrhea": "ተቅማጥ",
         "constipation": "ሆድ መጠፍጠፍ", "stomach bloating": "ሆድ ማበጥ",
         "loss of appetite": "የምግብ ፍቅር ማጣት", "heartburn": "ሆድ ማቃጠል",
         "indigestion": "ምግብ አለመፈጨት", "blood in stool": "ሰገራ ውስጥ ደም",
@@ -986,12 +986,26 @@ def main():
         
         render_quick_select_symptoms(lang)
         
-        # Cursor focusing automatically applied on load or reset
+        # Safe text area definition (without autofocus=True parameter conflict)
         user_input = st.text_area(
             "Or type symptoms manually:",
             key="symptoms_text",
-            placeholder="e.g., headache, fever, chills",
-            autofocus=True
+            placeholder="e.g., headache, fever, chills"
+        )
+        
+        # Safe client-side frame autofocus script injection for symptoms field
+        components.html(
+            """
+            <script>
+                var doc = window.parent.document;
+                var textArea = doc.querySelector('textarea[placeholder*="headache"]');
+                if (textArea) {
+                    textArea.focus();
+                }
+            </script>
+            """,
+            height=0,
+            width=0,
         )
         
         # Action Buttons Layout Matrix
@@ -1090,11 +1104,29 @@ def main():
         st.markdown(f'<div class="section-header">{t("Healthcare Chatbot", lang)}</div>', unsafe_allow_html=True)
         disease_descriptions = [desc_map.get(clean_disease_name(d), "") for d in disease_names]
         
-        # Cursor focus applies automatically when jumping into the chatbot screen
+        # Safe text box layout configuration
         bot_query = st.text_input(
-            "Inquire regarding specific biological conditions, treatments, or symptoms:",
-            autofocus=True
+            "Inquire regarding specific biological conditions, treatments, or symptoms:"
         )
+        
+        # Safe client-side frame autofocus script injection for chatbot text input fields
+        components.html(
+            """
+            <script>
+                var doc = window.parent.document;
+                var inputs = doc.querySelectorAll('input');
+                for (var i = 0; i < inputs.length; i++) {
+                    if(inputs[i].getAttribute('aria-label') && inputs[i].getAttribute('aria-label').includes('Inquire regarding')) {
+                        inputs[i].focus();
+                        break;
+                    }
+                }
+            </script>
+            """,
+            height=0,
+            width=0,
+        )
+        
         if st.button(t("Ask Bot", lang)):
             if not bot_query.strip():
                 st.info(t("Please enter a query.", lang))
