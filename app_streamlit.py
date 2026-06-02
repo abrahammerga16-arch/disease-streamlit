@@ -31,11 +31,11 @@ st.set_page_config(
 )
 
 # ──────────────────────────────────────────────
-# ENHANCED CUSTOM CSS WITH ANIMATIONS
+# ENHANCED CUSTOM CSS WITH ANIMATIONS & BLINKING CURSOR
 # ──────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&family=Poppins:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght=400;600&family=IBM+Plex+Sans:wght=300;400;600;700&family=Poppins:wght=300;400;600;700&display=swap');
 
 /* ── Keyframe Animations */
 @keyframes fadeInUp {
@@ -58,6 +58,12 @@ st.markdown("""
     0%   { transform: scale(0.8); opacity: 0; }
     50%  { transform: scale(1.05); }
     100% { transform: scale(1);   opacity: 1; }
+}
+
+/* Artificial Cursor Pipe Blinking Sequence */
+@keyframes blink-cursor {
+    0%, 100% { border-left-color: #58a6ff; }
+    50% { border-left-color: transparent; }
 }
 
 /* ── Global Styles */
@@ -126,6 +132,13 @@ div[data-baseweb="select"] > div:focus-within {
     border-color: #58a6ff !important;
     box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2) !important;
     background: rgba(33, 38, 45, 1) !important;
+}
+
+/* Artificial Blinking Entry Pipe when focused and empty */
+.stTextArea textarea:focus:placeholder-shown {
+    animation: blink-cursor 1s step-end infinite;
+    border-left: 3px solid #58a6ff !important;
+    padding-left: 10px !important;
 }
 
 /* ── Buttons */
@@ -345,7 +358,7 @@ def t(text: str, lang: str) -> str:
 
 
 # ──────────────────────────────────────────────
-# GOOGLE TRANSLATE (optional)
+# GOOGLE TRANSLATE CONFIG
 # ──────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def get_translator():
@@ -434,7 +447,6 @@ def load_models():
 
 @st.cache_resource(show_spinner="Building symptom index…")
 def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
-    """TF-IDF cosine similarity — no torch required."""
     sym_texts = [s.replace("_", " ") for s in symptom_list]
     dis_texts = [d.replace("_", " ") for d in disease_names]
     all_texts = sym_texts + dis_texts
@@ -725,6 +737,13 @@ def render_quick_select_symptoms(lang: str) -> None:
           ).set;
           nativeInputValueSetter.call(ta, val);
           ta.dispatchEvent(new window.parent.Event('input', {{ bubbles: true }}));
+          
+          // Adjust state styling based on current content string sizes
+          if(val.length > 0) {{
+             ta.style.borderLeft = "1px solid #58a6ff";
+          }} else {{
+             ta.style.borderLeft = "3px solid #58a6ff";
+          }}
           break;
         }}
       }}
@@ -922,17 +941,15 @@ def health_recommender(
 
 
 # ──────────────────────────────────────────────
-# CALLBACK FUNCTIONS FOR STATE RESET
+# CALLBACK PARAMETERS FOR RESETS
 # ──────────────────────────────────────────────
 def clear_symptoms_callback():
-    """Safely updates widget memory values inside a clean processing thread context."""
     st.session_state["symptoms_text"] = ""
     st.session_state["prediction_result"] = None
     st.session_state["prediction_error"] = None
 
 
 def clear_diagnosis_callback():
-    """Safely drops prediction tracking blocks from active view states."""
     st.session_state["prediction_result"] = None
     st.session_state["prediction_error"] = None
 
@@ -964,7 +981,7 @@ def main():
         
     age = st.sidebar.number_input("Biological Evaluation Age", min_value=0, max_value=120, value=25)
 
-    # Initialize Prediction State Parameters Safely
+    # Initialize Tracking States Safely
     if "prediction_result" not in st.session_state:
         st.session_state["prediction_result"] = None
     if "prediction_error" not in st.session_state:
@@ -986,14 +1003,14 @@ def main():
         
         render_quick_select_symptoms(lang)
         
-        # Safe text area definition (without autofocus=True parameter conflict)
+        # Core Text Input Field Area Definitions
         user_input = st.text_area(
             "Or type symptoms manually:",
             key="symptoms_text",
             placeholder="e.g., headache, fever, chills"
         )
         
-        # Safe client-side frame autofocus script injection for symptoms field
+        # Client-side focus engine wrapper trigger
         components.html(
             """
             <script>
@@ -1104,12 +1121,11 @@ def main():
         st.markdown(f'<div class="section-header">{t("Healthcare Chatbot", lang)}</div>', unsafe_allow_html=True)
         disease_descriptions = [desc_map.get(clean_disease_name(d), "") for d in disease_names]
         
-        # Safe text box layout configuration
         bot_query = st.text_input(
             "Inquire regarding specific biological conditions, treatments, or symptoms:"
         )
         
-        # Safe client-side frame autofocus script injection for chatbot text input fields
+        # Dynamic chat focus scripting injection
         components.html(
             """
             <script>
