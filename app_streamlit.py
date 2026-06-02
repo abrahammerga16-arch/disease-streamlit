@@ -986,10 +986,12 @@ def main():
         
         render_quick_select_symptoms(lang)
         
+        # Cursor focusing automatically applied on load or reset
         user_input = st.text_area(
             "Or type symptoms manually:",
             key="symptoms_text",
-            placeholder="e.g., headache, fever, chills"
+            placeholder="e.g., headache, fever, chills",
+            autofocus=True
         )
         
         # Action Buttons Layout Matrix
@@ -1013,7 +1015,6 @@ def main():
 
         with col2:
             st.markdown('<div class="clear-btn-container">', unsafe_allow_html=True)
-            # Using the exact structural callback route solves the runtime state assignment bug cleanly
             st.button(
                 t("Clear Symptoms", lang), 
                 key="clear_symptoms_btn", 
@@ -1051,7 +1052,6 @@ def main():
                 st.markdown(f'<div class="advice-banner">{res["advice"]}</div>', unsafe_allow_html=True)
                 st.caption(f'_{t("medical_advice_disclaimer", lang)}_')
                 
-            # Clear Prediction Results Section via safe programmatic callback router
             st.markdown('<div class="clear-btn-container" style="margin-top: 20px; max-width: 200px;">', unsafe_allow_html=True)
             st.button(
                 t("Clear Diagnosis", lang), 
@@ -1090,7 +1090,11 @@ def main():
         st.markdown(f'<div class="section-header">{t("Healthcare Chatbot", lang)}</div>', unsafe_allow_html=True)
         disease_descriptions = [desc_map.get(clean_disease_name(d), "") for d in disease_names]
         
-        bot_query = st.text_input("Inquire regarding specific biological conditions, treatments, or symptoms:")
+        # Cursor focus applies automatically when jumping into the chatbot screen
+        bot_query = st.text_input(
+            "Inquire regarding specific biological conditions, treatments, or symptoms:",
+            autofocus=True
+        )
         if st.button(t("Ask Bot", lang)):
             if not bot_query.strip():
                 st.info(t("Please enter a query.", lang))
