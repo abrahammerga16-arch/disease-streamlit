@@ -458,7 +458,7 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 
 # ──────────────────────────────────────────────
-# V2 QUICK-SELECT SYMPTOM WIDGET
+# QUICK-SELECT SYMPTOM WIDGET (FIXED REACT REACTIVITY)
 # ──────────────────────────────────────────────
 def render_quick_select_symptoms(lang: str) -> None:
     CATEGORIES_EN = {
@@ -474,16 +474,16 @@ def render_quick_select_symptoms(lang: str) -> None:
                               "runny nose", "nasal congestion"],
         "🧠 Neuro/Mental":   ["dizziness", "confusion", "anxiety", "depression",
                               "insomnia", "memory loss", "seizures", "tremors",
-                              "fainting", "numbness", "blurred vision", "headache"],
+                              "fainting", "numbness", "blurred vision"],
         "🤢 Gastro":         ["nausea", "vomiting", "diarrhea", "constipation",
                               "stomach bloating", "loss of appetite", "heartburn",
-                              "indigestion", "blood in stool", "abdominal pain"],
+                              "indigestion", "blood in stool"],
         "🩺 Skin":           ["skin rash", "itching", "acne", "skin dryness",
                               "skin swelling", "jaundice", "skin lesion",
                               "hives", "peeling skin"],
         "👁️ Eye/Ear/Nose":  ["eye redness", "ear pain", "blurred vision",
                               "runny nose", "nasal congestion", "hearing loss",
-                              "watery eyes", "sneezing"],
+                              "watery eyes"],
         "🦴 Musculo":        ["joint stiffness", "muscle cramps", "swelling",
                               "leg weakness", "arm weakness", "back stiffness",
                               "peripheral edema"],
@@ -529,7 +529,7 @@ def render_quick_select_symptoms(lang: str) -> None:
         "seizures": "ቅብጠት", "tremors": "መርበድበድ",
         "fainting": "ዋዛ ማጣት", "numbness": "ደንዘዝ ስሜት",
         "blurred vision": "ደበዘዘ ዕይታ",
-        "nausea": "ማቅለሽлеш", "vomiting": "ማስታወክ", "diarrhea": "ተቅማጥ",
+        "nausea": "ማቅለሽለሽ", "vomiting": "ማስታወክ", "diarrhea": "ተቅማጥ",
         "constipation": "ሆድ መጠፍጠፍ", "stomach bloating": "ሆድ ማበጥ",
         "loss of appetite": "የምግብ ፍቅር ማጣት", "heartburn": "ሆድ ማቃጠል",
         "indigestion": "ምግብ አለመፈጨት", "blood in stool": "ሰገራ ውስጥ ደም",
@@ -548,7 +548,7 @@ def render_quick_select_symptoms(lang: str) -> None:
         "blood in urine": "ሽንት ውስጥ ደም",
         "urinary retention": "ሽንት ማቆር", "dark urine": "ጨለማ ሽንት",
         "hair loss": "ፀጉር መርገፍ", "swollen lymph nodes": "ሊምፍ ኖድ ማበጥ",
-        "high blood sugar": "ከፍተኛ የደም ስኳር",
+        "high blood sugar": "ከጨማሪ የደም ስኳር",
         "low blood pressure": "ዝቅተኛ የደም ግፊት",
     }
 
@@ -731,22 +731,25 @@ def render_quick_select_symptoms(lang: str) -> None:
       var areas = doc.querySelectorAll('textarea');
       for (var i = 0; i < areas.length; i++) {{
         var ta = areas[i];
-        if (ta.placeholder && ta.placeholder.indexOf('headache') !== -1) {{
+        if (ta.placeholder && ta.placeholder.indexOf('headache') !== -1) {
+          
+          // CRITICAL FIX: Force state mutation into React's setter logic directly
           var nativeInputValueSetter = Object.getOwnPropertyDescriptor(
             window.parent.HTMLTextAreaElement.prototype, 'value'
           ).set;
           nativeInputValueSetter.call(ta, val);
+          
+          // Dispatch input event so Streamlit components re-render immediately
           ta.dispatchEvent(new window.parent.Event('input', {{ bubbles: true }}));
           
-          // Adjust state styling based on current content string sizes
           if(val.length > 0) {{
              ta.style.borderLeft = "1px solid #58a6ff";
           }} else {{
              ta.style.borderLeft = "3px solid #58a6ff";
           }}
           break;
-        }}
-      }}
+        }
+      }
     }} catch(e) {{}}
   }}
 
@@ -761,6 +764,23 @@ def render_quick_select_symptoms(lang: str) -> None:
     renderPills();
     syncToStreamlit();
   }}
+
+  // Setup structural observer link to synchronize on raw click/touch events too
+  try {
+    var doc = window.parent.document;
+    var ta = doc.querySelector('textarea[placeholder*="headache"]');
+    if (ta && !ta.dataset.observed) {
+      ta.dataset.observed = "true";
+      var eventSync = function() {
+        var items = ta.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+        selected = items;
+        renderPills();
+      };
+      ta.addEventListener('input', eventSync);
+      ta.addEventListener('blur', eventSync);
+      ta.addEventListener('touchend', eventSync);
+    }
+  } catch(e) {}
 
   renderTabs();
   renderPills();
@@ -941,7 +961,7 @@ def health_recommender(
 
 
 # ──────────────────────────────────────────────
-# CALLBACK PARAMETERS FOR RESETS
+# PARAMETERS RESETS
 # ──────────────────────────────────────────────
 def clear_symptoms_callback():
     st.session_state["symptoms_text"] = ""
@@ -1010,14 +1030,19 @@ def main():
             placeholder="e.g., headache, fever, chills"
         )
         
-        # Client-side focus engine wrapper trigger
+        # Client-side listener to sync state immediately on manual interaction boundaries
         components.html(
             """
             <script>
                 var doc = window.parent.document;
                 var textArea = doc.querySelector('textarea[placeholder*="headache"]');
                 if (textArea) {
-                    textArea.focus();
+                    var triggerSync = function() {
+                        textArea.dispatchEvent(new window.parent.Event('input', { bubbles: true }));
+                    };
+                    textArea.addEventListener('focus', triggerSync);
+                    textArea.addEventListener('click', triggerSync);
+                    textArea.addEventListener('touchstart', triggerSync);
                 }
             </script>
             """,
@@ -1123,24 +1148,6 @@ def main():
         
         bot_query = st.text_input(
             "Inquire regarding specific biological conditions, treatments, or symptoms:"
-        )
-        
-        # Dynamic chat focus scripting injection
-        components.html(
-            """
-            <script>
-                var doc = window.parent.document;
-                var inputs = doc.querySelectorAll('input');
-                for (var i = 0; i < inputs.length; i++) {
-                    if(inputs[i].getAttribute('aria-label') && inputs[i].getAttribute('aria-label').includes('Inquire regarding')) {
-                        inputs[i].focus();
-                        break;
-                    }
-                }
-            </script>
-            """,
-            height=0,
-            width=0,
         )
         
         if st.button(t("Ask Bot", lang)):
