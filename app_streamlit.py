@@ -458,9 +458,9 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 
 # ──────────────────────────────────────────────
-# QUICK-SELECT SYMPTOM WIDGET (STREAMLIT IFRAME SYNC BRIDGE)
+# QUICK-SELECT SYMPTOM WIDGET (STREAMLIT NATIVE MSG PROTOCOL)
 # ──────────────────────────────────────────────
-def render_quick_select_symptoms(lang: str):
+def render_quick_select_symptoms(lang: str) -> str:
     CATEGORIES_EN = {
         "🌡️ General":       ["fever", "fatigue", "weakness", "chills", "sweating",
                               "weight gain", "malaise", "lethargy", "weight loss",
@@ -566,11 +566,6 @@ def render_quick_select_symptoms(lang: str):
         ]
 
     current_val = st.session_state.get("symptoms_text", "")
-    
-    # SAFEGUARD CRASH FIX: Intercept any DeltaGenerator layout proxy objects passed by Streamlit initial state
-    if not isinstance(current_val, str):
-        current_val = ""
-        
     current_list = [s.strip().lower() for s in current_val.split(",") if s.strip()]
 
     quick_label = "ምልክቶችን ፈጥኖ ይምረጡ:" if is_am else "Quick-select symptoms:"
@@ -668,6 +663,13 @@ def render_quick_select_symptoms(lang: str):
 <div class="or-div">{or_text}</div>
 
 <script>
+  function sendToStreamlit(value) {{
+    window.parent.postMessage({{
+      type: 'streamlit:setComponentValue',
+      value: value
+    }}, '*');
+  }}
+
   var CATS = {json.dumps(js_cats, ensure_ascii=False)};
   var KEYS = Object.keys(CATS);
   var active = KEYS[0];
@@ -706,13 +708,7 @@ def render_quick_select_symptoms(lang: str):
     if (idx === -1) {{ selected.push(lo); }} 
     else {{ selected.splice(idx, 1); }}
     renderPills();
-    
-    // Dispatch text value straight into parent layout document securely
-    var ta = window.parent.document.querySelector('textarea[aria-label="Symptoms Input Field Area:"]');
-    if (ta) {{
-      ta.value = selected.join(', ');
-      ta.dispatchEvent(new Event('input', {{ bubbles: true }}));
-    }}
+    sendToStreamlit(selected.join(', '));
   }}
 
   renderTabs();
@@ -721,7 +717,7 @@ def render_quick_select_symptoms(lang: str):
 </body>
 </html>
 """
-    components.html(html_code, height=210, scrolling=False)
+    return components.html(html_code, height=210, scrolling=False)
 
 
 # ──────────────────────────────────────────────
@@ -956,10 +952,14 @@ def main():
     with tab1:
         st.markdown(f'<div class="section-header">{t("Disease Predictor", lang)}</div>', unsafe_allow_html=True)
         
-        # Render custom selection component directly
-        render_quick_select_symptoms(lang)
+        # Capture raw updates directly from widget messenger thread
+        quick_selected_val = render_quick_select_symptoms(lang)
+        
+        if quick_selected_val is not None and quick_selected_val != st.session_state["symptoms_text"]:
+            st.session_state["symptoms_text"] = quick_selected_val
+            st.rerun()
 
-        # Render Text Area directly bound to state object layout
+        # Render Text Area directly bound to state object
         user_input = st.text_area(
             "Symptoms Input Field Area:",
             key="symptoms_text",
@@ -970,10 +970,7 @@ def main():
         
         with col1:
             if st.button(t("Predict & Recommend", lang)):
-                raw_text_value = st.session_state.get("symptoms_text", "")
-                if not isinstance(raw_text_value, str):
-                    raw_text_value = ""
-                raw_text_value = raw_text_value.strip()
+                raw_text_value = st.session_state.get("symptoms_text", "").strip()
                 
                 if not raw_text_value:
                     st.warning(t("Please enter symptoms.", lang))
