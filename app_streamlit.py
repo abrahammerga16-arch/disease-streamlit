@@ -1,5 +1,10 @@
 """
-Integrated Healthcare Dashboard
+Integrated Healthcare Dashboard — Streamlit version (Enhanced UI + 4 fixes)
+Changes vs previous version:
+  1. Quick-select symptom pills with check-toggle on click
+  2. Dietary Plan hidden for Normal User role
+  3. All UI text switches to Amharic when language = Amharic
+  4. Language / Role / Age controls moved to main page (sidebar removed)
 """
 
 import os, warnings
