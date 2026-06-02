@@ -458,7 +458,7 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 
 # ──────────────────────────────────────────────
-# QUICK-SELECT SYMPTOM WIDGET (FIXED REACT REACTIVITY)
+# QUICK-SELECT SYMPTOM WIDGET (FULLY ESCAPED FOR F-STRINGS)
 # ──────────────────────────────────────────────
 def render_quick_select_symptoms(lang: str) -> None:
     CATEGORIES_EN = {
@@ -749,7 +749,7 @@ def render_quick_select_symptoms(lang: str) -> None:
           }}
           break;
         }}
-      }
+      }}
     }} catch(e) {{}}
   }}
 
@@ -772,7 +772,7 @@ def render_quick_select_symptoms(lang: str) -> None:
     if (ta && !ta.dataset.observed) {{
       ta.dataset.observed = "true";
       var eventSync = function() {{
-        var items = ta.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+        var items = ta.value.split(',').map(function(s) {{ return s.trim().toLowerCase(); }}).filter(Boolean);
         selected = items;
         renderPills();
       }};
