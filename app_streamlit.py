@@ -458,9 +458,9 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 
 # ──────────────────────────────────────────────
-# QUICK-SELECT SYMPTOM WIDGET (FULLY ESCAPED FOR F-STRINGS)
+# QUICK-SELECT SYMPTOM WIDGET (STREAMLIT NATIVE MSG PROTOCOL)
 # ──────────────────────────────────────────────
-def render_quick_select_symptoms(lang: str) -> None:
+def render_quick_select_symptoms(lang: str) -> str:
     CATEGORIES_EN = {
         "🌡️ General":       ["fever", "fatigue", "weakness", "chills", "sweating",
                               "weight gain", "malaise", "lethargy", "weight loss",
@@ -569,7 +569,7 @@ def render_quick_select_symptoms(lang: str) -> None:
     current_list = [s.strip().lower() for s in current_val.split(",") if s.strip()]
 
     quick_label = "ምልክቶችን ፈጥኖ ይምረጡ:" if is_am else "Quick-select symptoms:"
-    or_text     = "ወይም ምልክቶችን ይተይቡ"   if is_am else "or type symptoms"
+    or_text     = "ወይም ምልክቶችን ይተይቡ"   if is_am else "or type symptoms manually:"
 
     html_code = f"""
 <!DOCTYPE html>
@@ -580,7 +580,7 @@ def render_quick_select_symptoms(lang: str) -> None:
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{
     background: transparent;
-    font-family: 'Poppins', 'DM Sans', -apple-system, sans-serif;
+    font-family: 'Poppins', -apple-system, sans-serif;
     padding: 4px 2px 0;
   }}
   .qs-label {{
@@ -606,19 +606,12 @@ def render_quick_select_symptoms(lang: str) -> None:
     font-size: 0.72rem;
     font-weight: 600;
     cursor: pointer;
-    white-space: nowrap;
     transition: all 0.18s ease;
-    font-family: inherit;
   }}
-  .cat-tab:hover {{
-    border-color: #0d9488;
-    color: #14b8a6;
-    background: rgba(13,148,136,0.1);
-  }}
-  .cat-tab.active {{
-    background: rgba(13,148,136,0.2);
+  .cat-tab:hover, .cat-tab.active {{
     border-color: #14b8a6;
     color: #14b8a6;
+    background: rgba(13,148,136,0.1);
   }}
   .pills-wrap {{
     display: flex;
@@ -626,14 +619,8 @@ def render_quick_select_symptoms(lang: str) -> None:
     gap: 7px;
     max-height: 118px;
     overflow-y: auto;
-    padding: 2px 2px 6px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(13,148,136,0.45) transparent;
+    padding-bottom: 6px;
   }}
-  .pills-wrap::-webkit-scrollbar {{ width: 4px; }}
-  .pills-wrap::-webkit-scrollbar-track {{ background: transparent; }}
-  .pills-wrap::-webkit-scrollbar-thumb {{ background: rgba(13,148,136,0.45); border-radius: 4px; }}
-  
   .pill {{
     padding: 5px 13px;
     border-radius: 100px;
@@ -642,22 +629,18 @@ def render_quick_select_symptoms(lang: str) -> None:
     color: rgba(255,255,255,0.75);
     font-size: 0.77rem;
     cursor: pointer;
-    white-space: nowrap;
     transition: all 0.16s ease;
-    user-select: none;
-    font-family: inherit;
   }}
   .pill:hover {{
     border-color: #14b8a6;
     color: #fff;
     background: rgba(13,148,136,0.12);
-    transform: translateY(-1px);
   }}
-  .pill[aria-label^="✓"] {{
+  .pill.selected {{
     background: rgba(13, 148, 136, 0.25) !important;
     border-color: #14b8a6 !important;
     color: #14b8a6 !important;
-    font-weight: 600 !important;
+    font-weight: 600;
   }}
   .or-div {{
     display: flex;
@@ -680,9 +663,16 @@ def render_quick_select_symptoms(lang: str) -> None:
 <div class="or-div">{or_text}</div>
 
 <script>
-  var CATS    = {json.dumps(js_cats, ensure_ascii=False)};
-  var KEYS    = Object.keys(CATS);
-  var active  = KEYS[0];
+  function sendToStreamlit(value) {{
+    window.parent.postMessage({{
+      type: 'streamlit:setComponentValue',
+      value: value
+    }}, '*');
+  }}
+
+  var CATS = {json.dumps(js_cats, ensure_ascii=False)};
+  var KEYS = Object.keys(CATS);
+  var active = KEYS[0];
   var selected = {json.dumps(current_list)};
 
   var tabsEl  = document.getElementById('catTabs');
@@ -694,83 +684,32 @@ def render_quick_select_symptoms(lang: str) -> None:
       var b = document.createElement('button');
       b.className = 'cat-tab' + (k === active ? ' active' : '');
       b.textContent = k;
-      b.onclick = function() {{
-        active = k;
-        renderTabs();
-        renderPills();
-      }};
+      b.onclick = function() {{ active = k; renderTabs(); renderPills(); }};
       tabsEl.appendChild(b);
     }});
   }}
 
   function renderPills() {{
     pillsEl.innerHTML = '';
-    var items = CATS[active] || [];
-    items.forEach(function(item) {{
-      var en      = item.en;
-      var display = item.display;
-      var isSel   = selected.indexOf(en.toLowerCase()) !== -1;
+    (CATS[active] || []).forEach(function(item) {{
+      var en = item.en;
+      var isSel = selected.indexOf(en.toLowerCase()) !== -1;
       var p = document.createElement('button');
-      p.className = 'pill';
-      
-      var rawLabel = isSel ? '✓ ' + display : display;
-      p.setAttribute('aria-label', rawLabel);
-      p.textContent = rawLabel;
-      
-      p.onclick = (function(sym) {{
-        return function() {{ toggleSym(sym); }};
-      }})(en);
+      p.className = 'pill' + (isSel ? ' selected' : '');
+      p.textContent = isSel ? '✓ ' + item.display : item.display;
+      p.onclick = function() {{ toggleSym(en); }};
       pillsEl.appendChild(p);
     }});
   }}
 
-  function syncToStreamlit() {{
-    var val = selected.join(', ');
-    try {{
-      var doc = window.parent.document;
-      var areas = doc.querySelectorAll('textarea');
-      for (var i = 0; i < areas.length; i++) {{
-        var ta = areas[i];
-        if (ta.placeholder && ta.placeholder.indexOf('headache') !== -1) {{
-          
-          var nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-            window.parent.HTMLTextAreaElement.prototype, 'value'
-          ).set;
-          nativeInputValueSetter.call(ta, val);
-          
-          ta.dispatchEvent(new window.parent.Event('input', {{ bubbles: true }}));
-          break;
-        }}
-      }}
-    }} catch(e) {{}}
-  }}
-
   function toggleSym(sym) {{
-    var lo  = sym.toLowerCase();
+    var lo = sym.toLowerCase();
     var idx = selected.indexOf(lo);
-    if (idx === -1) {{
-      selected.push(lo);
-    }} else {{
-      selected.splice(idx, 1);
-    }}
+    if (idx === -1) {{ selected.push(lo); }} 
+    else {{ selected.splice(idx, 1); }}
     renderPills();
-    syncToStreamlit();
+    sendToStreamlit(selected.join(', '));
   }}
-
-  try {{
-    var doc = window.parent.document;
-    var ta = doc.querySelector('textarea[placeholder*="headache"]');
-    if (ta && !ta.dataset.observed) {{
-      ta.dataset.observed = "true";
-      var eventSync = function() {{
-        var items = ta.value.split(',').map(function(s) {{ return s.trim().toLowerCase(); }}).filter(Boolean);
-        selected = items;
-        renderPills();
-      }};
-      ta.addEventListener('input', eventSync);
-      ta.addEventListener('blur', eventSync);
-    }}
-  }} catch(e) {{}}
 
   renderTabs();
   renderPills();
@@ -778,7 +717,7 @@ def render_quick_select_symptoms(lang: str) -> None:
 </body>
 </html>
 """
-    components.html(html_code, height=220, scrolling=False)
+    return components.html(html_code, height=210, scrolling=False)
 
 
 # ──────────────────────────────────────────────
@@ -886,7 +825,7 @@ def integrated_prediction_system(
     preds = []
     for model, name in [(svc_model, "SVC"), (dt_model, "Decision Tree")]:
         try:
-            proba    = model.predict_proba(feature_vector)[0]
+            proba = model.predict_proba(feature_vector)[0]
             top4_idx = np.argsort(proba)[::-1][:4]
             for rank, idx in enumerate(top4_idx):
                 disease = le.inverse_transform([idx])[0]
@@ -1013,21 +952,24 @@ def main():
     with tab1:
         st.markdown(f'<div class="section-header">{t("Disease Predictor", lang)}</div>', unsafe_allow_html=True)
         
-        render_quick_select_symptoms(lang)
+        # Capture raw updates directly from widget messenger thread
+        quick_selected_val = render_quick_select_symptoms(lang)
         
-        # FIXED: Core text area definition uses session state directly
+        if quick_selected_val is not None and quick_selected_val != st.session_state["symptoms_text"]:
+            st.session_state["symptoms_text"] = quick_selected_val
+            st.rerun()
+
+        # Render Text Area directly bound to state object
         user_input = st.text_area(
-            "Or type symptoms manually:",
+            "Symptoms Input Field Area:",
             key="symptoms_text",
             placeholder="e.g., headache, fever, chills"
         )
         
-        # Action Buttons Layout Matrix
         col1, col2 = st.columns(2)
         
         with col1:
             if st.button(t("Predict & Recommend", lang)):
-                # FIXED: Read direct context explicitly from st.session_state to catch typed variables
                 raw_text_value = st.session_state.get("symptoms_text", "").strip()
                 
                 if not raw_text_value:
