@@ -729,6 +729,28 @@ def render_quick_select_symptoms(lang: str) -> None:
     }});
   }}
 
+  function syncToStreamlit() {{
+    var val = selected.join(', ');
+    // Find the Streamlit textarea by its aria-label and inject the value
+    try {{
+      var doc = window.parent.document;
+      // Target the textarea with the label "Or type symptoms manually:"
+      var areas = doc.querySelectorAll('textarea');
+      for (var i = 0; i < areas.length; i++) {{
+        var ta = areas[i];
+        // Match by placeholder text which is unique to our textarea
+        if (ta.placeholder && ta.placeholder.indexOf('headache') !== -1) {{
+          var nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+            window.parent.HTMLTextAreaElement.prototype, 'value'
+          ).set;
+          nativeInputValueSetter.call(ta, val);
+          ta.dispatchEvent(new window.parent.Event('input', {{ bubbles: true }}));
+          break;
+        }}
+      }}
+    }} catch(e) {{}}
+  }}
+
   function toggleSym(sym) {{
     var lo  = sym.toLowerCase();
     var idx = selected.indexOf(lo);
@@ -738,11 +760,7 @@ def render_quick_select_symptoms(lang: str) -> None:
       selected.splice(idx, 1);
     }}
     renderPills();
-    // Send updated value back to Streamlit via postMessage
-    window.parent.postMessage({{
-      type:  'streamlit:setComponentValue',
-      value: selected.join(', ')
-    }}, '*');
+    syncToStreamlit();
   }}
 
   // Init
@@ -753,10 +771,7 @@ def render_quick_select_symptoms(lang: str) -> None:
 </html>
 """
 
-    result = components.html(html_code, height=220, scrolling=False)
-    # When user clicks a pill, postMessage fires and Streamlit returns the value
-    if result is not None:
-        st.session_state["symptoms_text"] = result
+    components.html(html_code, height=220, scrolling=False)
 
 
 # ──────────────────────────────────────────────
