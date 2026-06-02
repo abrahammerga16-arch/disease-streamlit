@@ -446,25 +446,27 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 # SYMPTOM CATEGORIZATION
 # ──────────────────────────────────────────────
 def categorize_symptoms(symptom_list):
+    """Return dict of short-label category → symptom list, matching the quick-select UI."""
     categories = {
-        "🧠 Neurological":    [],
-        "🫀 Cardiovascular":  [],
-        "🫁 Respiratory":     [],
-        "🤢 Gastrointestinal":[],
-        "🦴 Musculoskeletal": [],
-        "🌡️ General":         [],
-        "👁️ Eye & ENT":       [],
-        "🩺 Skin":             [],
+        "General":       [],
+        "Pain":          [],
+        "Cardio / Resp": [],
+        "Neuro / Mental":[],
+        "Gastro":        [],
+        "Urinary":       [],
+        "Skin":          [],
+        "Reproductive":  [],
+        "Other":         [],
     }
     kw = {
-        "🧠 Neurological":    ["headache","migraine","dizziness","vertigo","confusion","memory","seizure","tremor"],
-        "🫀 Cardiovascular":  ["chest","heart","pulse","blood pressure","arrhythmia","palpitation"],
-        "🫁 Respiratory":     ["cough","breath","shortness","asthma","wheeze","cold","flu","sneeze"],
-        "🤢 Gastrointestinal":["vomit","nausea","diarrhea","constipation","stomach","pain","appetite","indigestion"],
-        "🦴 Musculoskeletal": ["pain","muscle","joint","arthritis","back","neck","stiff","cramp","swelling"],
-        "🌡️ General":         ["fever","fatigue","tiredness","weakness","chills","sweat","malaise"],
-        "👁️ Eye & ENT":       ["eye","ear","nose","throat","vision","hearing","rash","sore"],
-        "🩺 Skin":             ["rash","itching","burn","wound","acne","dermatitis","eczema"],
+        "General":       ["fever","fatigue","tiredness","weakness","chills","sweat","malaise","weight","appetite","feeling"],
+        "Pain":          ["pain","ache","cramp","stiff","sore","tender","backache","headache","migraine"],
+        "Cardio / Resp": ["chest","heart","pulse","palpitation","breath","cough","wheeze","asthma","cold","flu","sneeze"],
+        "Neuro / Mental": ["dizziness","vertigo","confusion","memory","seizure","tremor","anxiety","depression","mood","sleep","insomnia"],
+        "Gastro":        ["vomit","nausea","diarrhea","constipation","stomach","indigestion","bloat","gas","bowel","acidity"],
+        "Urinary":       ["urin","bladder","kidney","discharge","burning urination","frequent urination"],
+        "Skin":          ["rash","itch","burn","wound","acne","dermatitis","eczema","blister","hives","peeling"],
+        "Reproductive":  ["menstrual","period","pregnancy","vaginal","erectile","fertility","libido","ovarian"],
     }
     for symptom in symptom_list:
         sl = symptom.lower().replace("_", " ")
@@ -475,7 +477,7 @@ def categorize_symptoms(symptom_list):
                 placed = True
                 break
         if not placed:
-            categories["🌡️ General"].append(symptom)
+            categories["Other"].append(symptom)
     return {k: v for k, v in categories.items() if v}
 
 
@@ -737,38 +739,82 @@ def render_predictions(predictions: list):
     st.markdown(rows_html + "</div>", unsafe_allow_html=True)
 
 
-def render_categorized_symptoms(categorized_symptoms: dict):
+def render_quick_select(categorized_symptoms: dict):
     """
-    Compact symptom picker: one expander per category containing a multiselect.
-    Chosen symptoms are merged into st.session_state.symptoms_selected.
-    Each expander is collapsed by default so the page stays short.
+    Two-row chip UI matching the screenshot:
+      Row 1 — category filter chips (General / Pain / Cardio Resp / …)
+      Row 2 — symptom chips for the active category (toggle to select/deselect)
+    State:
+      st.session_state.symptoms_selected  – list of raw symptom strings
+      st.session_state.active_cat         – currently shown category
     """
-    col1, col2 = st.columns(2)
-    items = list(categorized_symptoms.items())
-    for cat_idx, (category, symptoms) in enumerate(items):
-        if not symptoms:
-            continue
-        cat_key = category.encode("ascii", "ignore").decode().strip().replace(" ", "_").lower()
-        target_col = col1 if cat_idx % 2 == 0 else col2
-        with target_col:
-            with st.expander(category, expanded=False):
-                options = sorted(symptoms)
-                labels  = [s.replace("_", " ").title() for s in options]
-                chosen  = st.multiselect(
-                    "Pick symptoms",
-                    options=labels,
-                    default=[s.replace("_", " ").title()
-                             for s in options
-                             if s in st.session_state.symptoms_selected],
-                    key=f"ms_{cat_key}",
-                    label_visibility="collapsed",
-                )
-                # Sync back to session state
-                for label, raw in zip(labels, options):
-                    if label in chosen and raw not in st.session_state.symptoms_selected:
-                        st.session_state.symptoms_selected.append(raw)
-                    elif label not in chosen and raw in st.session_state.symptoms_selected:
-                        st.session_state.symptoms_selected.remove(raw)
+    cats = list(categorized_symptoms.keys())
+
+    if "active_cat" not in st.session_state or st.session_state.active_cat not in cats:
+        st.session_state.active_cat = cats[0]
+
+    # ── Category tab row ──────────────────────────────────────────────────
+    cat_html = "<div style='display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px'>"
+    for cat in cats:
+        active = cat == st.session_state.active_cat
+        bg     = "#0d9488" if active else "rgba(255,255,255,0.06)"
+        border = "#0d9488" if active else "rgba(255,255,255,0.15)"
+        color  = "#fff"    if active else "#94a3b8"
+        fw     = "700"     if active else "500"
+        cat_html += (
+            f"<span style='background:{bg};border:1px solid {border};color:{color};"
+            f"font-weight:{fw};padding:5px 14px;border-radius:20px;font-size:0.82rem;"
+            f"cursor:pointer;white-space:nowrap'>{cat}</span>"
+        )
+    cat_html += "</div>"
+    st.markdown(cat_html, unsafe_allow_html=True)
+
+    # Category selector (hidden label, just drives active_cat)
+    selected_cat = st.selectbox(
+        "Category",
+        options=cats,
+        index=cats.index(st.session_state.active_cat),
+        key="cat_selector",
+        label_visibility="collapsed",
+    )
+    st.session_state.active_cat = selected_cat
+
+    # ── Symptom chips for active category ────────────────────────────────
+    symptoms = sorted(categorized_symptoms.get(selected_cat, []))
+    chip_html = "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-top:4px'>"
+    for sym in symptoms:
+        label     = sym.replace("_", " ").title()
+        selected  = sym in st.session_state.symptoms_selected
+        bg        = "rgba(13,148,136,0.25)" if selected else "rgba(255,255,255,0.05)"
+        border    = "#0d9488"               if selected else "rgba(255,255,255,0.15)"
+        color     = "#5eead4"               if selected else "#94a3b8"
+        checkmark = "✓ "                    if selected else ""
+        chip_html += (
+            f"<span style='background:{bg};border:1px solid {border};color:{color};"
+            f"padding:6px 14px;border-radius:20px;font-size:0.83rem;font-weight:500;"
+            f"cursor:pointer;white-space:nowrap'>{checkmark}{label}</span>"
+        )
+    chip_html += "</div>"
+    st.markdown(chip_html, unsafe_allow_html=True)
+
+    # Multiselect (hidden) — used to actually toggle symptom state
+    labels_all  = [s.replace("_", " ").title() for s in symptoms]
+    default_sel = [s.replace("_", " ").title()
+                   for s in symptoms if s in st.session_state.symptoms_selected]
+    cat_key = selected_cat.replace(" ", "_").replace("/", "").lower()
+    chosen = st.multiselect(
+        "Select symptoms",
+        options=labels_all,
+        default=default_sel,
+        key=f"ms_{cat_key}",
+        label_visibility="collapsed",
+    )
+    # Sync chosen back into global selected list
+    for label, raw in zip(labels_all, symptoms):
+        if label in chosen and raw not in st.session_state.symptoms_selected:
+            st.session_state.symptoms_selected.append(raw)
+        elif label not in chosen and raw in st.session_state.symptoms_selected:
+            st.session_state.symptoms_selected.remove(raw)
 
 
 # ──────────────────────────────────────────────
@@ -878,49 +924,72 @@ tab1, tab2, tab3 = st.tabs([
 # TAB 1 — DISEASE PREDICTOR
 # ══════════════════════════════════════════════
 with tab1:
-    # Initialise session state
+    # ── Session state init ──────────────────────────────────────────────
     if "symptoms_selected" not in st.session_state:
         st.session_state.symptoms_selected = []
+    if "symptoms_text" not in st.session_state:
+        st.session_state.symptoms_text = ""
 
-    with st.expander("📋 Browse symptoms by category", expanded=False):
-        render_categorized_symptoms(categorized_symptoms)
+    # ── Card wrapper header (matches screenshot) ────────────────────────
+    st.markdown(
+        "<div style='background:rgba(22,27,34,0.6);border:1px solid rgba(255,255,255,0.08);"
+        "border-radius:16px;padding:20px 22px 16px'>"
+        "<div style='display:flex;align-items:center;gap:12px;margin-bottom:4px'>"
+        "<span style='font-size:1.6rem'>🩺</span>"
+        "<div><div style='font-size:1.1rem;font-weight:700;color:#e2e8f0'>"
+        "Symptom-Based Disease Predictor</div>"
+        "<div style='font-size:0.82rem;color:#64748b'>Enter your symptoms and our AI will identify possible conditions</div>"
+        "</div></div></div>",
+        unsafe_allow_html=True,
+    )
 
-    # Compact inline pill summary (deselect via expander multiselect)
-    if st.session_state.symptoms_selected:
-        pills = " ".join(
-            f"<span style='background:rgba(31,111,235,0.25);color:#79c0ff;"
-            f"padding:2px 10px;border-radius:12px;font-size:0.8rem;margin:2px;"
-            f"display:inline-block'>{s.replace('_',' ').title()}</span>"
-            for s in st.session_state.symptoms_selected
-        )
-        st.markdown(f"**Selected:** {pills}", unsafe_allow_html=True)
+    # ── Quick-select symptom chips ───────────────────────────────────────
+    st.markdown(
+        "<div style='font-size:0.72rem;font-weight:700;letter-spacing:0.1em;"
+        "color:#64748b;text-transform:uppercase;margin:14px 0 6px'>Quick-select symptoms:</div>",
+        unsafe_allow_html=True,
+    )
+    render_quick_select(categorized_symptoms)
 
-    col_a, col_b = st.columns([3, 1])
-    with col_a:
-        # FIX: manage textarea value via session state so "Clear All" resets it
-        if "symptoms_text" not in st.session_state:
-            st.session_state.symptoms_text = ""
-        symptoms_input = st.text_area(
-            "Or type symptoms manually:",
-            value=st.session_state.symptoms_text,
-            placeholder="e.g. headache, fever, cough, vomiting",
-            height=100,
-            key="symptoms_textarea",
-        )
-    with col_b:
-        st.markdown("<br>", unsafe_allow_html=True)
+    # ── OR divider ───────────────────────────────────────────────────────
+    st.markdown(
+        "<div style='display:flex;align-items:center;gap:12px;margin:14px 0 10px'>"
+        "<hr style='flex:1;border-color:rgba(255,255,255,0.1);margin:0'/>"
+        "<span style='color:#64748b;font-size:0.78rem;white-space:nowrap'>OR TYPE SYMPTOMS</span>"
+        "<hr style='flex:1;border-color:rgba(255,255,255,0.1);margin:0'/>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    # ── Text input + buttons ─────────────────────────────────────────────
+    st.markdown(
+        "<div style='font-size:0.72rem;font-weight:700;letter-spacing:0.1em;"
+        "color:#64748b;text-transform:uppercase;margin-bottom:6px'>Symptoms (comma-separated)</div>",
+        unsafe_allow_html=True,
+    )
+    symptoms_input = st.text_input(
+        "Symptoms",
+        value=st.session_state.symptoms_text,
+        placeholder="hot flashes, sweating, weakness, feeling ill",
+        key="symptoms_textarea",
+        label_visibility="collapsed",
+    )
+
+    btn_col1, btn_col2 = st.columns([2, 1])
+    with btn_col1:
         predict_btn = st.button(
-            t("Predict & Recommend", language),
+            f"✦ {t('Predict & Recommend', language)}",
             key="predict_btn",
             use_container_width=True,
         )
-        clear_btn = st.button("🗑️ Clear All", key="clear_predict", use_container_width=True)
+    with btn_col2:
+        clear_btn = st.button("✕ Clear", key="clear_predict", use_container_width=True)
 
     if clear_btn:
         st.session_state.pop("predict_result", None)
         st.session_state.symptoms_selected = []
-        # FIX: reset textarea via its backing session-state key
         st.session_state.symptoms_text = ""
+        st.session_state.active_cat = list(categorized_symptoms.keys())[0]
         st.rerun()
 
     if predict_btn:
