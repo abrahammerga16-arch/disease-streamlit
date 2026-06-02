@@ -156,6 +156,26 @@ div[data-baseweb="select"]>div:focus-within{
   border-color:#58a6ff !important;
   box-shadow:0 0 0 3px rgba(88,166,255,.2) !important;
 }
+
+/* Symptoms textarea — compact size + teal-tinted background */
+[data-testid="stTextArea"] textarea {
+  background: linear-gradient(135deg, rgba(13,30,35,.95) 0%, rgba(10,40,45,.9) 100%) !important;
+  border: 1.5px solid rgba(20,184,166,.35) !important;
+  border-radius: 10px !important;
+  color: #e6edf3 !important;
+  font-size: .88rem !important;
+  min-height: 52px !important;
+  max-height: 52px !important;
+  resize: none !important;
+  padding: 8px 12px !important;
+  line-height: 1.5 !important;
+}
+[data-testid="stTextArea"] textarea:focus {
+  border-color: #14b8a6 !important;
+  box-shadow: 0 0 0 3px rgba(20,184,166,.2) !important;
+  background: linear-gradient(135deg, rgba(13,35,40,1) 0%, rgba(10,48,52,1) 100%) !important;
+}
+[data-testid="stTextArea"] textarea::placeholder { color: rgba(20,184,166,.45) !important; }
 .stNumberInput input{
   background:rgba(33,38,45,.8) !important; color:#e6edf3 !important;
   border:1px solid rgba(48,54,61,.5) !important; border-radius:8px !important;
@@ -864,7 +884,7 @@ with tab1:
             t("Or type symptoms manually:", language),
             value=st.session_state.symptoms_text,
             placeholder="e.g. headache, fever, cough, vomiting",
-            height=100,
+            height=56,
             key="symptoms_textarea",
         )
     with col_b:
