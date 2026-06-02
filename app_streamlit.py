@@ -922,6 +922,22 @@ def health_recommender(
 
 
 # ──────────────────────────────────────────────
+# CALLBACK FUNCTIONS FOR STATE RESET
+# ──────────────────────────────────────────────
+def clear_symptoms_callback():
+    """Safely updates widget memory values inside a clean processing thread context."""
+    st.session_state["symptoms_text"] = ""
+    st.session_state["prediction_result"] = None
+    st.session_state["prediction_error"] = None
+
+
+def clear_diagnosis_callback():
+    """Safely drops prediction tracking blocks from active view states."""
+    st.session_state["prediction_result"] = None
+    st.session_state["prediction_error"] = None
+
+
+# ──────────────────────────────────────────────
 # APP MAIN ENGINE
 # ──────────────────────────────────────────────
 def main():
@@ -948,7 +964,7 @@ def main():
         
     age = st.sidebar.number_input("Biological Evaluation Age", min_value=0, max_value=120, value=25)
 
-    # Initialize Prediction State
+    # Initialize Prediction State Parameters Safely
     if "prediction_result" not in st.session_state:
         st.session_state["prediction_result"] = None
     if "prediction_error" not in st.session_state:
@@ -997,11 +1013,12 @@ def main():
 
         with col2:
             st.markdown('<div class="clear-btn-container">', unsafe_allow_html=True)
-            if st.button(t("Clear Symptoms", lang), key="clear_symptoms_btn"):
-                st.session_state["symptoms_text"] = ""
-                st.session_state["prediction_result"] = None
-                st.session_state["prediction_error"] = None
-                st.rerun()
+            # Using the exact structural callback route solves the runtime state assignment bug cleanly
+            st.button(
+                t("Clear Symptoms", lang), 
+                key="clear_symptoms_btn", 
+                on_click=clear_symptoms_callback
+            )
             st.markdown('</div>', unsafe_allow_html=True)
 
         # ── Diagnosis Display Workspace
@@ -1034,12 +1051,13 @@ def main():
                 st.markdown(f'<div class="advice-banner">{res["advice"]}</div>', unsafe_allow_html=True)
                 st.caption(f'_{t("medical_advice_disclaimer", lang)}_')
                 
-            # Clear Prediction Results Section
+            # Clear Prediction Results Section via safe programmatic callback router
             st.markdown('<div class="clear-btn-container" style="margin-top: 20px; max-width: 200px;">', unsafe_allow_html=True)
-            if st.button(t("Clear Diagnosis", lang), key="clear_diagnosis_btn"):
-                st.session_state["prediction_result"] = None
-                st.session_state["prediction_error"] = None
-                st.rerun()
+            st.button(
+                t("Clear Diagnosis", lang), 
+                key="clear_diagnosis_btn", 
+                on_click=clear_diagnosis_callback
+            )
             st.markdown('</div>', unsafe_allow_html=True)
 
     # TAB 2: EXPLICIT ADVICE INTERACTION ROUTER
