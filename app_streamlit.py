@@ -566,6 +566,11 @@ def render_quick_select_symptoms(lang: str):
         ]
 
     current_val = st.session_state.get("symptoms_text", "")
+    
+    # SAFEGUARD CRASH FIX: Intercept any DeltaGenerator layout proxy objects passed by Streamlit initial state
+    if not isinstance(current_val, str):
+        current_val = ""
+        
     current_list = [s.strip().lower() for s in current_val.split(",") if s.strip()]
 
     quick_label = "ምልክቶችን ፈጥኖ ይምረጡ:" if is_am else "Quick-select symptoms:"
@@ -951,7 +956,7 @@ def main():
     with tab1:
         st.markdown(f'<div class="section-header">{t("Disease Predictor", lang)}</div>', unsafe_allow_html=True)
         
-        # Render custom selection component directly without unsafe string conversion variable captures
+        # Render custom selection component directly
         render_quick_select_symptoms(lang)
 
         # Render Text Area directly bound to state object layout
@@ -965,7 +970,10 @@ def main():
         
         with col1:
             if st.button(t("Predict & Recommend", lang)):
-                raw_text_value = st.session_state.get("symptoms_text", "").strip()
+                raw_text_value = st.session_state.get("symptoms_text", "")
+                if not isinstance(raw_text_value, str):
+                    raw_text_value = ""
+                raw_text_value = raw_text_value.strip()
                 
                 if not raw_text_value:
                     st.warning(t("Please enter symptoms.", lang))
