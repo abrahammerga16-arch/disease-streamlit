@@ -321,7 +321,7 @@ AMHARIC = {
     "Disease": "በሽታ",
     "Description": "መግለጫ",
     "Dietary Plan": "የአመጋገብ እቅድ",
-    "Medications": "መድሃኒቶች",
+    "Medications": "مድሃኒቶች",
     "Workout/Activity": "ስፖርት/እንቅስቃሴ",
     "Precautions": "ጥንቃቄዎች",
     "Hello! How can I help you with health information today?":
@@ -731,15 +731,15 @@ def render_quick_select_symptoms(lang: str) -> None:
       var areas = doc.querySelectorAll('textarea');
       for (var i = 0; i < areas.length; i++) {{
         var ta = areas[i];
-        if (ta.placeholder && ta.placeholder.indexOf('headache') !== -1) {
+        if (ta.placeholder && ta.placeholder.indexOf('headache') !== -1) {{
           
-          // CRITICAL FIX: Force state mutation into React's setter logic directly
+          /* Native Value Setter Mutation Interceptor Override */
           var nativeInputValueSetter = Object.getOwnPropertyDescriptor(
             window.parent.HTMLTextAreaElement.prototype, 'value'
           ).set;
           nativeInputValueSetter.call(ta, val);
           
-          // Dispatch input event so Streamlit components re-render immediately
+          /* Fire structural dispatch lifecycle sync hook */
           ta.dispatchEvent(new window.parent.Event('input', {{ bubbles: true }}));
           
           if(val.length > 0) {{
@@ -748,7 +748,7 @@ def render_quick_select_symptoms(lang: str) -> None:
              ta.style.borderLeft = "3px solid #58a6ff";
           }}
           break;
-        }
+        }}
       }
     }} catch(e) {{}}
   }}
@@ -765,22 +765,22 @@ def render_quick_select_symptoms(lang: str) -> None:
     syncToStreamlit();
   }}
 
-  // Setup structural observer link to synchronize on raw click/touch events too
-  try {
+  /* Hook lifecycle boundary events to register manual changes */
+  try {{
     var doc = window.parent.document;
     var ta = doc.querySelector('textarea[placeholder*="headache"]');
-    if (ta && !ta.dataset.observed) {
+    if (ta && !ta.dataset.observed) {{
       ta.dataset.observed = "true";
-      var eventSync = function() {
+      var eventSync = function() {{
         var items = ta.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
         selected = items;
         renderPills();
-      };
+      }};
       ta.addEventListener('input', eventSync);
       ta.addEventListener('blur', eventSync);
       ta.addEventListener('touchend', eventSync);
-    }
-  } catch(e) {}
+    }}
+  }} catch(e) {{}}
 
   renderTabs();
   renderPills();
