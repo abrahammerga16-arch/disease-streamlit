@@ -733,20 +733,12 @@ def render_quick_select_symptoms(lang: str) -> None:
         var ta = areas[i];
         if (ta.placeholder && ta.placeholder.indexOf('headache') !== -1) {{
           
-          /* Native Value Setter Mutation Interceptor Override */
           var nativeInputValueSetter = Object.getOwnPropertyDescriptor(
             window.parent.HTMLTextAreaElement.prototype, 'value'
           ).set;
           nativeInputValueSetter.call(ta, val);
           
-          /* Fire structural dispatch lifecycle sync hook */
           ta.dispatchEvent(new window.parent.Event('input', {{ bubbles: true }}));
-          
-          if(val.length > 0) {{
-             ta.style.borderLeft = "1px solid #58a6ff";
-          }} else {{
-             ta.style.borderLeft = "3px solid #58a6ff";
-          }}
           break;
         }}
       }}
@@ -765,7 +757,6 @@ def render_quick_select_symptoms(lang: str) -> None:
     syncToStreamlit();
   }}
 
-  /* Hook lifecycle boundary events to register manual changes */
   try {{
     var doc = window.parent.document;
     var ta = doc.querySelector('textarea[placeholder*="headache"]');
@@ -778,7 +769,6 @@ def render_quick_select_symptoms(lang: str) -> None:
       }};
       ta.addEventListener('input', eventSync);
       ta.addEventListener('blur', eventSync);
-      ta.addEventListener('touchend', eventSync);
     }}
   }} catch(e) {{}}
 
@@ -1006,6 +996,8 @@ def main():
         st.session_state["prediction_result"] = None
     if "prediction_error" not in st.session_state:
         st.session_state["prediction_error"] = None
+    if "symptoms_text" not in st.session_state:
+        st.session_state["symptoms_text"] = ""
 
     # ── Main Header
     st.markdown(f"""
@@ -1023,31 +1015,11 @@ def main():
         
         render_quick_select_symptoms(lang)
         
-        # Core Text Input Field Area Definitions
+        # FIXED: Core text area definition uses session state directly
         user_input = st.text_area(
             "Or type symptoms manually:",
             key="symptoms_text",
             placeholder="e.g., headache, fever, chills"
-        )
-        
-        # Client-side listener to sync state immediately on manual interaction boundaries
-        components.html(
-            """
-            <script>
-                var doc = window.parent.document;
-                var textArea = doc.querySelector('textarea[placeholder*="headache"]');
-                if (textArea) {
-                    var triggerSync = function() {
-                        textArea.dispatchEvent(new window.parent.Event('input', { bubbles: true }));
-                    };
-                    textArea.addEventListener('focus', triggerSync);
-                    textArea.addEventListener('click', triggerSync);
-                    textArea.addEventListener('touchstart', triggerSync);
-                }
-            </script>
-            """,
-            height=0,
-            width=0,
         )
         
         # Action Buttons Layout Matrix
@@ -1055,13 +1027,16 @@ def main():
         
         with col1:
             if st.button(t("Predict & Recommend", lang)):
-                if not user_input.strip():
+                # FIXED: Read direct context explicitly from st.session_state to catch typed variables
+                raw_text_value = st.session_state.get("symptoms_text", "").strip()
+                
+                if not raw_text_value:
                     st.warning(t("Please enter symptoms.", lang))
                     st.session_state["prediction_result"] = None
                     st.session_state["prediction_error"] = None
                 else:
                     res, err_msg = integrated_prediction_system(
-                        user_input, age, role, user_id, lang,
+                        raw_text_value, age, role, user_id, lang,
                         main_df, le, svc, dt,
                         desc_map, diets_map, meds_map, precs_map, workout_map,
                         vec, sym_matrix
