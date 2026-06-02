@@ -195,24 +195,53 @@ div[data-baseweb="select"]>div:focus-within{
 }
 .stButton>button:active{ transform:translateY(0); }
 
-/* pill-style buttons for quick-select */
-button.pill-btn{
-  background:rgba(33,38,45,.8) !important;
-  border:1.5px solid rgba(88,166,255,.25) !important;
-  color:#8b949e !important; border-radius:20px !important;
-  padding:5px 14px !important; font-size:.82rem !important;
-  font-weight:600 !important; cursor:pointer;
-  transition:all .25s cubic-bezier(.4,0,.2,1) !important;
+/* ── Category filter buttons */
+.qs-cat-row div[data-testid="stButton"] button {
+  background: rgba(22,27,34,.9) !important;
+  border: 1px solid rgba(88,166,255,.2) !important;
+  color: #8b949e !important;
+  border-radius: 20px !important;
+  font-size: .78rem !important;
+  font-weight: 600 !important;
+  padding: 5px 14px !important;
+  height: auto !important; min-height: 30px !important;
+  transition: all .2s ease !important;
+  box-shadow: none !important; transform: none !important;
 }
-button.pill-btn:hover{
-  border-color:#58a6ff !important; color:#58a6ff !important;
-  background:rgba(88,166,255,.1) !important;
+.qs-cat-row div[data-testid="stButton"] button:hover {
+  background: rgba(88,166,255,.12) !important;
+  border-color: #58a6ff !important;
+  color: #58a6ff !important;
+  transform: none !important; box-shadow: none !important;
 }
-button.pill-btn.selected{
-  background:linear-gradient(135deg,#1f6feb,#388bfd) !important;
-  border-color:transparent !important; color:#fff !important;
-  box-shadow:0 4px 12px rgba(31,111,235,.35) !important;
-  animation:pillPop .25s ease-out;
+.qs-cat-row .cat-active div[data-testid="stButton"] button {
+  background: rgba(88,166,255,.18) !important;
+  border-color: #58a6ff !important; color: #58a6ff !important;
+  box-shadow: 0 0 0 1px rgba(88,166,255,.3) !important;
+}
+
+/* ── Symptom pill buttons */
+.qs-pill-row div[data-testid="stButton"] button {
+  background: rgba(22,27,34,.85) !important;
+  border: 1px solid rgba(88,166,255,.18) !important;
+  color: #8b949e !important;
+  border-radius: 18px !important;
+  font-size: .78rem !important; font-weight: 500 !important;
+  padding: 4px 10px !important;
+  height: auto !important; min-height: 28px !important;
+  transition: all .2s ease !important;
+  box-shadow: none !important; transform: none !important;
+}
+.qs-pill-row div[data-testid="stButton"] button:hover {
+  background: rgba(88,166,255,.1) !important;
+  border-color: #58a6ff !important; color: #79c0ff !important;
+  transform: none !important; box-shadow: none !important;
+}
+.qs-pill-row .pill-active div[data-testid="stButton"] button {
+  background: linear-gradient(135deg,rgba(31,111,235,.75),rgba(56,139,253,.65)) !important;
+  border-color: #388bfd !important; color: #fff !important;
+  box-shadow: 0 2px 8px rgba(31,111,235,.35) !important;
+  font-weight: 600 !important;
 }
 
 /* Result cards */
