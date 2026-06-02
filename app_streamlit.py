@@ -140,6 +140,7 @@ div[data-baseweb="select"] > div:focus-within {
     font-size: 0.95rem;
     position: relative;
     overflow: hidden;
+    width: 100%;
 }
 .stButton > button:hover {
     transform: translateY(-2px);
@@ -147,6 +148,18 @@ div[data-baseweb="select"] > div:focus-within {
     background: linear-gradient(135deg, #2ea043 0%, #3fb950 100%);
 }
 .stButton > button:active { transform: translateY(0); }
+
+/* Custom Secondary Clear Button Styling */
+div.clear-btn-container > div > button {
+    background: linear-gradient(135deg, #21262d 0%, #30363d 100%) !important;
+    color: #f85149 !important;
+    border: 1px solid rgba(248, 81, 73, 0.4) !important;
+}
+div.clear-btn-container > div > button:hover {
+    background: linear-gradient(135deg, rgba(248, 81, 73, 0.1) 0%, rgba(248, 81, 73, 0.2) 100%) !important;
+    box-shadow: 0 8px 24px rgba(248, 81, 73, 0.2) !important;
+    border-color: #f85149 !important;
+}
 
 /* ── Result cards */
 .result-card {
@@ -312,6 +325,8 @@ AMHARIC = {
     "Predict & Recommend": "መተንበይ እና መምከር",
     "Get Plan": "እቅድ ያግኙ",
     "Ask Bot": "ቦት ይጠይቁ",
+    "Clear Symptoms": "ምልክቶችን አጽዳ",
+    "Clear Diagnosis": "ውጤቶችን አጽዳ",
     "Please enter symptoms.": "እባክዎ ምልክቶችን ያስገቡ።",
     "Please enter a query.": "እባክዎ ጥያቄ ያስገቡ።",
     "medical_advice_disclaimer":
@@ -432,19 +447,8 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 # ──────────────────────────────────────────────
 # V2 QUICK-SELECT SYMPTOM WIDGET
-# Category tab strip + scrollable pill chips
-# Matches healthcare_dashboard_v2.html exactly
 # ──────────────────────────────────────────────
 def render_quick_select_symptoms(lang: str) -> None:
-    """
-    Renders a v2-style quick-select widget:
-      • Category tab buttons across the top
-      • Scrollable symptom pill chips below
-      • Selected pills turn teal with ✓ checkmark via stable aria-label targeting
-      • Selections are written into st.session_state['symptoms_text']
-        via a postMessage bridge so the textarea stays in sync
-    """
-
     CATEGORIES_EN = {
         "🌡️ General":       ["fever", "fatigue", "weakness", "chills", "sweating",
                               "weight gain", "malaise", "lethargy", "weight loss",
@@ -745,7 +749,6 @@ def render_quick_select_symptoms(lang: str) -> None:
 </body>
 </html>
 """
-
     components.html(html_code, height=220, scrolling=False)
 
 
@@ -852,7 +855,6 @@ def integrated_prediction_system(
     )
 
     preds = []
-
     for model, name in [(svc_model, "SVC"), (dt_model, "Decision Tree")]:
         try:
             proba    = model.predict_proba(feature_vector)[0]
@@ -920,7 +922,7 @@ def health_recommender(
 
 
 # ──────────────────────────────────────────────
-# APP MAIN ENGINE / RENDER ENGINE
+# APP MAIN ENGINE
 # ──────────────────────────────────────────────
 def main():
     missing = check_files()
@@ -928,7 +930,6 @@ def main():
         st.error(f"Missing required execution dependencies: {missing}")
         return
 
-    # Load shared memory variables
     main_df, desc_map, diets_map, meds_map, precs_map, workout_map = load_data()
     svc, dt, le = load_models()
     
@@ -947,7 +948,13 @@ def main():
         
     age = st.sidebar.number_input("Biological Evaluation Age", min_value=0, max_value=120, value=25)
 
-    # ── Main Shell Header Frame
+    # Initialize Prediction State
+    if "prediction_result" not in st.session_state:
+        st.session_state["prediction_result"] = None
+    if "prediction_error" not in st.session_state:
+        st.session_state["prediction_error"] = None
+
+    # ── Main Header
     st.markdown(f"""
     <div class="main-header">
         <h1 class="main-header-title">Integrated Healthcare Dashboard</h1>
@@ -955,60 +962,85 @@ def main():
     </div>
     """, unsafe_allow_html=True)
 
-    # View Core Router Tabs
     tab1, tab2, tab3 = st.tabs([t("Disease Predictor", lang), t("Health Recommender", lang), t("Healthcare Chatbot", lang)])
 
     # TAB 1: DISEASE PREDICTOR INTERACTION
     with tab1:
         st.markdown(f'<div class="section-header">{t("Disease Predictor", lang)}</div>', unsafe_allow_html=True)
         
-        # Render the quick selector UI injection
         render_quick_select_symptoms(lang)
         
-        # The dynamic target textarea connected to JS sync script
         user_input = st.text_area(
             "Or type symptoms manually:",
             key="symptoms_text",
             placeholder="e.g., headache, fever, chills"
         )
         
-        if st.button(t("Predict & Recommend", lang)):
-            if not user_input.strip():
-                st.warning(t("Please enter symptoms.", lang))
-            else:
-                res, err_msg = integrated_prediction_system(
-                    user_input, age, role, user_id, lang,
-                    main_df, le, svc, dt,
-                    desc_map, diets_map, meds_map, precs_map, workout_map,
-                    vec, sym_matrix
-                )
-                if err_msg:
-                    st.markdown(f'<div class="access-denied">{err_msg}</div>', unsafe_allow_html=True)
-                elif res:
-                    st.markdown("### System Diagnosis Results")
-                    
-                    # Target badging frame
-                    st.markdown(f'**Matched Symptoms Context:** {", ".join(res["matched_symptoms"])}')
-                    
-                    # Pill layout render strings
-                    badge_html = ""
-                    for p in res["predicted_conditions"]:
-                        badge_html += f'<div class="disease-badge">{p["disease"]} <span class="conf-pill">{p["confidence"]}</span></div>'
-                    st.markdown(badge_html, unsafe_allow_html=True)
-                    
-                    # Structured Context Cards Breakdown
-                    st.markdown("---")
-                    for title, content in res["recommendations"].items():
-                        st.markdown(f"""
-                        <div class="result-card">
-                            <h4>{title}</h4>
-                            <p>{content if not isinstance(content, list) else ", ".join(content)}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                    if res["advice"]:
-                        st.markdown(f'<div class="advice-banner">{res["advice"]}</div>', unsafe_allow_html=True)
-                        st.caption(f'_{t("medical_advice_disclaimer", lang)}_')
+        # Action Buttons Layout Matrix
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button(t("Predict & Recommend", lang)):
+                if not user_input.strip():
+                    st.warning(t("Please enter symptoms.", lang))
+                    st.session_state["prediction_result"] = None
+                    st.session_state["prediction_error"] = None
+                else:
+                    res, err_msg = integrated_prediction_system(
+                        user_input, age, role, user_id, lang,
+                        main_df, le, svc, dt,
+                        desc_map, diets_map, meds_map, precs_map, workout_map,
+                        vec, sym_matrix
+                    )
+                    st.session_state["prediction_result"] = res
+                    st.session_state["prediction_error"] = err_msg
+
+        with col2:
+            st.markdown('<div class="clear-btn-container">', unsafe_allow_html=True)
+            if st.button(t("Clear Symptoms", lang), key="clear_symptoms_btn"):
+                st.session_state["symptoms_text"] = ""
+                st.session_state["prediction_result"] = None
+                st.session_state["prediction_error"] = None
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # ── Diagnosis Display Workspace
+        if st.session_state["prediction_error"]:
+            st.markdown(f'<div class="access-denied">{st.session_state["prediction_error"]}</div>', unsafe_allow_html=True)
+            
+        elif st.session_state["prediction_result"]:
+            res = st.session_state["prediction_result"]
+            
+            st.markdown("---")
+            st.markdown("### System Diagnosis Results")
+            
+            st.markdown(f'**Matched Symptoms Context:** {", ".join(res["matched_symptoms"])}')
+            
+            badge_html = ""
+            for p in res["predicted_conditions"]:
+                badge_html += f'<div class="disease-badge">{p["disease"]} <span class="conf-pill">{p["confidence"]}</span></div>'
+            st.markdown(badge_html, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            for title, content in res["recommendations"].items():
+                st.markdown(f"""
+                <div class="result-card">
+                    <h4>{title}</h4>
+                    <p>{content if not isinstance(content, list) else ", ".join(content)}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            if res["advice"]:
+                st.markdown(f'<div class="advice-banner">{res["advice"]}</div>', unsafe_allow_html=True)
+                st.caption(f'_{t("medical_advice_disclaimer", lang)}_')
+                
+            # Clear Prediction Results Section
+            st.markdown('<div class="clear-btn-container" style="margin-top: 20px; max-width: 200px;">', unsafe_allow_html=True)
+            if st.button(t("Clear Diagnosis", lang), key="clear_diagnosis_btn"):
+                st.session_state["prediction_result"] = None
+                st.session_state["prediction_error"] = None
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
     # TAB 2: EXPLICIT ADVICE INTERACTION ROUTER
     with tab2:
@@ -1038,8 +1070,6 @@ def main():
     # TAB 3: NLP KNOWLEDGE ENHANCED SIMULATOR 
     with tab3:
         st.markdown(f'<div class="section-header">{t("Healthcare Chatbot", lang)}</div>', unsafe_allow_html=True)
-        
-        # Build mini text vector pool to represent local tabular dataset responses
         disease_descriptions = [desc_map.get(clean_disease_name(d), "") for d in disease_names]
         
         bot_query = st.text_input("Inquire regarding specific biological conditions, treatments, or symptoms:")
@@ -1052,8 +1082,6 @@ def main():
                     st.markdown(f'<div class="access-denied">{err_msg}</div>', unsafe_allow_html=True)
                 else:
                     q_vec = vec.transform([bot_query.lower()]).toarray()
-                    
-                    # Search symptoms matrix + disease names matrix profiles via TF-IDF cosine distance tracking
                     s_texts = [s.replace("_", " ") for s in symptom_list]
                     d_texts = [d.replace("_", " ") for d in disease_names]
                     
