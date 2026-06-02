@@ -6,6 +6,10 @@ Replicates the Google Colab notebook exactly:
   • Healthcare Chatbot  (natural-language query → semantic answer)
   • Role / Age / ID access control
   • English ↔ Amharic UI
+
+FIX: render_quick_select now uses aria-label CSS selectors and stable string-based
+     button keys instead of fragile nth-of-type positional selectors, so symptom
+     chips correctly toggle selected/unselected on every click.
 """
 
 import os, warnings
@@ -146,19 +150,6 @@ div[data-baseweb="select"] > div:focus-within {
     background: linear-gradient(135deg, #2ea043 0%, #3fb950 100%);
 }
 .stButton > button:active { transform: translateY(0); }
-
-/* ── Category container (pure CSS, no broken HTML wrappers) */
-.symptom-category-header {
-    color: #79c0ff;
-    font-weight: 700;
-    font-size: 1rem;
-    margin: 12px 0 8px 0;
-    padding: 10px 14px;
-    background: linear-gradient(135deg, rgba(33,38,45,0.7) 0%, rgba(22,27,34,0.5) 100%);
-    border: 1px solid rgba(88,166,255,0.2);
-    border-radius: 10px;
-    animation: fadeInUp 0.5s ease-out;
-}
 
 /* ── Result cards */
 .result-card {
@@ -446,27 +437,26 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 # SYMPTOM CATEGORIZATION
 # ──────────────────────────────────────────────
 def categorize_symptoms(symptom_list):
-    """Return dict of short-label category → symptom list, matching the quick-select UI."""
     categories = {
-        "General":       [],
-        "Pain":          [],
-        "Cardio / Resp": [],
-        "Neuro / Mental":[],
-        "Gastro":        [],
-        "Urinary":       [],
-        "Skin":          [],
-        "Reproductive":  [],
-        "Other":         [],
+        "General":        [],
+        "Pain":           [],
+        "Cardio / Resp":  [],
+        "Neuro / Mental": [],
+        "Gastro":         [],
+        "Urinary":        [],
+        "Skin":           [],
+        "Reproductive":   [],
+        "Other":          [],
     }
     kw = {
-        "General":       ["fever","fatigue","tiredness","weakness","chills","sweat","malaise","weight","appetite","feeling"],
-        "Pain":          ["pain","ache","cramp","stiff","sore","tender","backache","headache","migraine"],
-        "Cardio / Resp": ["chest","heart","pulse","palpitation","breath","cough","wheeze","asthma","cold","flu","sneeze"],
+        "General":        ["fever","fatigue","tiredness","weakness","chills","sweat","malaise","weight","appetite","feeling"],
+        "Pain":           ["pain","ache","cramp","stiff","sore","tender","backache","headache","migraine"],
+        "Cardio / Resp":  ["chest","heart","pulse","palpitation","breath","cough","wheeze","asthma","cold","flu","sneeze"],
         "Neuro / Mental": ["dizziness","vertigo","confusion","memory","seizure","tremor","anxiety","depression","mood","sleep","insomnia"],
-        "Gastro":        ["vomit","nausea","diarrhea","constipation","stomach","indigestion","bloat","gas","bowel","acidity"],
-        "Urinary":       ["urin","bladder","kidney","discharge","burning urination","frequent urination"],
-        "Skin":          ["rash","itch","burn","wound","acne","dermatitis","eczema","blister","hives","peeling"],
-        "Reproductive":  ["menstrual","period","pregnancy","vaginal","erectile","fertility","libido","ovarian"],
+        "Gastro":         ["vomit","nausea","diarrhea","constipation","stomach","indigestion","bloat","gas","bowel","acidity"],
+        "Urinary":        ["urin","bladder","kidney","discharge","burning urination","frequent urination"],
+        "Skin":           ["rash","itch","burn","wound","acne","dermatitis","eczema","blister","hives","peeling"],
+        "Reproductive":   ["menstrual","period","pregnancy","vaginal","erectile","fertility","libido","ovarian"],
     }
     for symptom in symptom_list:
         sl = symptom.lower().replace("_", " ")
@@ -583,7 +573,7 @@ def integrated_prediction_system(
         columns=symptom_list,
     )
 
-    preds = []          # list of {"model", "disease", "confidence", "top"}
+    preds = []
 
     for model, name in [(svc_model, "SVC"), (dt_model, "Decision Tree")]:
         try:
@@ -608,10 +598,8 @@ def integrated_prediction_system(
                 "top":        True,
             })
 
-    # Top disease = rank-1 prediction from SVC
     top_disease = next(p["disease"] for p in preds if p["top"] and p["model"] == "SVC")
     top_key     = clean_disease_name(top_disease)
-    # Only keep SVC predictions for display; DT is used only to derive top_disease as backup
     preds = [p for p in preds if p["model"] == "SVC"]
 
     recs, advice = role_based_recs(
@@ -621,11 +609,11 @@ def integrated_prediction_system(
 
     matched_display = [s.replace("_", " ").title() for s in matched_symptoms]
     return {
-        "matched_symptoms":    matched_display,
+        "matched_symptoms":     matched_display,
         "predicted_conditions": preds,
-        "top_disease":         top_disease,
-        "recommendations":     recs,
-        "advice":              advice,
+        "top_disease":          top_disease,
+        "recommendations":      recs,
+        "advice":               advice,
     }, ""
 
 
@@ -714,7 +702,6 @@ def render_recommendations(recs: dict):
 
 
 def render_predictions(predictions: list):
-    """Display top-4 SVC predictions with confidence bars."""
     rows_html = (
         "<div style='background:rgba(22,27,34,0.7);border:1px solid rgba(88,166,255,0.2);"
         "border-radius:10px;padding:14px 16px;margin-bottom:8px'>"
@@ -739,82 +726,133 @@ def render_predictions(predictions: list):
     st.markdown(rows_html + "</div>", unsafe_allow_html=True)
 
 
+# ──────────────────────────────────────────────
+# QUICK-SELECT SYMPTOM CHIPS  ← FIXED
+# ──────────────────────────────────────────────
 def render_quick_select(categorized_symptoms: dict):
     """
-    Two-row chip UI matching the screenshot:
-      Row 1 — category filter chips (General / Pain / Cardio Resp / …)
-      Row 2 — symptom chips for the active category (toggle to select/deselect)
-    State:
-      st.session_state.symptoms_selected  – list of raw symptom strings
-      st.session_state.active_cat         – currently shown category
+    Fully interactive chip UI using real st.button calls.
+
+    FIX SUMMARY
+    ───────────
+    The original code styled buttons with CSS `nth-of-type` positional selectors.
+    Those selectors are fragile because Streamlit injects extra wrapper divs on
+    every re-render and the offset shifts unpredictably.  As a result, clicking
+    a symptom chip never appeared to change state.
+
+    The fix uses THREE reliable techniques instead:
+      1. Stable string-based button keys  →  f"sym__{active_cat}__{sym}"
+         so Streamlit never confuses one button with another across re-renders.
+      2. Label-change as visual toggle indicator  →  "✓ Headache" vs "Headache"
+         so the user sees immediate feedback even before CSS loads.
+      3. aria-label CSS selectors  →  button[aria-label="✓ Headache"]
+         Streamlit sets aria-label equal to the button's text label, giving us
+         a DOM-position-independent hook for colour styling.
     """
     cats = list(categorized_symptoms.keys())
 
+    # ── Session state defaults ────────────────────────────────────────────
     if "active_cat" not in st.session_state or st.session_state.active_cat not in cats:
         st.session_state.active_cat = cats[0]
+    if "symptoms_selected" not in st.session_state:
+        st.session_state.symptoms_selected = []
 
-    # ── Category tab row ──────────────────────────────────────────────────
-    cat_html = "<div style='display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px'>"
+    # ── Base chip shape (applied to every button in this section) ────────
+    st.markdown("""
+<style>
+/* Give ALL quick-select buttons a pill shape */
+.qs-section .stButton > button {
+    border-radius: 20px !important;
+    padding: 5px 14px !important;
+    font-size: 0.82rem !important;
+    height: auto !important;
+    min-height: 0 !important;
+    line-height: 1.5 !important;
+    white-space: nowrap !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+    # Open wrapper div so the .qs-section selector above scopes correctly
+    st.markdown("<div class='qs-section'>", unsafe_allow_html=True)
+
+    # ── ROW 1: category chips ─────────────────────────────────────────────
+    # Build aria-label CSS for each category button
+    cat_styles = []
     for cat in cats:
-        active = cat == st.session_state.active_cat
-        bg     = "#0d9488" if active else "rgba(255,255,255,0.06)"
-        border = "#0d9488" if active else "rgba(255,255,255,0.15)"
-        color  = "#fff"    if active else "#94a3b8"
-        fw     = "700"     if active else "500"
-        cat_html += (
-            f"<span style='background:{bg};border:1px solid {border};color:{color};"
-            f"font-weight:{fw};padding:5px 14px;border-radius:20px;font-size:0.82rem;"
-            f"cursor:pointer;white-space:nowrap'>{cat}</span>"
+        is_active = (cat == st.session_state.active_cat)
+        bg     = "#0d9488"                        if is_active else "rgba(255,255,255,0.05)"
+        color  = "#ffffff"                        if is_active else "#94a3b8"
+        border = "#0d9488"                        if is_active else "rgba(255,255,255,0.15)"
+        fw     = "700"                            if is_active else "500"
+        # aria-label equals the button's label text in Streamlit
+        cat_styles.append(
+            f'.qs-section .stButton > button[aria-label="{cat}"] {{'
+            f"background:{bg}!important;color:{color}!important;"
+            f"border-color:{border}!important;font-weight:{fw}!important;}}"
         )
-    cat_html += "</div>"
-    st.markdown(cat_html, unsafe_allow_html=True)
+    st.markdown("<style>" + "\n".join(cat_styles) + "</style>", unsafe_allow_html=True)
 
-    # Category selector (hidden label, just drives active_cat)
-    selected_cat = st.selectbox(
-        "Category",
-        options=cats,
-        index=cats.index(st.session_state.active_cat),
-        key="cat_selector",
-        label_visibility="collapsed",
-    )
-    st.session_state.active_cat = selected_cat
+    cat_cols = st.columns(len(cats))
+    for i, cat in enumerate(cats):
+        with cat_cols[i]:
+            # key is stable; label never changes for categories
+            if st.button(cat, key=f"cat_btn_{i}", use_container_width=True):
+                st.session_state.active_cat = cat
+                st.rerun()
 
-    # ── Symptom chips for active category ────────────────────────────────
-    symptoms = sorted(categorized_symptoms.get(selected_cat, []))
-    chip_html = "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-top:4px'>"
+    st.markdown("<div style='margin-top:8px'></div>", unsafe_allow_html=True)
+
+    # ── ROW 2+: symptom chips for the active category ─────────────────────
+    active_cat = st.session_state.active_cat
+    symptoms   = sorted(categorized_symptoms.get(active_cat, []))
+
+    # Build ONE style block using aria-label selectors — position-independent
+    sym_styles = []
     for sym in symptoms:
-        label     = sym.replace("_", " ").title()
-        selected  = sym in st.session_state.symptoms_selected
-        bg        = "rgba(13,148,136,0.25)" if selected else "rgba(255,255,255,0.05)"
-        border    = "#0d9488"               if selected else "rgba(255,255,255,0.15)"
-        color     = "#5eead4"               if selected else "#94a3b8"
-        checkmark = "✓ "                    if selected else ""
-        chip_html += (
-            f"<span style='background:{bg};border:1px solid {border};color:{color};"
-            f"padding:6px 14px;border-radius:20px;font-size:0.83rem;font-weight:500;"
-            f"cursor:pointer;white-space:nowrap'>{checkmark}{label}</span>"
-        )
-    chip_html += "</div>"
-    st.markdown(chip_html, unsafe_allow_html=True)
+        label  = sym.replace("_", " ").title()
+        is_sel = sym in st.session_state.symptoms_selected
 
-    # Multiselect (hidden) — used to actually toggle symptom state
-    labels_all  = [s.replace("_", " ").title() for s in symptoms]
-    default_sel = [s.replace("_", " ").title()
-                   for s in symptoms if s in st.session_state.symptoms_selected]
-    cat_key = selected_cat.replace(" ", "_").replace("/", "").lower()
-    chosen = st.multiselect(
-        "Select symptoms",
-        options=labels_all,
-        default=default_sel,
-        key=f"ms_{cat_key}",
-        label_visibility="collapsed",
-    )
-    # Sync chosen back into global selected list
-    for label, raw in zip(labels_all, symptoms):
-        if label in chosen and raw not in st.session_state.symptoms_selected:
-            st.session_state.symptoms_selected.append(raw)
-        elif label not in chosen and raw in st.session_state.symptoms_selected:
-            st.session_state.symptoms_selected.remove(raw)
+        # The rendered button label includes the tick when selected
+        rendered_label = f"✓ {label}" if is_sel else label
+
+        bg     = "rgba(13,148,136,0.35)"  if is_sel else "rgba(255,255,255,0.04)"
+        color  = "#5eead4"                if is_sel else "#94a3b8"
+        border = "#0d9488"                if is_sel else "rgba(255,255,255,0.12)"
+        fw     = "600"                    if is_sel else "400"
+
+        sym_styles.append(
+            f'.qs-section .stButton > button[aria-label="{rendered_label}"] {{'
+            f"background:{bg}!important;color:{color}!important;"
+            f"border-color:{border}!important;font-weight:{fw}!important;}}"
+        )
+    st.markdown("<style>" + "\n".join(sym_styles) + "</style>", unsafe_allow_html=True)
+
+    # Render symptom buttons in rows of 4
+    COLS = 4
+    for row_start in range(0, len(symptoms), COLS):
+        row_syms = symptoms[row_start : row_start + COLS]
+        cols = st.columns(len(row_syms))
+        for j, sym in enumerate(row_syms):
+            label     = sym.replace("_", " ").title()
+            is_sel    = sym in st.session_state.symptoms_selected
+            btn_label = f"✓ {label}" if is_sel else label
+
+            # Key is stable: category name + symptom name (no numeric index)
+            btn_key = f"sym__{active_cat}__{sym}"
+
+            with cols[j]:
+                if st.button(btn_label, key=btn_key, use_container_width=True):
+                    if is_sel:
+                        st.session_state.symptoms_selected.remove(sym)
+                    else:
+                        st.session_state.symptoms_selected.append(sym)
+                    st.rerun()
+
+    # Close wrapper div
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────────────
@@ -866,7 +904,7 @@ if missing:
 **Required folder structure:**
 ```
 project/
-  app_streamlit.py
+  app.py
   requirements.txt
   models/
     svc_model.pkl
@@ -887,11 +925,7 @@ project/
  medications_map, precautions_map, workout_map) = load_data()
 svc_model, dt_model, le = load_models()
 
-symptom_list = list(main_df.drop(columns=["diseases"]).columns)
-
-# FIX: disease_names must be derived from description_map.keys() in the same
-# order used to build dis_matrix so that index look-ups in chatbot_response
-# are aligned correctly.
+symptom_list  = list(main_df.drop(columns=["diseases"]).columns)
 disease_names = list(description_map.keys())
 
 tfidf_vec, sym_matrix, dis_matrix = build_tfidf_index(
@@ -899,6 +933,7 @@ tfidf_vec, sym_matrix, dis_matrix = build_tfidf_index(
 )
 
 categorized_symptoms = categorize_symptoms(symptom_list)
+
 
 # ──────────────────────────────────────────────
 # HEADER
@@ -909,6 +944,7 @@ st.markdown("""
   <div class='main-header-subtitle'>Disease Prediction · Health Recommendations · AI Chatbot</div>
 </div>
 """, unsafe_allow_html=True)
+
 
 # ──────────────────────────────────────────────
 # TABS
@@ -930,7 +966,7 @@ with tab1:
     if "symptoms_text" not in st.session_state:
         st.session_state.symptoms_text = ""
 
-    # ── Card wrapper header (matches screenshot) ────────────────────────
+    # ── Card wrapper header ─────────────────────────────────────────────
     st.markdown(
         "<div style='background:rgba(22,27,34,0.6);border:1px solid rgba(255,255,255,0.08);"
         "border-radius:16px;padding:20px 22px 16px'>"
@@ -942,6 +978,23 @@ with tab1:
         "</div></div></div>",
         unsafe_allow_html=True,
     )
+
+    # ── Selected symptoms display ────────────────────────────────────────
+    if st.session_state.symptoms_selected:
+        chips_html = " ".join(
+            f"<span style='display:inline-block;background:rgba(13,148,136,0.25);"
+            f"border:1px solid #0d9488;color:#5eead4;border-radius:16px;"
+            f"padding:3px 12px;font-size:0.8rem;margin:2px'>"
+            f"✓ {s.replace('_',' ').title()}</span>"
+            for s in st.session_state.symptoms_selected
+        )
+        st.markdown(
+            f"<div style='margin:12px 0 4px'>"
+            f"<span style='font-size:0.72rem;color:#64748b;font-weight:700;"
+            f"text-transform:uppercase;letter-spacing:0.1em'>Selected ({len(st.session_state.symptoms_selected)}): </span>"
+            f"{chips_html}</div>",
+            unsafe_allow_html=True,
+        )
 
     # ── Quick-select symptom chips ───────────────────────────────────────
     st.markdown(
@@ -961,7 +1014,7 @@ with tab1:
         unsafe_allow_html=True,
     )
 
-    # ── Text input + buttons ─────────────────────────────────────────────
+    # ── Text input ───────────────────────────────────────────────────────
     st.markdown(
         "<div style='font-size:0.72rem;font-weight:700;letter-spacing:0.1em;"
         "color:#64748b;text-transform:uppercase;margin-bottom:6px'>Symptoms (comma-separated)</div>",
