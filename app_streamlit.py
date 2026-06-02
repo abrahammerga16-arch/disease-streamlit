@@ -6,6 +6,9 @@ Replicates the Google Colab notebook exactly:
   • Healthcare Chatbot  (natural-language query → semantic answer)
   • Role / Age / ID access control
   • English ↔ Amharic UI
+
+FIX: Quick-select symptoms now use st.multiselect (reliable Streamlit state)
+     instead of the broken JS DOM-injection bridge.
 """
 
 import os, json, warnings
@@ -13,7 +16,6 @@ import numpy as np
 import pandas as pd
 import joblib
 import streamlit as st
-import streamlit.components.v1 as components
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -127,6 +129,16 @@ div[data-baseweb="select"] > div:focus-within {
     box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2) !important;
     background: rgba(33, 38, 45, 1) !important;
 }
+
+/* ── Multiselect tags */
+[data-baseweb="tag"] {
+    background: linear-gradient(135deg, rgba(13,148,136,0.25), rgba(20,184,166,0.15)) !important;
+    border: 1px solid rgba(20,184,166,0.4) !important;
+    border-radius: 100px !important;
+    color: #14b8a6 !important;
+}
+[data-baseweb="tag"] span { color: #14b8a6 !important; font-weight: 600 !important; }
+[data-baseweb="tag"] button svg { fill: #14b8a6 !important; }
 
 /* ── Buttons */
 .stButton > button {
@@ -277,6 +289,19 @@ div[data-baseweb="select"] > div:focus-within {
 }
 .main-header-subtitle { color: #8b949e; font-size: 1rem; letter-spacing: 0.05em; margin-top: 8px; }
 
+/* ── Quick select info box */
+.qs-info {
+    background: rgba(13,148,136,0.08);
+    border: 1px solid rgba(20,184,166,0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: #14b8a6;
+    font-size: 0.82rem;
+    margin-bottom: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.04em;
+}
+
 hr { border-color: rgba(88,166,255,0.1) !important; }
 a  { color: #58a6ff; transition: color 0.3s ease; text-decoration: none; }
 a:hover { color: #79c0ff; text-decoration: underline; }
@@ -320,6 +345,9 @@ AMHARIC = {
         "🔒 የመድሃኒት መረጃ የተገደበ ነው። እባክዎ ፈቃድ ያለው ሐኪም ያማክሩ።",
     "ℹ️ Full medication details are only available to Doctors.":
         "ℹ️ ሙሉ የመድሃኒት መረጃ ለሐኪሞች ብቻ ይገኛል።",
+    "🔍 Quick-select symptoms:": "ምልክቶችን ፈጥኖ ይምረጡ:",
+    "Or type additional symptoms manually:": "ወይም ተጨማሪ ምልክቶችን ይተይቡ:",
+    "Click to search and select symptoms…": "ምልክቶችን ለማፈላለግ ጠቅ ያድርጉ…",
 }
 
 
@@ -431,52 +459,64 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 
 # ──────────────────────────────────────────────
-# V2 QUICK-SELECT SYMPTOM WIDGET
-# Category tab strip + scrollable pill chips
-# Matches healthcare_dashboard_v2.html exactly
+# SYMPTOM CATEGORIES for grouped quick-select
 # ──────────────────────────────────────────────
-def render_quick_select_symptoms(lang: str) -> None:
-    """
-    Renders a v2-style quick-select widget:
-      • Category tab buttons across the top
-      • Scrollable symptom pill chips below
-      • Selected pills turn teal with ✓ checkmark
-      • Selections are written into st.session_state['symptoms_text']
-        via a postMessage bridge so the textarea stays in sync
-    """
+SYMPTOM_CATEGORIES = {
+    "🌡️ General": [
+        "fever", "fatigue", "weakness", "chills", "sweating",
+        "weight_gain", "malaise", "lethargy", "weight_loss", "night_sweats",
+    ],
+    "🤕 Pain": [
+        "headache", "back_pain", "chest_pain", "joint_pain",
+        "muscle_pain", "abdominal_pain", "neck_pain", "knee_pain",
+        "shoulder_pain", "throat_pain",
+    ],
+    "🫀 Cardio/Resp": [
+        "cough", "breathlessness", "chest_tightness",
+        "palpitations", "fast_heart_rate",
+        "difficulty_in_breathing", "wheezing", "sneezing",
+        "runny_nose", "congestion",
+    ],
+    "🧠 Neuro/Mental": [
+        "dizziness", "confusion", "anxiety", "depression",
+        "insomnia", "loss_of_memory", "seizures", "tremors",
+        "fainting", "numbness", "blurred_and_distorted_vision",
+    ],
+    "🤢 Gastro": [
+        "nausea", "vomiting", "diarrhoea", "constipation",
+        "stomach_bleeding", "loss_of_appetite", "acidity",
+        "indigestion", "passage_of_gases", "abdominal_pain",
+    ],
+    "🩺 Skin": [
+        "skin_rash", "itching", "nodal_skin_eruptions", "skin_dryness",
+        "inflammatory_nails", "yellowish_skin", "skin_lesion",
+        "dischromic_patches", "pus_filled_pimples",
+    ],
+    "👁️ Eye/Ear/Nose": [
+        "redness_of_eyes", "pain_behind_the_eyes", "blurred_and_distorted_vision",
+        "runny_nose", "congestion", "loss_of_hearing", "watering_from_eyes",
+    ],
+    "🦴 Musculo": [
+        "joint_pain", "muscle_weakness", "swelling_joints",
+        "movement_stiffness", "cramps", "back_pain", "hip_joint_pain",
+    ],
+    "🚻 Urinary": [
+        "frequent_urination", "burning_micturition",
+        "blood_in_urine", "spotting_urination", "dark_urine",
+    ],
+    "🔬 Other": [
+        "yellowish_skin", "hair_loss", "swollen_lymph_nodes",
+        "high_blood_pressure", "polyuria",
+    ],
+}
 
-    # ── symptom data (English + Amharic) ─────────────────────────────────
-    CATEGORIES_EN = {
-        "🌡️ General":       ["fever", "fatigue", "weakness", "chills", "sweating",
-                              "weight gain", "malaise", "lethargy", "weight loss",
-                              "night sweats"],
-        "🤕 Pain":           ["headache", "back pain", "chest pain", "joint pain",
-                              "muscle pain", "abdominal pain", "neck pain", "knee pain",
-                              "shoulder pain", "sore throat", "ear pain", "eye pain"],
-        "🫀 Cardio/Resp":    ["cough", "shortness of breath", "chest tightness",
-                              "palpitations", "irregular heartbeat",
-                              "difficulty breathing", "wheezing", "sneezing",
-                              "runny nose", "nasal congestion"],
-        "🧠 Neuro/Mental":   ["dizziness", "confusion", "anxiety", "depression",
-                              "insomnia", "memory loss", "seizures", "tremors",
-                              "fainting", "numbness", "blurred vision", "headache"],
-        "🤢 Gastro":         ["nausea", "vomiting", "diarrhea", "constipation",
-                              "stomach bloating", "loss of appetite", "heartburn",
-                              "indigestion", "blood in stool", "abdominal pain"],
-        "🩺 Skin":           ["skin rash", "itching", "acne", "skin dryness",
-                              "skin swelling", "jaundice", "skin lesion",
-                              "hives", "peeling skin"],
-        "👁️ Eye/Ear/Nose":  ["eye redness", "ear pain", "blurred vision",
-                              "runny nose", "nasal congestion", "hearing loss",
-                              "watery eyes", "sneezing"],
-        "🦴 Musculo":        ["joint stiffness", "muscle cramps", "swelling",
-                              "leg weakness", "arm weakness", "back stiffness",
-                              "peripheral edema"],
-        "🚻 Urinary":        ["frequent urination", "painful urination",
-                              "blood in urine", "urinary retention", "dark urine"],
-        "🔬 Other":          ["jaundice", "hair loss", "swollen lymph nodes",
-                              "high blood sugar", "low blood pressure"],
-    }
+
+def render_quick_select_symptoms(symptom_list: list, lang: str) -> list:
+    """
+    Reliable quick-select using Streamlit-native multiselect per category.
+    Returns list of selected symptom strings (underscore format).
+    """
+    is_am = lang.lower() == "amharic"
 
     CAT_AM = {
         "🌡️ General":      "አጠቃላይ",
@@ -491,287 +531,41 @@ def render_quick_select_symptoms(lang: str) -> None:
         "🔬 Other":         "ሌላ",
     }
 
-    SYMPTOM_AM = {
-        "fever": "ትኩሳት", "fatigue": "ድካም", "weakness": "ድክመት",
-        "chills": "ብርድ", "sweating": "ላብ", "weight gain": "ክብደት መጨመር",
-        "malaise": "ስሜት መጥፎ", "lethargy": "ዝላይ", "weight loss": "ክብደት መቀነስ",
-        "night sweats": "ሌሊት ላብ",
-        "headache": "ራስ ምታት", "back pain": "የጀርባ ህመም",
-        "chest pain": "የደረት ህመም", "joint pain": "የመገጣጠሚያ ህመም",
-        "muscle pain": "የጡንቻ ህመም", "abdominal pain": "የሆድ ህመም",
-        "neck pain": "የአንገት ህመም", "knee pain": "የጉልበት ህመም",
-        "shoulder pain": "የትከሻ ህመም", "sore throat": "ጉሮሮ ህመም",
-        "ear pain": "የጆሮ ህመም", "eye pain": "የዓይን ህመም",
-        "cough": "ሳል", "shortness of breath": "መተንፈስ ማጠር",
-        "chest tightness": "ደረት መጠበቅ", "palpitations": "ልብ ምት ስሜት",
-        "irregular heartbeat": "ያልተስተካከለ የልብ ምት",
-        "difficulty breathing": "ለመተንፈስ ችግር",
-        "wheezing": "ድምፅ ሲተነፍሱ", "sneezing": "ማስነጠስ",
-        "runny nose": "አፍንጫ ፍሳሽ", "nasal congestion": "አፍንጫ መዘጋት",
-        "dizziness": "ራስ ዞር", "confusion": "ግራ መጋባት",
-        "anxiety": "ጭንቀት", "depression": "ድብርት",
-        "insomnia": "እንቅልፍ ማጣት", "memory loss": "ትውስታ ማጣት",
-        "seizures": "ቅብጠት", "tremors": "መርበድበድ",
-        "fainting": "ዋዛ ማጣት", "numbness": "ደንዘዝ ስሜት",
-        "blurred vision": "ደበዘዘ ዕይታ",
-        "nausea": "ማቅለሽለሽ", "vomiting": "ማስታወክ", "diarrhea": "ተቅማጥ",
-        "constipation": "ሆድ መጠፍጠፍ", "stomach bloating": "ሆድ ማበጥ",
-        "loss of appetite": "የምግብ ፍቅር ማጣት", "heartburn": "ሆድ ማቃጠል",
-        "indigestion": "ምግብ አለመፈጨት", "blood in stool": "ሰገራ ውስጥ ደም",
-        "skin rash": "ቆዳ ሽፍታ", "itching": "ማሳከክ", "acne": "ሽፍታ",
-        "skin dryness": "ቆዳ ደረቅ", "skin swelling": "ቆዳ ማበጥ",
-        "jaundice": "ቢጫ በሽታ", "skin lesion": "ቆዳ ቁስለት",
-        "hives": "ድርቀት", "peeling skin": "ቆዳ መላጥ",
-        "eye redness": "ቀይ ዓይን", "hearing loss": "የመስሚያ ችግር",
-        "watery eyes": "እንባ ዓይን",
-        "joint stiffness": "መገጣጠሚያ ጥበቃ", "muscle cramps": "ጡንቻ ቁርጠት",
-        "swelling": "ማበጥ", "leg weakness": "የእግር ድክመት",
-        "arm weakness": "የእጅ ድክመት", "back stiffness": "ጀርባ ጥበቃ",
-        "peripheral edema": "ዳርቻ ማበጥ",
-        "frequent urination": "ተደጋጋሚ ሽንት",
-        "painful urination": "ሽንት ሲሸኑ ህመም",
-        "blood in urine": "ሽንት ውስጥ ደም",
-        "urinary retention": "ሽንት ማቆር", "dark urine": "ጨለማ ሽንት",
-        "hair loss": "ፀጉር መርገፍ", "swollen lymph nodes": "ሊምፍ ኖድ ማበጥ",
-        "high blood sugar": "ከፍተኛ የደም ስኳር",
-        "low blood pressure": "ዝቅተኛ የደም ግፊት",
-    }
+    label_qs = "🔍 Quick-select symptoms:" if not is_am else "ምልክቶችን ፈጥኖ ይምረጡ:"
+    st.markdown(
+        f"<div class='section-header'>{label_qs}</div>",
+        unsafe_allow_html=True,
+    )
 
-    is_am = lang.lower() == "amharic"
+    # Filter categories to only include symptoms that exist in the dataset
+    symptom_set = set(symptom_list)
+    all_selected = []
 
-    # Build JS-side data: { "Category Label": [{"en": ..., "display": ...}, ...] }
-    js_cats = {}
-    for cat_en, symptoms in CATEGORIES_EN.items():
-        label = CAT_AM.get(cat_en, cat_en) if is_am else cat_en
-        js_cats[label] = [
-            {
-                "en":      s,
-                "display": SYMPTOM_AM.get(s, s) if is_am else s.title(),
-            }
-            for s in symptoms
-        ]
+    # Lay out categories in 2-column grid
+    cat_keys = list(SYMPTOM_CATEGORIES.keys())
+    rows = [cat_keys[i:i+2] for i in range(0, len(cat_keys), 2)]
 
-    # Current selections so pills render as selected on first load
-    current_val = st.session_state.get("symptoms_text", "")
-    current_list = [s.strip().lower() for s in current_val.split(",") if s.strip()]
+    for row in rows:
+        cols = st.columns(len(row))
+        for col, cat_key in zip(cols, row):
+            with col:
+                cat_label = CAT_AM.get(cat_key, cat_key) if is_am else cat_key
+                # Only offer symptoms that actually exist in the dataset
+                available = [s for s in SYMPTOM_CATEGORIES[cat_key] if s in symptom_set]
+                if not available:
+                    continue
+                options_display = {s: s.replace("_", " ").title() for s in available}
+                selected = st.multiselect(
+                    cat_label,
+                    options=list(options_display.keys()),
+                    format_func=lambda x: options_display.get(x, x),
+                    key=f"qs_cat_{cat_key}",
+                    placeholder="Select…" if not is_am else "ይምረጡ…",
+                    label_visibility="visible",
+                )
+                all_selected.extend(selected)
 
-    quick_label = "ምልክቶችን ፈጥኖ ይምረጡ:" if is_am else "Quick-select symptoms:"
-    or_text     = "ወይም ምልክቶችን ይተይቡ"   if is_am else "or type symptoms"
-
-    html_code = f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{
-    background: transparent;
-    font-family: 'Poppins', 'DM Sans', -apple-system, sans-serif;
-    padding: 4px 2px 0;
-  }}
-
-  /* ── Quick-select label */
-  .qs-label {{
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: rgba(255,255,255,0.38);
-    font-weight: 600;
-    margin-bottom: 10px;
-  }}
-
-  /* ── Category tab strip */
-  .cat-tabs {{
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 12px;
-  }}
-  .cat-tab {{
-    padding: 5px 12px;
-    border-radius: 100px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.04);
-    color: rgba(255,255,255,0.5);
-    font-size: 0.72rem;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.18s ease;
-    font-family: inherit;
-  }}
-  .cat-tab:hover {{
-    border-color: #0d9488;
-    color: #14b8a6;
-    background: rgba(13,148,136,0.1);
-  }}
-  .cat-tab.active {{
-    background: rgba(13,148,136,0.2);
-    border-color: #14b8a6;
-    color: #14b8a6;
-  }}
-
-  /* ── Symptom pill container */
-  .pills-wrap {{
-    display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-    max-height: 118px;
-    overflow-y: auto;
-    padding: 2px 2px 6px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(13,148,136,0.45) transparent;
-  }}
-  .pills-wrap::-webkit-scrollbar {{
-    width: 4px;
-  }}
-  .pills-wrap::-webkit-scrollbar-track {{
-    background: transparent;
-  }}
-  .pills-wrap::-webkit-scrollbar-thumb {{
-    background: rgba(13,148,136,0.45);
-    border-radius: 4px;
-  }}
-
-  /* ── Individual pill */
-  .pill {{
-    padding: 5px 13px;
-    border-radius: 100px;
-    border: 1px solid rgba(255,255,255,0.14);
-    background: rgba(255,255,255,0.05);
-    color: rgba(255,255,255,0.75);
-    font-size: 0.77rem;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.16s ease;
-    user-select: none;
-    font-family: inherit;
-  }}
-  .pill:hover {{
-    border-color: #14b8a6;
-    color: #fff;
-    background: rgba(13,148,136,0.12);
-    transform: translateY(-1px);
-  }}
-  .pill.sel {{
-    background: rgba(13,148,136,0.25);
-    border-color: #14b8a6;
-    color: #14b8a6;
-    font-weight: 600;
-  }}
-
-  /* ── "or type symptoms" divider */
-  .or-div {{
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 14px 0 2px;
-    color: rgba(255,255,255,0.22);
-    font-size: 0.67rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }}
-  .or-div::before,
-  .or-div::after {{
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: rgba(255,255,255,0.08);
-  }}
-</style>
-</head>
-<body>
-
-<div class="qs-label">{quick_label}</div>
-<div class="cat-tabs" id="catTabs"></div>
-<div class="pills-wrap" id="pillsWrap"></div>
-<div class="or-div">{or_text}</div>
-
-<script>
-  var CATS    = {json.dumps(js_cats, ensure_ascii=False)};
-  var KEYS    = Object.keys(CATS);
-  var active  = KEYS[0];
-  var selected = {json.dumps(current_list)};
-
-  var tabsEl  = document.getElementById('catTabs');
-  var pillsEl = document.getElementById('pillsWrap');
-
-  function renderTabs() {{
-    tabsEl.innerHTML = '';
-    KEYS.forEach(function(k) {{
-      var b = document.createElement('button');
-      b.className = 'cat-tab' + (k === active ? ' active' : '');
-      b.textContent = k;
-      b.onclick = function() {{
-        active = k;
-        renderTabs();
-        renderPills();
-      }};
-      tabsEl.appendChild(b);
-    }});
-  }}
-
-  function renderPills() {{
-    pillsEl.innerHTML = '';
-    var items = CATS[active] || [];
-    items.forEach(function(item) {{
-      var en      = item.en;
-      var display = item.display;
-      var isSel   = selected.indexOf(en.toLowerCase()) !== -1;
-      var p = document.createElement('button');
-      p.className = 'pill' + (isSel ? ' sel' : '');
-      p.textContent = isSel ? '\u2713 ' + display : display;
-      p.onclick = (function(sym) {{
-        return function() {{ toggleSym(sym); }};
-      }})(en);
-      pillsEl.appendChild(p);
-    }});
-  }}
-
-  function syncToStreamlit() {{
-    var val = selected.join(', ');
-    // Find the Streamlit textarea by its aria-label and inject the value
-    try {{
-      var doc = window.parent.document;
-      // Target the textarea with the label "Or type symptoms manually:"
-      var areas = doc.querySelectorAll('textarea');
-      for (var i = 0; i < areas.length; i++) {{
-        var ta = areas[i];
-        // Match by placeholder text which is unique to our textarea
-        if (ta.placeholder && ta.placeholder.indexOf('headache') !== -1) {{
-          var nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-            window.parent.HTMLTextAreaElement.prototype, 'value'
-          ).set;
-          nativeInputValueSetter.call(ta, val);
-          ta.dispatchEvent(new window.parent.Event('input', {{ bubbles: true }}));
-          break;
-        }}
-      }}
-    }} catch(e) {{}}
-  }}
-
-  function toggleSym(sym) {{
-    var lo  = sym.toLowerCase();
-    var idx = selected.indexOf(lo);
-    if (idx === -1) {{
-      selected.push(lo);
-    }} else {{
-      selected.splice(idx, 1);
-    }}
-    renderPills();
-    syncToStreamlit();
-  }}
-
-  // Init
-  renderTabs();
-  renderPills();
-</script>
-</body>
-</html>
-"""
-
-    components.html(html_code, height=220, scrolling=False)
+    return all_selected
 
 
 # ──────────────────────────────────────────────
@@ -1132,25 +926,45 @@ tab1, tab2, tab3 = st.tabs([
 # ══════════════════════════════════════════════
 with tab1:
 
-    # Initialise session state
-    if "symptoms_text" not in st.session_state:
-        st.session_state.symptoms_text = ""
-
-    # ── V2 Quick-Select: category tabs + pill chips ──────────────────────
-    render_quick_select_symptoms(language)
+    # ── Quick-select: native Streamlit multiselect per category ──────────
+    # Returns list of symptom strings (underscore format, e.g. "back_pain")
+    quick_selected = render_quick_select_symptoms(symptom_list, language)
     # ────────────────────────────────────────────────────────────────────
+
+    # Show a summary of what's been quick-selected so far
+    if quick_selected:
+        pills_html = " ".join(
+            f"<span style='background:rgba(13,148,136,0.2);border:1px solid rgba(20,184,166,0.4);"
+            f"padding:3px 10px;border-radius:100px;font-size:0.8rem;color:#14b8a6;"
+            f"font-weight:600;margin:2px;display:inline-block'>"
+            f"✓ {s.replace('_',' ').title()}</span>"
+            for s in quick_selected
+        )
+        st.markdown(
+            f"<div style='margin:8px 0 4px'>{pills_html}</div>",
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
 
     col_a, col_b = st.columns([3, 1])
     with col_a:
+        # Pre-fill textarea with quick-selected symptoms so user can see / edit them
+        prefill_val = ", ".join(s.replace("_", " ") for s in quick_selected)
+        manual_label = (
+            "Or type additional symptoms manually:"
+            if language == "English"
+            else "ወይም ተጨማሪ ምልክቶችን ይተይቡ:"
+        )
         symptoms_input = st.text_area(
-            "Or type symptoms manually:",
-            value=st.session_state.symptoms_text,
+            manual_label,
+            value=prefill_val,
             placeholder="e.g. headache, fever, cough, vomiting",
-            height=100,
+            height=90,
             key="symptoms_textarea",
         )
     with col_b:
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<br><br>", unsafe_allow_html=True)
         predict_btn = st.button(
             t("Predict & Recommend", language),
             key="predict_btn",
@@ -1160,22 +974,25 @@ with tab1:
 
     if clear_btn:
         st.session_state.pop("predict_result", None)
-        st.session_state.symptoms_text = ""
+        # Clear all category multiselects
+        for cat_key in SYMPTOM_CATEGORIES:
+            key = f"qs_cat_{cat_key}"
+            if key in st.session_state:
+                del st.session_state[key]
         st.rerun()
 
     if predict_btn:
-        # Merge quick-select pills value with any manually typed symptoms
-        qs_val = st.session_state.get("symptoms_text", "").strip()
-        typed  = symptoms_input.strip()
+        # Combine quick-select pills + manually typed symptoms
+        typed_extras = [
+            s.strip() for s in symptoms_input.split(",")
+            if s.strip() and s.strip().lower().replace(" ", "_") not in quick_selected
+        ]
+        all_symptoms_raw = (
+            [s.replace("_", " ") for s in quick_selected] + typed_extras
+        )
+        combined_input = ", ".join(all_symptoms_raw)
 
-        if qs_val and typed and typed not in qs_val:
-            combined_input = qs_val + ", " + typed
-        elif qs_val:
-            combined_input = qs_val
-        else:
-            combined_input = typed
-
-        if not combined_input:
+        if not combined_input.strip():
             st.warning(t("Please enter symptoms.", language))
         else:
             with st.spinner("🔍 Analysing symptoms…"):
