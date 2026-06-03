@@ -153,65 +153,56 @@ div[data-baseweb="select"] > div:focus-within {
 
 /* ══════════════════════════════════════════════════
    QUICK-SELECT CHIP OVERRIDES
-   These must live in the global block so they win
-   over the green .stButton rule above.
-   Target: any button whose key starts with
-   "sym__" or "cat_btn_" (set via the key= arg,
-   which Streamlit exposes as data-testid on the
-   wrapping div and as aria-label on the button).
-   We use [data-testid] on the wrapper + descendant
-   button as the scope — fully DOM-position-independent.
+   Custom sleek sizing configuration
    ══════════════════════════════════════════════════ */
 
-/* Category row chips */
+/* Category miniature tabs */
 [data-testid^="cat_btn_"] > button,
 div[data-testid^="cat_btn_"] button {
-    background: rgba(10, 20, 24, 0.75) !important;
+    background: rgba(30, 41, 59, 0.4) !important;
     color: #94a3b8 !important;
-    border: 1px solid rgba(13, 148, 136, 0.45) !important;
-    border-radius: 20px !important;
-    padding: 4px 14px !important;
-    font-size: 0.78rem !important;
+    border: 1px solid rgba(148, 163, 184, 0.15) !important;
+    border-radius: 6px !important;
+    padding: 3px 10px !important;
+    font-size: 0.72rem !important;
     font-weight: 500 !important;
+    letter-spacing: 0.02em !important;
     height: auto !important;
     min-height: 0 !important;
-    line-height: 1.6 !important;
+    line-height: 1.4 !important;
     box-shadow: none !important;
     transform: none !important;
+    transition: all 0.2s ease !important;
 }
 [data-testid^="cat_btn_"] > button:hover,
 div[data-testid^="cat_btn_"] button:hover {
-    background: rgba(13, 148, 136, 0.18) !important;
-    color: #2dd4bf !important;
-    border-color: #0d9488 !important;
-    transform: none !important;
-    box-shadow: none !important;
+    background: rgba(56, 189, 248, 0.1) !important;
+    color: #38bdf8 !important;
+    border-color: rgba(56, 189, 248, 0.4) !important;
 }
 
-/* Symptom chips */
+/* Symptom micro-chips */
 [data-testid^="sym__"] > button,
 div[data-testid^="sym__"] button {
-    background: rgba(10, 20, 24, 0.80) !important;
-    color: #2dd4bf !important;
-    border: 1px solid #0d9488 !important;
-    border-radius: 20px !important;
-    padding: 4px 14px !important;
-    font-size: 0.78rem !important;
-    font-weight: 500 !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    color: #cbd5e1 !important;
+    border: 1px solid rgba(51, 65, 85, 0.7) !important;
+    border-radius: 100px !important;
+    padding: 4px 12px !important;
+    font-size: 0.74rem !important;
+    font-weight: 400 !important;
     height: auto !important;
     min-height: 0 !important;
-    line-height: 1.6 !important;
+    line-height: 1.4 !important;
     box-shadow: none !important;
     transform: none !important;
-    letter-spacing: 0.01em !important;
+    transition: all 0.2s ease !important;
 }
 [data-testid^="sym__"] > button:hover,
 div[data-testid^="sym__"] button:hover {
-    background: rgba(13, 148, 136, 0.20) !important;
-    color: #5eead4 !important;
-    border-color: #14b8a6 !important;
-    transform: none !important;
-    box-shadow: none !important;
+    background: rgba(13, 148, 136, 0.15) !important;
+    color: #2dd4bf !important;
+    border-color: rgba(45, 212, 191, 0.5) !important;
 }
 
 /* ── Result cards */
@@ -308,48 +299,7 @@ div[data-testid^="sym__"] button:hover {
     font-weight: 700;
 }
 
-/* ── Number input */
-.stNumberInput input {
-    background: rgba(33,38,45,0.8) !important;
-    color: #e6edf3 !important;
-    border: 1px solid rgba(48,54,61,0.5) !important;
-    border-radius: 8px !important;
-}
-
-/* ── Slider */
-.stSlider .st-bk { background: linear-gradient(90deg, #1f6feb, #58a6ff) !important; }
-.stSlider .st-ao { background: #21262d !important; border: 2px solid #58a6ff !important; }
-
-/* ── Access denied */
-.access-denied {
-    background: linear-gradient(135deg, rgba(45,14,14,0.8) 0%, rgba(248,81,73,0.1) 100%);
-    border-left: 4px solid #f85149;
-    padding: 12px 18px;
-    border-radius: 0 8px 8px 0;
-    color: #f85149;
-    animation: slideInLeft 0.5s ease-out;
-}
-
-/* ── Main header */
-.main-header { text-align: center; animation: fadeInUp 0.8s ease-out; margin-bottom: 32px; }
-.main-header-title {
-    font-family: 'Poppins', sans-serif;
-    font-size: 2.8rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, #58a6ff, #79c0ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-.main-header-subtitle { color: #8b949e; font-size: 1rem; letter-spacing: 0.05em; margin-top: 8px; }
-
 hr { border-color: rgba(88,166,255,0.1) !important; }
-a  { color: #58a6ff; transition: color 0.3s ease; text-decoration: none; }
-a:hover { color: #79c0ff; text-decoration: underline; }
-
-@media (max-width: 768px) {
-    .disease-badge, .conf-pill { display: block; margin: 6px 0; }
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -485,7 +435,6 @@ def load_models():
 
 @st.cache_resource(show_spinner="Building symptom index…")
 def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
-    """TF-IDF cosine similarity — no torch required."""
     sym_texts = [s.replace("_", " ") for s in symptom_list]
     dis_texts = [d.replace("_", " ") for d in disease_names]
     all_texts = sym_texts + dis_texts
@@ -637,33 +586,30 @@ def integrated_prediction_system(
     )
 
     preds = []
-
-    for model, name in [(svc_model, "SVC"), (dt_model, "Decision Tree")]:
-        try:
-            proba    = model.predict_proba(feature_vector)[0]
-            top4_idx = np.argsort(proba)[::-1][:4]
-            for rank, idx in enumerate(top4_idx):
-                disease = le.inverse_transform([idx])[0]
-                conf    = f"{proba[idx] * 100:.1f}%"
-                preds.append({
-                    "model":      name,
-                    "disease":    disease.title(),
-                    "confidence": conf,
-                    "top":        rank == 0,
-                })
-        except AttributeError:
-            pred_idx = model.predict(feature_vector)[0]
-            disease  = le.inverse_transform([pred_idx])[0]
+    try:
+        proba    = svc_model.predict_proba(feature_vector)[0]
+        top4_idx = np.argsort(proba)[::-1][:4]
+        for rank, idx in enumerate(top4_idx):
+            disease = le.inverse_transform([idx])[0]
+            conf    = f"{proba[idx] * 100:.1f}%"
             preds.append({
-                "model":      name,
+                "model":      "SVC",
                 "disease":    disease.title(),
-                "confidence": "N/A",
-                "top":        True,
+                "confidence": conf,
+                "top":        rank == 0,
             })
+    except AttributeError:
+        pred_idx = svc_model.predict(feature_vector)[0]
+        disease  = le.inverse_transform([pred_idx])[0]
+        preds.append({
+            "model":      "SVC",
+            "disease":    disease.title(),
+            "confidence": "N/A",
+            "top":        True,
+        })
 
-    top_disease = next(p["disease"] for p in preds if p["top"] and p["model"] == "SVC")
+    top_disease = preds[0]["disease"]
     top_key     = clean_disease_name(top_disease)
-    preds = [p for p in preds if p["model"] == "SVC"]
 
     recs, advice = role_based_recs(
         role, lang, top_key,
@@ -790,8 +736,7 @@ def render_predictions(predictions: list):
 
 
 # ──────────────────────────────────────────────
-# ──────────────────────────────────────────────
-# QUICK-SELECT SYMPTOM CHIPS
+# QUICK-SELECT SYMPTOM CHIPS (COMPACT OVERHAUL)
 # ──────────────────────────────────────────────
 def render_quick_select(categorized_symptoms: dict):
     cats = list(categorized_symptoms.keys())
@@ -804,18 +749,17 @@ def render_quick_select(categorized_symptoms: dict):
     active_cat = st.session_state.active_cat
     symptoms   = sorted(categorized_symptoms.get(active_cat, []))
 
-    # Build per-render override CSS (active tab + selected chips)
+    # Build override layout CSS mappings
     css_rules = []
     for i, cat in enumerate(cats):
         if cat == active_cat:
             sel = f'[data-testid="cat_btn_{i}"] button, div[data-testid="cat_btn_{i}"] button'
             css_rules.append(
                 f'{sel} {{'
-                ' background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%) !important;'
-                ' color: #ffffff !important;'
-                ' border-color: #14b8a6 !important;'
-                ' font-weight: 600 !important;'
-                ' box-shadow: 0 2px 8px rgba(13, 148, 136, 0.3) !important;}'
+                ' background: rgba(56, 189, 248, 0.15) !important;'
+                ' color: #38bdf8 !important;'
+                ' border-color: rgba(56, 189, 248, 0.6) !important;'
+                ' font-weight: 600 !important; }'
             )
     for sym in symptoms:
         if sym in st.session_state.symptoms_selected:
@@ -823,47 +767,50 @@ def render_quick_select(categorized_symptoms: dict):
             sel = f'[data-testid="{key}"] button, div[data-testid="{key}"] button'
             css_rules.append(
                 f'{sel} {{'
-                ' background: rgba(20, 184, 166, 0.18) !important;'
-                ' color: #2dd4bf !important;'
-                ' border-color: #2dd4bf !important;'
-                ' font-weight: 600 !important;'
-                ' box-shadow: 0 0 0 1px #2dd4bf !important;}'
+                ' background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%) !important;'
+                ' color: #ffffff !important;'
+                ' border-color: #14b8a6 !important;'
+                ' font-weight: 500 !important; }'
             )
     if css_rules:
         st.markdown('<style>' + ' '.join(css_rules) + '</style>', unsafe_allow_html=True)
 
-    # Fluid flexbox container styling for modern chip layout wrapping
+    # Advanced Micro-Container Stylesheet definitions
     st.markdown("""
 <style>
+.quick-select-panel {
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+}
+.panel-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+}
 .flex-chip-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    padding: 4px 0;
+    gap: 6px;
+    padding: 2px 0;
 }
 .flex-chip-container > div {
     flex: 0 1 auto !important;
     width: auto !important;
 }
-.flex-chip-container button {
-    padding: 6px 16px !important;
-    border-radius: 100px !important;
-    font-size: 0.82rem !important;
-    width: auto !important;
-}
-.quick-select-panel {
-    background: rgba(15, 23, 42, 0.35);
-    border: 1px solid rgba(48, 54, 61, 0.4);
-    border-radius: 12px;
-    padding: 14px;
-    margin-bottom: 15px;
-}
 </style>""", unsafe_allow_html=True)
 
-    # Main Visual Panel Wrapper
+    # Render High-Fidelity Mini Panel
     st.markdown("<div class='quick-select-panel'>", unsafe_allow_html=True)
-
-    # Category Tab Row (Fluid Wrap Layout)
+    
+    # Category Miniature System
+    st.markdown("<div class='panel-label'>System Group Matrix</div>", unsafe_allow_html=True)
     st.markdown("<div class='flex-chip-container'>", unsafe_allow_html=True)
     for i, cat in enumerate(cats):
         st.markdown("<div>", unsafe_allow_html=True)
@@ -873,13 +820,10 @@ def render_quick_select(categorized_symptoms: dict):
         st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Visual Separator Divider Line
-    st.markdown(
-        "<div style='border-top:1px solid rgba(48, 54, 61, 0.3); margin:12px 0 10px 0;'></div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
 
-    # Symptom Chip Row (Fluid Wrap Layout)
+    # Symptom Micro-Chip Array
+    st.markdown("<div class='panel-label'>Quick Select Filter Tokens</div>", unsafe_allow_html=True)
     st.markdown("<div class='flex-chip-container'>", unsafe_allow_html=True)
     for sym in symptoms:
         label   = sym.replace('_', ' ').title()
@@ -897,7 +841,6 @@ def render_quick_select(categorized_symptoms: dict):
         st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Close Visual Panel Wrapper
     st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -908,10 +851,8 @@ def main():
     missing = check_files()
     if missing:
         st.error(f"Missing required execution dependencies: {missing}")
-        st.info("Ensure files exist in data/ and models/ matching your training structure.")
         return
 
-    # Pipeline initialization
     main_df, desc_map, diets_map, meds_map, precs_map, workout_map = load_data()
     svc_model, dt_model, le_encoder = load_models()
 
@@ -922,7 +863,7 @@ def main():
     tfidf_vec, sym_matrix, dis_matrix = build_tfidf_index(tuple(symptom_list), disease_keys)
     categorized = categorize_symptoms(symptom_list)
 
-    # Sidebar parameters
+    # Sidebar settings
     st.sidebar.markdown(f"<div class='section-header'>🔒 Verification Engine</div>", unsafe_allow_html=True)
     role = st.sidebar.selectbox("Access Profile Tier", ["Normal User", "Student", "Doctor"])
     user_id = st.sidebar.text_input("Profile Verification Key ID", value="", type="password")
@@ -932,7 +873,7 @@ def main():
     st.sidebar.markdown(f"<div class='section-header'>🌐 Localization Pack</div>", unsafe_allow_html=True)
     lang = st.sidebar.radio("Interface Localization Variant", ["English", "Amharic"])
 
-    # Application identity layout
+    # App title banner
     st.markdown(
         f"<div class='main-header'>"
         f"<div class='main-header-title'>🏥 Integrated Healthcare Dashboard</div>"
@@ -947,14 +888,14 @@ def main():
     with tab1:
         st.markdown(f"<div class='section-header'>🔬 Cognitive Symptom Diagnostic Engine</div>", unsafe_allow_html=True)
         
-        # Interactive chip layout module
+        # Streamlined visual chip matrix
         render_quick_select(categorized)
 
-        # Dynamic query box state matching loop
+        # Sync input query area
         current_input = st.text_input(
             "Target Manifestation Manifest (Comma Delimited Evaluator)",
             value=", ".join(st.session_state.symptoms_selected).replace("_", " "),
-            placeholder="Type symptoms (e.g. fever, headache) or toggle using the quick selection helper panel above.",
+            placeholder="Type symptoms (e.g. fever, headache) or use the selection tokens above.",
         )
 
         if st.button(t("Predict & Recommend", lang), key="btn_predict"):
