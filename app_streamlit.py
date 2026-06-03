@@ -1011,7 +1011,7 @@ with tab1:
     # ── Quick-select symptom chips ───────────────────────────────────────
     st.markdown(
         "<div style='font-size:0.72rem;font-weight:700;letter-spacing:0.1em;"
-        "color:#64748b;text-transform:uppercase;margin:14px 0 6px'>Quick-select symptoms:</div>",
+        "color:#64748b;text-transform:uppercase;margin:5px 0 2px'>Quick-select symptoms:</div>",
         unsafe_allow_html=True,
     )
     render_quick_select(categorized_symptoms)
