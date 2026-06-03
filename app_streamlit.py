@@ -790,15 +790,16 @@ def render_predictions(predictions: list):
 
 
 # ──────────────────────────────────────────────
-# QUICK-SELECT SYMPTOM CHIPS
+# ──────────────────────────────────────────────
+# QUICK-SELECT SYMPTOM CHIPS — compact HTML panel
 # ──────────────────────────────────────────────
 def render_quick_select(categorized_symptoms: dict):
     """
-    Chip style: small dark pill, teal border, teal text.
-    Selected chips: filled teal background.
-    CSS is in the global <style> block (targets data-testid^= prefixes)
-    so it reliably overrides Streamlit's default green button theme.
-    Selected state is additionally reinforced here via aria-label selectors.
+    Space-saving design:
+    - Category tabs + symptom chips are pure HTML <span> elements
+    - Clicking a chip writes a token into a hidden st.text_input via JS
+    - Python reads the token on rerun and updates session_state
+    - Panel height ~90px regardless of symptom count; chips wrap naturally
     """
     cats = list(categorized_symptoms.keys())
 
@@ -806,65 +807,111 @@ def render_quick_select(categorized_symptoms: dict):
         st.session_state.active_cat = cats[0]
     if "symptoms_selected" not in st.session_state:
         st.session_state.symptoms_selected = []
+    if "_qs_click" not in st.session_state:
+        st.session_state._qs_click = ""
+    if "_qs_last" not in st.session_state:
+        st.session_state._qs_last = ""
 
-    # ── Active category highlight (aria-label = button text in Streamlit) ─
-    active_cat_styles = []
-    for i, cat in enumerate(cats):
-        if cat == st.session_state.active_cat:
-            active_cat_styles.append(
-                f'div[data-testid="cat_btn_{i}"] button {{'
-                f'background: rgba(13,148,136,0.30) !important;'
-                f'color: #2dd4bf !important;'
-                f'border-color: #0d9488 !important;'
-                f'font-weight: 700 !important;}}'
-            )
-    # ── Selected symptom highlight ─────────────────────────────────────────
+    # Process pending click from previous render
+    pending = st.session_state.get("_qs_click", "").strip()
+    if pending:
+        st.session_state._qs_click = ""
+        if pending.startswith("CAT::"):
+            st.session_state.active_cat = pending[5:]
+            st.rerun()
+        elif pending.startswith("SYM::"):
+            sym = pending[5:]
+            if sym in st.session_state.symptoms_selected:
+                st.session_state.symptoms_selected.remove(sym)
+            else:
+                st.session_state.symptoms_selected.append(sym)
+            st.rerun()
+
     active_cat = st.session_state.active_cat
     symptoms   = sorted(categorized_symptoms.get(active_cat, []))
-    sel_styles = []
+    selected   = set(st.session_state.symptoms_selected)
+
+    def js_click(token):
+        safe = token.replace("'", "").replace('"', "")
+        return (
+            "var el=document.getElementById('_qs_in_');"
+            "if(el){el.value='" + safe + "';"
+            "el.dispatchEvent(new Event('input',{bubbles:true}));"
+            "el.dispatchEvent(new Event('change',{bubbles:true}));}"
+        )
+
+    # Category tab HTML
+    cat_html = ""
+    for cat in cats:
+        active = (cat == active_cat)
+        bg     = "rgba(13,148,136,0.28)" if active else "rgba(15,22,28,0.55)"
+        color  = "#2dd4bf"               if active else "#64748b"
+        border = "#0d9488"               if active else "rgba(13,148,136,0.22)"
+        fw     = "700"                   if active else "500"
+        cat_html += (
+            f'<span onclick="{js_click("CAT::" + cat)}" '
+            f'style="display:inline-block;cursor:pointer;margin:0 3px 4px 0;'
+            f'padding:3px 12px;border-radius:20px;font-size:0.69rem;font-weight:{fw};'
+            f'line-height:1.65;white-space:nowrap;background:{bg};color:{color};'
+            f'border:1px solid {border};">{cat}</span>'
+        )
+
+    # Symptom chip HTML
+    chip_html = ""
     for sym in symptoms:
-        if sym in st.session_state.symptoms_selected:
-            # key used is  sym__{active_cat}__{sym}
-            safe_key = f"sym__{active_cat}__{sym}"
-            sel_styles.append(
-                f'div[data-testid="{safe_key}"] button {{'
-                f'background: rgba(13,148,136,0.35) !important;'
-                f'color: #5eead4 !important;'
-                f'border-color: #14b8a6 !important;'
-                f'font-weight: 600 !important;}}'
-            )
+        label  = sym.replace("_", " ").title()
+        is_sel = sym in selected
+        bg     = "rgba(13,148,136,0.28)"  if is_sel else "rgba(10,20,24,0.70)"
+        color  = "#5eead4"                if is_sel else "#2dd4bf"
+        border = "#14b8a6"                if is_sel else "#0d9488"
+        fw     = "600"                    if is_sel else "400"
+        pfx    = "✓ "                     if is_sel else ""
+        chip_html += (
+            f'<span onclick="{js_click("SYM::" + sym)}" '
+            f'style="display:inline-block;cursor:pointer;margin:0 4px 4px 0;'
+            f'padding:3px 13px;border-radius:20px;font-size:0.72rem;font-weight:{fw};'
+            f'line-height:1.65;white-space:nowrap;background:{bg};color:{color};'
+            f'border:1px solid {border};">{pfx}{label}</span>'
+        )
+    if not chip_html:
+        chip_html = '<span style="color:#475569;font-size:0.72rem">No symptoms in this category</span>'
 
-    all_extra = active_cat_styles + sel_styles
-    if all_extra:
-        st.markdown("<style>" + "\n".join(all_extra) + "</style>", unsafe_allow_html=True)
+    panel = (
+        "<div style='background:rgba(10,16,22,0.50);border:1px solid rgba(13,148,136,0.15);"
+        "border-radius:10px;padding:8px 12px 6px 12px;'>"
+        f"<div style='margin-bottom:5px;'>{cat_html}</div>"
+        "<div style='border-top:1px solid rgba(13,148,136,0.10);padding-top:6px;"
+        f"display:flex;flex-wrap:wrap;'>{chip_html}</div>"
+        "</div>"
+    )
+    st.markdown(panel, unsafe_allow_html=True)
 
-    # ── Category row ──────────────────────────────────────────────────────
-    cat_cols = st.columns(len(cats))
-    for i, cat in enumerate(cats):
-        with cat_cols[i]:
-            if st.button(cat, key=f"cat_btn_{i}", use_container_width=True):
-                st.session_state.active_cat = cat
-                st.rerun()
+    # Hide the capture input
+    st.markdown("""
+<style>
+div[data-testid="stTextInput"]:has(input[aria-label="_qs_click_field"]) {
+    position:absolute!important;width:1px!important;height:1px!important;
+    overflow:hidden!important;opacity:0!important;pointer-events:none!important;
+}
+</style>""", unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-top:6px'></div>", unsafe_allow_html=True)
+    clicked = st.text_input("_qs_click_field", key="_qs_click_field",
+                             value="", label_visibility="collapsed")
 
-    # ── Symptom chip rows ─────────────────────────────────────────────────
-    COLS = 4
-    for row_start in range(0, len(symptoms), COLS):
-        row_syms = symptoms[row_start : row_start + COLS]
-        cols = st.columns(len(row_syms))
-        for j, sym in enumerate(row_syms):
-            label     = sym.replace("_", " ").title()
-            is_sel    = sym in st.session_state.symptoms_selected
-            btn_label = f"✓ {label}" if is_sel else label
-            btn_key   = f"sym__{active_cat}__{sym}"
-            with cols[j]:
-                if st.button(btn_label, key=btn_key, use_container_width=True):
-                    if is_sel:
-                        st.session_state.symptoms_selected.remove(sym)
-                    else:
-                        st.session_state.symptoms_selected.append(sym)
-                    st.rerun()
+    # Rename the DOM input so our onclick JS can find it by id
+    st.markdown("""<script>
+setTimeout(function(){
+  var all = window.parent.document.querySelectorAll('input');
+  all.forEach(function(el){
+    if(el.getAttribute('aria-label')==='_qs_click_field') el.id='_qs_in_';
+  });
+}, 120);
+</script>""", unsafe_allow_html=True)
+
+    if clicked and clicked != st.session_state._qs_last:
+        st.session_state._qs_last  = clicked
+        st.session_state._qs_click = clicked
+        st.rerun()
 
 
 # ──────────────────────────────────────────────
@@ -1011,7 +1058,7 @@ with tab1:
     # ── Quick-select symptom chips ───────────────────────────────────────
     st.markdown(
         "<div style='font-size:0.72rem;font-weight:700;letter-spacing:0.1em;"
-        "color:#64748b;text-transform:uppercase;margin:5px 0 2px'>Quick-select symptoms:</div>",
+        "color:#64748b;text-transform:uppercase;margin:14px 0 6px'>Quick-select symptoms:</div>",
         unsafe_allow_html=True,
     )
     render_quick_select(categorized_symptoms)
