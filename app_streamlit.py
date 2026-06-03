@@ -762,12 +762,13 @@ def render_quick_select(categorized_symptoms: dict):
                 "border:1px solid rgba(71,85,105,0.3);cursor:pointer;"
                 "text-decoration:none;white-space:nowrap;font-family:inherit;display:inline-block;"
             )
+        active_attr = 'data-active="1"' if is_active else ''
         cat_html += (
             f"<span style='{style}' "
             f"onclick='qsAction(\"cat:{i}\")' "
             f"onmouseover='if(!this.dataset.active){{this.style.color=\"#94a3b8\";this.style.borderColor=\"rgba(71,85,105,0.6)\"}}' "
             f"onmouseout='if(!this.dataset.active){{this.style.color=\"#475569\";this.style.borderColor=\"rgba(71,85,105,0.3)\"}}' "
-            f"{'data-active=\"1\"' if is_active else ''}>{cat}</span>"
+            f"{active_attr}>{cat}</span>"
         )
     cat_html += "</div>"
     cat_html += (
