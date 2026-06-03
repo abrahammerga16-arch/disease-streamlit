@@ -131,7 +131,7 @@ div[data-baseweb="select"] > div:focus-within {
     background: rgba(33, 38, 45, 1) !important;
 }
 
-/* ── Buttons */
+/* ── Buttons (default green — applies everywhere EXCEPT chip sections) */
 .stButton > button {
     background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
     color: #ffffff;
@@ -150,6 +150,69 @@ div[data-baseweb="select"] > div:focus-within {
     background: linear-gradient(135deg, #2ea043 0%, #3fb950 100%);
 }
 .stButton > button:active { transform: translateY(0); }
+
+/* ══════════════════════════════════════════════════
+   QUICK-SELECT CHIP OVERRIDES
+   These must live in the global block so they win
+   over the green .stButton rule above.
+   Target: any button whose key starts with
+   "sym__" or "cat_btn_" (set via the key= arg,
+   which Streamlit exposes as data-testid on the
+   wrapping div and as aria-label on the button).
+   We use [data-testid] on the wrapper + descendant
+   button as the scope — fully DOM-position-independent.
+   ══════════════════════════════════════════════════ */
+
+/* Category row chips */
+[data-testid^="cat_btn_"] > button,
+div[data-testid^="cat_btn_"] button {
+    background: rgba(10, 20, 24, 0.75) !important;
+    color: #94a3b8 !important;
+    border: 1px solid rgba(13, 148, 136, 0.45) !important;
+    border-radius: 20px !important;
+    padding: 4px 14px !important;
+    font-size: 0.78rem !important;
+    font-weight: 500 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    line-height: 1.6 !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+[data-testid^="cat_btn_"] > button:hover,
+div[data-testid^="cat_btn_"] button:hover {
+    background: rgba(13, 148, 136, 0.18) !important;
+    color: #2dd4bf !important;
+    border-color: #0d9488 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Symptom chips */
+[data-testid^="sym__"] > button,
+div[data-testid^="sym__"] button {
+    background: rgba(10, 20, 24, 0.80) !important;
+    color: #2dd4bf !important;
+    border: 1px solid #0d9488 !important;
+    border-radius: 20px !important;
+    padding: 4px 14px !important;
+    font-size: 0.78rem !important;
+    font-weight: 500 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    line-height: 1.6 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    letter-spacing: 0.01em !important;
+}
+[data-testid^="sym__"] > button:hover,
+div[data-testid^="sym__"] button:hover {
+    background: rgba(13, 148, 136, 0.20) !important;
+    color: #5eead4 !important;
+    border-color: #14b8a6 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
 
 /* ── Result cards */
 .result-card {
