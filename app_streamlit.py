@@ -791,127 +791,91 @@ def render_predictions(predictions: list):
 
 # ──────────────────────────────────────────────
 # ──────────────────────────────────────────────
-# QUICK-SELECT SYMPTOM CHIPS — compact HTML panel
+# QUICK-SELECT SYMPTOM CHIPS
 # ──────────────────────────────────────────────
 def render_quick_select(categorized_symptoms: dict):
-    """
-    Space-saving design:
-    - Category tabs + symptom chips are pure HTML <span> elements
-    - Clicking a chip writes a token into a hidden st.text_input via JS
-    - Python reads the token on rerun and updates session_state
-    - Panel height ~90px regardless of symptom count; chips wrap naturally
-    """
     cats = list(categorized_symptoms.keys())
 
-    if "active_cat" not in st.session_state or st.session_state.active_cat not in cats:
+    if 'active_cat' not in st.session_state or st.session_state.active_cat not in cats:
         st.session_state.active_cat = cats[0]
-    if "symptoms_selected" not in st.session_state:
+    if 'symptoms_selected' not in st.session_state:
         st.session_state.symptoms_selected = []
-    if "_qs_click" not in st.session_state:
-        st.session_state._qs_click = ""
-    if "_qs_last" not in st.session_state:
-        st.session_state._qs_last = ""
-
-    # Process pending click from previous render
-    pending = st.session_state.get("_qs_click", "").strip()
-    if pending:
-        st.session_state._qs_click = ""
-        if pending.startswith("CAT::"):
-            st.session_state.active_cat = pending[5:]
-            st.rerun()
-        elif pending.startswith("SYM::"):
-            sym = pending[5:]
-            if sym in st.session_state.symptoms_selected:
-                st.session_state.symptoms_selected.remove(sym)
-            else:
-                st.session_state.symptoms_selected.append(sym)
-            st.rerun()
 
     active_cat = st.session_state.active_cat
     symptoms   = sorted(categorized_symptoms.get(active_cat, []))
-    selected   = set(st.session_state.symptoms_selected)
 
-    def js_click(token):
-        safe = token.replace("'", "").replace('"', "")
-        return (
-            "var el=document.getElementById('_qs_in_');"
-            "if(el){el.value='" + safe + "';"
-            "el.dispatchEvent(new Event('input',{bubbles:true}));"
-            "el.dispatchEvent(new Event('change',{bubbles:true}));}"
-        )
-
-    # Category tab HTML
-    cat_html = ""
-    for cat in cats:
-        active = (cat == active_cat)
-        bg     = "rgba(13,148,136,0.28)" if active else "rgba(15,22,28,0.55)"
-        color  = "#2dd4bf"               if active else "#64748b"
-        border = "#0d9488"               if active else "rgba(13,148,136,0.22)"
-        fw     = "700"                   if active else "500"
-        cat_html += (
-            f'<span onclick="{js_click("CAT::" + cat)}" '
-            f'style="display:inline-block;cursor:pointer;margin:0 3px 4px 0;'
-            f'padding:3px 12px;border-radius:20px;font-size:0.69rem;font-weight:{fw};'
-            f'line-height:1.65;white-space:nowrap;background:{bg};color:{color};'
-            f'border:1px solid {border};">{cat}</span>'
-        )
-
-    # Symptom chip HTML
-    chip_html = ""
+    # Build per-render override CSS (active tab + selected chips)
+    css_rules = []
+    for i, cat in enumerate(cats):
+        if cat == active_cat:
+            sel = f'[data-testid="cat_btn_{i}"] button, div[data-testid="cat_btn_{i}"] button'
+            css_rules.append(
+                f'{sel} {{'
+                ' background:rgba(13,148,136,0.30)!important;'
+                ' color:#2dd4bf!important;'
+                ' border-color:#0d9488!important;'
+                ' font-weight:700!important;}'
+            )
     for sym in symptoms:
-        label  = sym.replace("_", " ").title()
-        is_sel = sym in selected
-        bg     = "rgba(13,148,136,0.28)"  if is_sel else "rgba(10,20,24,0.70)"
-        color  = "#5eead4"                if is_sel else "#2dd4bf"
-        border = "#14b8a6"                if is_sel else "#0d9488"
-        fw     = "600"                    if is_sel else "400"
-        pfx    = "✓ "                     if is_sel else ""
-        chip_html += (
-            f'<span onclick="{js_click("SYM::" + sym)}" '
-            f'style="display:inline-block;cursor:pointer;margin:0 4px 4px 0;'
-            f'padding:3px 13px;border-radius:20px;font-size:0.72rem;font-weight:{fw};'
-            f'line-height:1.65;white-space:nowrap;background:{bg};color:{color};'
-            f'border:1px solid {border};">{pfx}{label}</span>'
-        )
-    if not chip_html:
-        chip_html = '<span style="color:#475569;font-size:0.72rem">No symptoms in this category</span>'
+        if sym in st.session_state.symptoms_selected:
+            key = f'sym__{active_cat}__{sym}'
+            sel = f'[data-testid="{key}"] button, div[data-testid="{key}"] button'
+            css_rules.append(
+                f'{sel} {{'
+                ' background:rgba(13,148,136,0.32)!important;'
+                ' color:#5eead4!important;'
+                ' border-color:#14b8a6!important;'
+                ' font-weight:600!important;}'
+            )
+    if css_rules:
+        st.markdown('<style>' + ' '.join(css_rules) + '</style>', unsafe_allow_html=True)
 
-    panel = (
-        "<div style='background:rgba(10,16,22,0.50);border:1px solid rgba(13,148,136,0.15);"
-        "border-radius:10px;padding:8px 12px 6px 12px;'>"
-        f"<div style='margin-bottom:5px;'>{cat_html}</div>"
-        "<div style='border-top:1px solid rgba(13,148,136,0.10);padding-top:6px;"
-        f"display:flex;flex-wrap:wrap;'>{chip_html}</div>"
-        "</div>"
-    )
-    st.markdown(panel, unsafe_allow_html=True)
-
-    # Hide the capture input
+    # Tight column padding for chip rows only
     st.markdown("""
 <style>
-div[data-testid="stTextInput"]:has(input[aria-label="_qs_click_field"]) {
-    position:absolute!important;width:1px!important;height:1px!important;
-    overflow:hidden!important;opacity:0!important;pointer-events:none!important;
-}
+[data-testid^='cat_btn_'] { padding: 1px 2px !important; }
+[data-testid^='sym__']    { padding: 1px 2px !important; }
 </style>""", unsafe_allow_html=True)
 
-    clicked = st.text_input("_qs_click_field", key="_qs_click_field",
-                             value="", label_visibility="collapsed")
+    # Panel container
+    st.markdown(
+        "<div style='background:rgba(10,16,22,0.50);border:1px solid rgba(13,148,136,0.15);"
+        "border-radius:10px;padding:8px 10px 8px 10px;'>",
+        unsafe_allow_html=True,
+    )
 
-    # Rename the DOM input so our onclick JS can find it by id
-    st.markdown("""<script>
-setTimeout(function(){
-  var all = window.parent.document.querySelectorAll('input');
-  all.forEach(function(el){
-    if(el.getAttribute('aria-label')==='_qs_click_field') el.id='_qs_in_';
-  });
-}, 120);
-</script>""", unsafe_allow_html=True)
+    # Category tabs
+    cat_cols = st.columns(len(cats))
+    for i, cat in enumerate(cats):
+        with cat_cols[i]:
+            if st.button(cat, key=f'cat_btn_{i}', use_container_width=True):
+                st.session_state.active_cat = cat
+                st.rerun()
 
-    if clicked and clicked != st.session_state._qs_last:
-        st.session_state._qs_last  = clicked
-        st.session_state._qs_click = clicked
-        st.rerun()
+    st.markdown(
+        "<div style='border-top:1px solid rgba(13,148,136,0.12);margin:5px 0;'></div>",
+        unsafe_allow_html=True,
+    )
+
+    # Symptom chips — 5 per row
+    COLS = 5
+    for row_start in range(0, len(symptoms), COLS):
+        row_syms = symptoms[row_start: row_start + COLS]
+        cols = st.columns(len(row_syms))
+        for j, sym in enumerate(row_syms):
+            label   = sym.replace('_', ' ').title()
+            is_sel  = sym in st.session_state.symptoms_selected
+            lbl     = f'\u2713 {label}' if is_sel else label
+            btn_key = f'sym__{active_cat}__{sym}'
+            with cols[j]:
+                if st.button(lbl, key=btn_key, use_container_width=True):
+                    if is_sel:
+                        st.session_state.symptoms_selected.remove(sym)
+                    else:
+                        st.session_state.symptoms_selected.append(sym)
+                    st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────────────
