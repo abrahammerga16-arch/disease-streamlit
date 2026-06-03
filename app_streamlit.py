@@ -136,13 +136,13 @@ div[data-testid^="cat_btn_"] button {
     background: rgba(10, 20, 24, 0.75) !important;
     color: #94a3b8 !important;
     border: 1px solid rgba(13, 148, 136, 0.45) !important;
-    border-radius: 20px !important;
-    padding: 4px 14px !important;
-    font-size: 0.78rem !important;
+    border-radius: 12px !important;
+    padding: 2px 7px !important;
+    font-size: 0.68rem !important;
     font-weight: 500 !important;
     height: auto !important;
     min-height: 0 !important;
-    line-height: 1.6 !important;
+    line-height: 1.4 !important;
     box-shadow: none !important;
     transform: none !important;
 }
@@ -161,13 +161,13 @@ div[data-testid^="sym__"] button {
     background: rgba(10, 20, 24, 0.80) !important;
     color: #2dd4bf !important;
     border: 1px solid #0d9488 !important;
-    border-radius: 20px !important;
-    padding: 4px 14px !important;
-    font-size: 0.78rem !important;
+    border-radius: 12px !important;
+    padding: 2px 7px !important;
+    font-size: 0.68rem !important;
     font-weight: 500 !important;
     height: auto !important;
     min-height: 0 !important;
-    line-height: 1.6 !important;
+    line-height: 1.4 !important;
     box-shadow: none !important;
     transform: none !important;
     letter-spacing: 0.01em !important;
@@ -181,8 +181,8 @@ div[data-testid^="sym__"] button:hover {
     box-shadow: none !important;
 }
 
-[data-testid^="cat_btn_"] { padding: 1px 2px !important; }
-[data-testid^="sym__"]    { padding: 1px 2px !important; }
+[data-testid^="cat_btn_"] { padding: 1px 1px !important; }
+[data-testid^="sym__"]    { padding: 1px 1px !important; }
 
 .result-card {
     background: linear-gradient(135deg, rgba(22,27,34,0.8) 0%, rgba(33,38,45,0.6) 100%);
@@ -795,7 +795,7 @@ def render_quick_select(categorized_symptoms: dict):
     # Panel container
     st.markdown(
         "<div style='background:rgba(10,16,22,0.50);border:1px solid rgba(13,148,136,0.15);"
-        "border-radius:10px;padding:8px 10px 8px 10px;'>",
+        "border-radius:8px;padding:4px 6px 4px 6px;'>",
         unsafe_allow_html=True,
     )
 
@@ -808,7 +808,7 @@ def render_quick_select(categorized_symptoms: dict):
                 st.rerun()
 
     st.markdown(
-        "<div style='border-top:1px solid rgba(13,148,136,0.12);margin:5px 0;'></div>",
+        "<div style='border-top:1px solid rgba(13,148,136,0.12);margin:2px 0;'></div>",
         unsafe_allow_html=True,
     )
 
@@ -973,8 +973,8 @@ with tab1:
         )
 
     st.markdown(
-        "<div style='font-size:0.72rem;font-weight:700;letter-spacing:0.1em;"
-        "color:#64748b;text-transform:uppercase;margin:14px 0 6px'>Quick-select symptoms:</div>",
+        "<div style='font-size:0.68rem;font-weight:700;letter-spacing:0.1em;"
+        "color:#64748b;text-transform:uppercase;margin:8px 0 3px'>Quick-select symptoms:</div>",
         unsafe_allow_html=True,
     )
     render_quick_select(categorized_symptoms)
