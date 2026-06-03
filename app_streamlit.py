@@ -757,23 +757,40 @@ def render_quick_select(categorized_symptoms: dict):
     if "symptoms_selected" not in st.session_state:
         st.session_state.symptoms_selected = []
 
-    # ── Base chip shape (applied to every button in this section) ────────
+   # ── Base chip shape — compact/small ──────────────────────────────────
     st.markdown("""
 <style>
-/* Give ALL quick-select buttons a pill shape */
+/* Outer scrollable container keeps the whole section tiny */
+.qs-section {
+    max-height: 160px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 4px 6px !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
+    border-radius: 8px !important;
+    background: rgba(15,20,26,0.4) !important;
+}
+/* Tiny pill chips */
 .qs-section .stButton > button {
-    border-radius: 20px !important;
-    padding: 5px 14px !important;
-    font-size: 0.82rem !important;
+    border-radius: 14px !important;
+    padding: 2px 9px !important;
+    font-size: 0.70rem !important;
     height: auto !important;
     min-height: 0 !important;
-    line-height: 1.5 !important;
+    line-height: 1.4 !important;
     white-space: nowrap !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
+}
+/* Tighten column gaps inside the section */
+.qs-section [data-testid="column"] {
+    padding: 1px 2px !important;
 }
 </style>
 """, unsafe_allow_html=True)
+
+    # Open wrapper div so the .qs-section selector above scopes correctly
+    st.markdown("<div class='qs-section'>", unsafe_allow_html=True)
 
     # Open wrapper div so the .qs-section selector above scopes correctly
     st.markdown("<div class='qs-section'>", unsafe_allow_html=True)
