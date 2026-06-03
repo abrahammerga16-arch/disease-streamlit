@@ -130,15 +130,16 @@ div[data-baseweb="select"] > div:focus-within {
 }
 .stButton > button:active { transform: translateY(0); }
 
-/* Category chips */
+/* Category tab buttons — flat, no background */
 [data-testid^="cat_btn_"] > button,
 div[data-testid^="cat_btn_"] button {
-    background: rgba(10, 20, 24, 0.75) !important;
-    color: #94a3b8 !important;
-    border: 1px solid rgba(13, 148, 136, 0.45) !important;
-    border-radius: 12px !important;
-    padding: 2px 7px !important;
-    font-size: 0.68rem !important;
+    background: transparent !important;
+    color: #64748b !important;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important;
+    padding: 3px 6px !important;
+    font-size: 0.72rem !important;
     font-weight: 500 !important;
     height: auto !important;
     min-height: 0 !important;
@@ -148,40 +149,39 @@ div[data-testid^="cat_btn_"] button {
 }
 [data-testid^="cat_btn_"] > button:hover,
 div[data-testid^="cat_btn_"] button:hover {
-    background: rgba(13, 148, 136, 0.18) !important;
+    background: transparent !important;
+    color: #94a3b8 !important;
+    border-bottom: 2px solid rgba(20,184,166,0.4) !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Symptom chips — minimal outlined pill */
+[data-testid^="sym__"] > button,
+div[data-testid^="sym__"] button {
+    background: transparent !important;
+    color: #64748b !important;
+    border: 1px solid rgba(13,148,136,0.3) !important;
+    border-radius: 6px !important;
+    padding: 2px 8px !important;
+    font-size: 0.70rem !important;
+    font-weight: 400 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    line-height: 1.4 !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+[data-testid^="sym__"] > button:hover,
+div[data-testid^="sym__"] button:hover {
+    background: rgba(13,148,136,0.10) !important;
     color: #2dd4bf !important;
     border-color: #0d9488 !important;
     transform: none !important;
     box-shadow: none !important;
 }
 
-/* Symptom chips */
-[data-testid^="sym__"] > button,
-div[data-testid^="sym__"] button {
-    background: rgba(10, 20, 24, 0.80) !important;
-    color: #2dd4bf !important;
-    border: 1px solid #0d9488 !important;
-    border-radius: 12px !important;
-    padding: 2px 7px !important;
-    font-size: 0.68rem !important;
-    font-weight: 500 !important;
-    height: auto !important;
-    min-height: 0 !important;
-    line-height: 1.4 !important;
-    box-shadow: none !important;
-    transform: none !important;
-    letter-spacing: 0.01em !important;
-}
-[data-testid^="sym__"] > button:hover,
-div[data-testid^="sym__"] button:hover {
-    background: rgba(13, 148, 136, 0.20) !important;
-    color: #5eead4 !important;
-    border-color: #14b8a6 !important;
-    transform: none !important;
-    box-shadow: none !important;
-}
-
-[data-testid^="cat_btn_"] { padding: 1px 1px !important; }
+[data-testid^="cat_btn_"] { padding: 0 1px !important; }
 [data-testid^="sym__"]    { padding: 1px 1px !important; }
 
 .result-card {
@@ -766,16 +766,16 @@ def render_quick_select(categorized_symptoms: dict):
     active_cat = st.session_state.active_cat
     symptoms   = sorted(categorized_symptoms.get(active_cat, []))
 
-    # Per-render CSS: highlight active category + selected symptom chips
+    # ── Dynamic CSS: active category underline + selected chip fill
     css_rules = []
     for i, cat in enumerate(cats):
         if cat == active_cat:
             sel = f'[data-testid="cat_btn_{i}"] button, div[data-testid="cat_btn_{i}"] button'
             css_rules.append(
                 f"{sel} {{"
-                " background:rgba(13,148,136,0.30)!important;"
-                " color:#2dd4bf!important;"
-                " border-color:#0d9488!important;"
+                " color:#e2e8f0!important;"
+                " border-bottom:2px solid #14b8a6!important;"
+                " background:transparent!important;"
                 " font-weight:700!important;}",
             )
     for sym in symptoms:
@@ -784,7 +784,7 @@ def render_quick_select(categorized_symptoms: dict):
             sel = f'[data-testid="{key}"] button, div[data-testid="{key}"] button'
             css_rules.append(
                 f"{sel} {{"
-                " background:rgba(13,148,136,0.32)!important;"
+                " background:rgba(13,148,136,0.22)!important;"
                 " color:#5eead4!important;"
                 " border-color:#14b8a6!important;"
                 " font-weight:600!important;}",
@@ -792,14 +792,7 @@ def render_quick_select(categorized_symptoms: dict):
     if css_rules:
         st.markdown("<style>" + " ".join(css_rules) + "</style>", unsafe_allow_html=True)
 
-    # Panel container
-    st.markdown(
-        "<div style='background:rgba(10,16,22,0.50);border:1px solid rgba(13,148,136,0.15);"
-        "border-radius:8px;padding:4px 6px 4px 6px;'>",
-        unsafe_allow_html=True,
-    )
-
-    # Category tabs
+    # ── Category row — plain text-style tabs, no background
     cat_cols = st.columns(len(cats))
     for i, cat in enumerate(cats):
         with cat_cols[i]:
@@ -807,20 +800,21 @@ def render_quick_select(categorized_symptoms: dict):
                 st.session_state.active_cat = cat
                 st.rerun()
 
+    # ── Thin divider
     st.markdown(
-        "<div style='border-top:1px solid rgba(13,148,136,0.12);margin:2px 0;'></div>",
+        "<hr style='margin:4px 0 6px;border:none;border-top:1px solid rgba(255,255,255,0.06)'/>",
         unsafe_allow_html=True,
     )
 
-    # Symptom chips — 5 per row
-    COLS = 5
+    # ── Symptom chips — 6 per row, compact
+    COLS = 6
     for row_start in range(0, len(symptoms), COLS):
         row_syms = symptoms[row_start: row_start + COLS]
         cols = st.columns(len(row_syms))
         for j, sym in enumerate(row_syms):
-            label  = sym.replace("_", " ").title()
-            is_sel = sym in st.session_state.symptoms_selected
-            lbl    = f"\u2713 {label}" if is_sel else label
+            label   = sym.replace("_", " ").title()
+            is_sel  = sym in st.session_state.symptoms_selected
+            lbl     = f"✓ {label}" if is_sel else label
             btn_key = f"sym__{active_cat}__{sym}"
             with cols[j]:
                 if st.button(lbl, key=btn_key, use_container_width=True):
@@ -829,8 +823,6 @@ def render_quick_select(categorized_symptoms: dict):
                     else:
                         st.session_state.symptoms_selected.append(sym)
                     st.rerun()
-
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────────────
@@ -973,8 +965,8 @@ with tab1:
         )
 
     st.markdown(
-        "<div style='font-size:0.68rem;font-weight:700;letter-spacing:0.1em;"
-        "color:#64748b;text-transform:uppercase;margin:8px 0 3px'>Quick-select symptoms:</div>",
+        "<div style='font-size:0.68rem;color:#475569;text-transform:uppercase;"
+        "letter-spacing:0.1em;font-weight:600;margin:10px 0 4px'>Quick-select symptoms</div>",
         unsafe_allow_html=True,
     )
     render_quick_select(categorized_symptoms)
