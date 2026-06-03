@@ -715,53 +715,67 @@ def render_quick_select(categorized_symptoms: dict):
     symptoms   = sorted(categorized_symptoms.get(active_cat, []))
     selected   = st.session_state.symptoms_selected
 
-    # ── Handle toggle via query params set by HTML chip clicks
-    qp = st.query_params
-    if "toggle_sym" in qp:
-        sym = qp["toggle_sym"]
-        if sym in selected:
+    # ── Handle actions written by JS into a hidden st.text_input
+    action = st.session_state.get("_qs_action", "")
+    if action.startswith("toggle:"):
+        sym = action[7:]
+        if sym in st.session_state.symptoms_selected:
             st.session_state.symptoms_selected.remove(sym)
         else:
             st.session_state.symptoms_selected.append(sym)
-        st.query_params.clear()
+        st.session_state["_qs_action"] = ""
         st.rerun()
-    if "set_cat" in qp:
-        cat_idx = int(qp["set_cat"])
-        if 0 <= cat_idx < len(cats):
-            st.session_state.active_cat = cats[cat_idx]
-        st.query_params.clear()
+    elif action.startswith("cat:"):
+        idx = int(action[4:])
+        if 0 <= idx < len(cats):
+            st.session_state.active_cat = cats[idx]
+        st.session_state["_qs_action"] = ""
         st.rerun()
 
-    selected = st.session_state.symptoms_selected  # refresh after possible update
+    selected   = st.session_state.symptoms_selected
+    active_cat = st.session_state.active_cat
+    symptoms   = sorted(categorized_symptoms.get(active_cat, []))
 
-    # ── Category pill tabs as HTML links
-    cat_tabs_html = "<div style='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px'>"
+    # ── Hidden text input that JS writes action strings into
+    st.markdown(
+        "<div style='height:0;overflow:hidden;position:absolute;pointer-events:none'>",
+        unsafe_allow_html=True,
+    )
+    st.text_input("_qs", key="_qs_action", label_visibility="collapsed")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── Category pill tabs
+    cat_html = "<div style='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px'>"
     for i, cat in enumerate(cats):
         is_active = (cat == active_cat)
         if is_active:
             style = (
-                "padding:3px 10px;border-radius:20px;font-size:0.68rem;font-weight:700;"
+                "padding:3px 11px;border-radius:20px;font-size:0.68rem;font-weight:700;"
                 "background:rgba(20,184,166,0.18);color:#2dd4bf;"
                 "border:1px solid rgba(20,184,166,0.5);cursor:pointer;"
-                "text-decoration:none;white-space:nowrap;font-family:inherit;"
+                "text-decoration:none;white-space:nowrap;font-family:inherit;display:inline-block;"
             )
         else:
             style = (
-                "padding:3px 10px;border-radius:20px;font-size:0.68rem;font-weight:400;"
+                "padding:3px 11px;border-radius:20px;font-size:0.68rem;font-weight:400;"
                 "background:transparent;color:#475569;"
                 "border:1px solid rgba(71,85,105,0.3);cursor:pointer;"
-                "text-decoration:none;white-space:nowrap;font-family:inherit;"
+                "text-decoration:none;white-space:nowrap;font-family:inherit;display:inline-block;"
             )
-        cat_tabs_html += f"<a href='?set_cat={i}' style='{style}'>{cat}</a>"
-    cat_tabs_html += "</div>"
-
-    # Thin separator
-    cat_tabs_html += (
+        cat_html += (
+            f"<span style='{style}' "
+            f"onclick='qsAction(\"cat:{i}\")' "
+            f"onmouseover='if(!this.dataset.active){{this.style.color=\"#94a3b8\";this.style.borderColor=\"rgba(71,85,105,0.6)\"}}' "
+            f"onmouseout='if(!this.dataset.active){{this.style.color=\"#475569\";this.style.borderColor=\"rgba(71,85,105,0.3)\"}}' "
+            f"{'data-active=\"1\"' if is_active else ''}>{cat}</span>"
+        )
+    cat_html += "</div>"
+    cat_html += (
         "<div style='height:1px;background:linear-gradient(90deg,"
         "transparent,rgba(20,184,166,0.2),transparent);margin:2px 0 7px'></div>"
     )
 
-    # ── Symptom chips as HTML links
+    # ── Symptom chips
     CHIPS_PER_ROW = 7
     chip_html = "<div style='display:flex;flex-direction:column;gap:4px'>"
     for row_start in range(0, len(symptoms), CHIPS_PER_ROW):
@@ -775,21 +789,68 @@ def render_quick_select(categorized_symptoms: dict):
                     "padding:3px 10px;border-radius:5px;font-size:0.71rem;font-weight:600;"
                     "background:rgba(20,184,166,0.18);color:#5eead4;"
                     "border:1px solid rgba(20,184,166,0.6);"
-                    "text-decoration:none;white-space:nowrap;font-family:inherit;"
+                    "cursor:pointer;white-space:nowrap;font-family:inherit;display:inline-block;"
+                    "user-select:none;"
                 )
-                chip_html += f"<a href='?toggle_sym={sym}' style='{style}'>✓ {label}</a>"
+                chip_html += (
+                    f"<span style='{style}' "
+                    f"onclick='qsAction(\"toggle:{sym}\")'>✓ {label}</span>"
+                )
             else:
                 style = (
                     "padding:3px 10px;border-radius:5px;font-size:0.71rem;font-weight:400;"
                     "background:rgba(30,41,59,0.5);color:#64748b;"
                     "border:1px solid rgba(71,85,105,0.35);"
-                    "text-decoration:none;white-space:nowrap;font-family:inherit;"
+                    "cursor:pointer;white-space:nowrap;font-family:inherit;display:inline-block;"
+                    "user-select:none;"
                 )
-                chip_html += f"<a href='?toggle_sym={sym}' style='{style}'>{label}</a>"
+                chip_html += (
+                    f"<span style='{style}' "
+                    f"onmouseover='this.style.borderColor=\"rgba(20,184,166,0.4)\";this.style.color=\"#94a3b8\"' "
+                    f"onmouseout='this.style.borderColor=\"rgba(71,85,105,0.35)\";this.style.color=\"#64748b\"' "
+                    f"onclick='qsAction(\"toggle:{sym}\")'>{ label}</span>"
+                )
         chip_html += "</div>"
     chip_html += "</div>"
 
-    st.markdown(cat_tabs_html + chip_html, unsafe_allow_html=True)
+    # ── JS: writes action into the hidden text_input then fires Enter to trigger Streamlit rerun
+    js = """
+<script>
+function qsAction(val) {
+    // Find the hidden text input by its data-testid wrapper and set its value
+    const inputs = window.parent.document.querySelectorAll('input[type="text"]');
+    let target = null;
+    for (const inp of inputs) {
+        // The key "_qs_action" becomes part of the widget ID
+        const wrapper = inp.closest('[data-testid]');
+        if (wrapper && wrapper.getAttribute('data-testid') && inp.value !== undefined) {
+            // Try all text inputs — set value and dispatch events to the last one that is hidden
+            if (inp.offsetParent === null || inp.closest('[style*="height:0"]')) {
+                target = inp;
+            }
+        }
+    }
+    if (!target) {
+        // Fallback: pick last text input on page
+        const all = window.parent.document.querySelectorAll('input[type="text"]');
+        if (all.length) target = all[all.length - 1];
+    }
+    if (target) {
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+            window.parent.HTMLInputElement.prototype, 'value'
+        ).set;
+        nativeInputValueSetter.call(target, val);
+        target.dispatchEvent(new Event('input', { bubbles: true }));
+        // Simulate Enter key to commit
+        target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+        target.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+        target.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+    }
+}
+</script>
+"""
+
+    st.markdown(cat_html + chip_html + js, unsafe_allow_html=True)
 
 
 
