@@ -497,41 +497,121 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 
 # ──────────────────────────────────────────────
-# SYMPTOM CATEGORIZATION
+# V2 QUICK-SELECT SYMPTOM WIDGET
 # ──────────────────────────────────────────────
-def categorize_symptoms(symptom_list):
-    categories = {
-        "General":        [],
-        "Pain":           [],
-        "Cardio / Resp":  [],
-        "Neuro / Mental": [],
-        "Gastro":         [],
-        "Urinary":        [],
-        "Skin":           [],
-        "Reproductive":   [],
-        "Other":          [],
+def render_quick_select_symptoms(lang: str) -> None:
+    CATEGORIES_EN = {
+        "🌡️ General":       ["fever", "fatigue", "weakness", "chills", "sweating",
+                              "weight gain", "malaise", "lethargy", "weight loss",
+                              "night sweats"],
+        "🤕 Pain":            ["headache", "back pain", "chest pain", "joint pain",
+                              "muscle pain", "abdominal pain", "neck pain", "knee pain",
+                              "shoulder pain", "sore throat", "ear pain", "eye pain"],
+        "🫀 Cardio/Resp":    ["cough", "shortness of breath", "chest tightness",
+                              "palpitations", "irregular heartbeat",
+                              "difficulty breathing", "wheezing", "sneezing",
+                              "runny nose", "nasal congestion"],
+        "🧠 Neuro/Mental":   ["dizziness", "confusion", "anxiety", "depression",
+                              "insomnia", "memory loss", "seizures", "tremors",
+                              "fainting", "numbness", "blurred vision", "headache"],
+        "🤢 Gastro":         ["nausea", "vomiting", "diarrhea", "constipation",
+                              "stomach bloating", "loss of appetite", "heartburn",
+                              "indigestion", "blood in stool", "abdominal pain"],
+        "🩺 Skin":           ["skin rash", "itching", "acne", "skin dryness",
+                              "skin swelling", "jaundice", "skin lesion",
+                              "hives", "peeling skin"],
+        "👁️ Eye/Ear/Nose":  ["eye redness", "ear pain", "blurred vision",
+                              "runny nose", "nasal congestion", "hearing loss",
+                              "watery eyes", "sneezing"],
+        "🦴 Musculo":        ["joint stiffness", "muscle cramps", "swelling",
+                              "leg weakness", "arm weakness", "back stiffness",
+                              "peripheral edema"],
+        "🚻 Urinary":        ["frequent urination", "painful urination",
+                              "blood in urine", "urinary retention", "dark urine"],
+        "🔬 Other":          ["jaundice", "hair loss", "swollen lymph nodes",
+                              "high blood sugar", "low blood pressure"],
     }
-    kw = {
-        "General":        ["fever","fatigue","tiredness","weakness","chills","sweat","malaise","weight","appetite","feeling"],
-        "Pain":           ["pain","ache","cramp","stiff","sore","tender","backache","headache","migraine"],
-        "Cardio / Resp":  ["chest","heart","pulse","palpitation","breath","cough","wheeze","asthma","cold","flu","sneeze"],
-        "Neuro / Mental": ["dizziness","vertigo","confusion","memory","seizure","tremor","anxiety","depression","mood","sleep","insomnia"],
-        "Gastro":         ["vomit","nausea","diarrhea","constipation","stomach","indigestion","bloat","gas","bowel","acidity"],
-        "Urinary":        ["urin","bladder","kidney","discharge","burning urination","frequent urination"],
-        "Skin":           ["rash","itch","burn","wound","acne","dermatitis","eczema","blister","hives","peeling"],
-        "Reproductive":   ["menstrual","period","pregnancy","vaginal","erectile","fertility","libido","ovarian"],
+
+    CAT_AM = {
+        "🌡️ General":      "አጠቃላይ",
+        "🤕 Pain":          "ህመም",
+        "🫀 Cardio/Resp":   "ልብ/መተንፈሻ",
+        "🧠 Neuro/Mental":  "ነርቭ/አዕምሮ",
+        "🤢 Gastro":        "የምግብ መፈጨት",
+        "🩺 Skin":          "ቆዳ",
+        "👁️ Eye/Ear/Nose": "ዓይን/ጆሮ/አፍንጫ",
+        "🦴 Musculo":       "ጡንቻ",
+        "🚻 Urinary":       "የሽንት",
+        "🔬 Other":         "ሌላ",
     }
-    for symptom in symptom_list:
-        sl = symptom.lower().replace("_", " ")
-        placed = False
-        for cat, words in kw.items():
-            if any(w in sl for w in words):
-                categories[cat].append(symptom)
-                placed = True
-                break
-        if not placed:
-            categories["Other"].append(symptom)
-    return {k: v for k, v in categories.items() if v}
+
+    SYMPTOM_AM = {
+        "fever": "ትኩሳት", "fatigue": "ድካም", "weakness": "ድክመት",
+        "chills": "ብርድ", "sweating": "ላብ", "weight gain": "ክብደት መጨመር",
+        "malaise": "ስሜት መጥፎ", "lethargy": "ዝላይ", "weight loss": "ክብደት መቀነስ",
+        "night sweats": "ሌሊት ላብ",
+        "headache": "ራስ ምታት", "back pain": "የጀርባ ህመም",
+        "chest pain": "የደረት ህመም", "joint pain": "የመገጣጠሚያ ህመም",
+        "muscle pain": "የጡንቻ ህመም", "abdominal pain": "የሆድ ህመም",
+        "neck pain": "የአንገት ህመም", "knee pain": "የጉልበት ህመም",
+        "shoulder pain": "የትከሻ ህመም", "sore throat": "ጉሮሮ ህመም",
+        "ear pain": "የጆሮ ህመም", "eye pain": "የዓይን ህመም",
+        "cough": "ሳል", "shortness of breath": "መተንፈስ ማጠር",
+        "chest tightness": "ደረት መጠበቅ", "palpitations": "ልብ ምት ስሜት",
+        "irregular heartbeat": "ያልተስተካከለ የልብ ምት",
+        "difficulty breathing": "ለመተንፈስ ችግር",
+        "wheezing": "ድምፅ ሲተነፍሱ", "sneezing": "ማስነጠስ",
+        "runny nose": "አፍንጫ ፍሳሽ", "nasal congestion": "አፍንጫ መዘጋት",
+        "dizziness": "ራስ ዞር", "confusion": "ግራ መጋባት",
+        "anxiety": "ጭንቀት", "depression": "ድብርት",
+        "insomnia": "እንቅልፍ ማጣት", "memory loss": "ትውስታ ማጣት",
+        "seizures": "ቅብጠት", "tremors": "መርበድበድ",
+        "fainting": "ዋዛ ማጣት", "numbness": "ደንዘዝ ስሜት",
+        "blurred vision": "ደበዘዘ ዕይታ",
+        "nausea": "ማቅለሽлеш", "vomiting": "ማስታወክ", "diarrhea": "ተቅማጥ",
+        "constipation": "ሆድ መጠፍጠፍ", "stomach bloating": "ሆድ ማበጥ",
+        "loss of appetite": "የምግብ ፍቅር ማጣት", "heartburn": "ሆድ ማቃጠል",
+        "indigestion": "ምግብ አለመፈጨት", "blood in stool": "ሰገራ ውስጥ ደም",
+        "skin rash": "ቆዳ ሽፍታ", "itching": "ማሳከክ", "acne": "ሽፍታ",
+        "skin dryness": "ቆዳ ደረቅ", "skin swelling": "ቆዳ ማበጥ",
+        "jaundice": "ቢጫ በሽታ", "skin lesion": "ቆዳ ቁስለት",
+        "hives": "ድርቀት", "peeling skin": "ቆዳ መላጥ",
+        "eye redness": "ቀይ ዓይን", "hearing loss": "የመስሚያ ችግር",
+        "watery eyes": "እንባ ዓይን",
+        "joint stiffness": "መገጣጠሚያ ጥበቃ", "muscle cramps": "ጡንቻ ቁርጠት",
+        "swelling": "ማበጥ", "leg weakness": "የእግር ድክመት",
+        "arm weakness": "የእጅ ድክመት", "back stiffness": "ጀርባ ጥበቃ",
+        "peripheral edema": "ዳርቻ ማበጥ",
+        "frequent urination": "ተደጋጋሚ ሽንት",
+        "painful urination": "ሽንት ሲሸኑ ህመም",
+        "blood in urine": "ሽንት ውስጥ ደም",
+        "urinary retention": "ሽንት ማቆር", "dark urine": "ጨለማ ሽንት",
+        "hair loss": "ፀጉር መርገፍ", "swollen lymph nodes": "ሊምፍ ኖድ ማበጥ",
+        "high blood sugar": "ከፍተኛ የደም ስኳር",
+        "low blood pressure": "ዝቅተኛ የደም ግፊት",
+    }
+
+    is_am = lang.lower() == "amharic"
+
+    js_cats = {}
+    for cat_en, symptoms in CATEGORIES_EN.items():
+        label = CAT_AM.get(cat_en, cat_en) if is_am else cat_en
+        js_cats[label] = [
+            {
+                "en":      s,
+                "display": SYMPTOM_AM.get(s, s) if is_am else s.title(),
+            }
+            for s in symptoms
+        ]
+
+    current_val = st.session_state.get("symptoms_text", "")
+    current_list = [s.strip().lower() for s in current_val.split(",") if s.strip()]
+
+    quick_label = "ምልክቶችን ፈጥኖ ይምረጡ:" if is_am else "Quick-select symptoms:"
+    or_text     = "ወይም ምልክቶችን ይተይቡ"   if is_am else "or type symptoms"
+
+    html_code = f"""
+
 
 
 # ──────────────────────────────────────────────
