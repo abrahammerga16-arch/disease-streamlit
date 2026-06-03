@@ -727,27 +727,15 @@ def render_predictions(predictions: list):
 
 
 # ──────────────────────────────────────────────
-# QUICK-SELECT SYMPTOM CHIPS  ← FIXED
+# QUICK-SELECT SYMPTOM CHIPS  ← STYLED TO MATCH IMAGE
 # ──────────────────────────────────────────────
 def render_quick_select(categorized_symptoms: dict):
     """
     Fully interactive chip UI using real st.button calls.
-
-    FIX SUMMARY
-    ───────────
-    The original code styled buttons with CSS `nth-of-type` positional selectors.
-    Those selectors are fragile because Streamlit injects extra wrapper divs on
-    every re-render and the offset shifts unpredictably.  As a result, clicking
-    a symptom chip never appeared to change state.
-
-    The fix uses THREE reliable techniques instead:
-      1. Stable string-based button keys  →  f"sym__{active_cat}__{sym}"
-         so Streamlit never confuses one button with another across re-renders.
-      2. Label-change as visual toggle indicator  →  "✓ Headache" vs "Headache"
-         so the user sees immediate feedback even before CSS loads.
-      3. aria-label CSS selectors  →  button[aria-label="✓ Headache"]
-         Streamlit sets aria-label equal to the button's text label, giving us
-         a DOM-position-independent hook for colour styling.
+    Chip style matches the provided image:
+      - Small dark background pill with teal (#0d9488) border
+      - Teal text, compact padding, tight rows
+      - Selected state: slightly filled teal background
     """
     cats = list(categorized_symptoms.keys())
 
@@ -757,95 +745,115 @@ def render_quick_select(categorized_symptoms: dict):
     if "symptoms_selected" not in st.session_state:
         st.session_state.symptoms_selected = []
 
-   # ── Base chip shape — compact/small ──────────────────────────────────
+    # ── Global chip style matching the image ─────────────────────────────
+    # All chips: dark bg, teal border, teal text, small pill shape
     st.markdown("""
 <style>
-/* Outer scrollable container keeps the whole section tiny */
-.qs-section {
-    max-height: 160px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding: 4px 6px !important;
-    border: 1px solid rgba(255,255,255,0.07) !important;
-    border-radius: 8px !important;
-    background: rgba(15,20,26,0.4) !important;
-}
-/* Tiny pill chips */
+/* ── Scope all quick-select styling inside .qs-section ── */
 .qs-section .stButton > button {
-    border-radius: 14px !important;
-    padding: 2px 9px !important;
-    font-size: 0.70rem !important;
+    background: rgba(10, 25, 28, 0.85) !important;
+    color: #2dd4bf !important;
+    border: 1px solid #0d9488 !important;
+    border-radius: 20px !important;
+    padding: 3px 12px !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
     height: auto !important;
     min-height: 0 !important;
-    line-height: 1.4 !important;
+    line-height: 1.5 !important;
     white-space: nowrap !important;
-    border: 1px solid rgba(255,255,255,0.10) !important;
+    letter-spacing: 0.01em !important;
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
+    box-shadow: none !important;
 }
-/* Tighten column gaps inside the section */
-.qs-section [data-testid="column"] {
-    padding: 1px 2px !important;
+.qs-section .stButton > button:hover {
+    background: rgba(13, 148, 136, 0.18) !important;
+    color: #5eead4 !important;
+    border-color: #14b8a6 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* ── Category tab buttons — slightly brighter border to distinguish ── */
+.qs-section-cats .stButton > button {
+    background: rgba(10, 25, 28, 0.6) !important;
+    color: #94a3b8 !important;
+    border: 1px solid rgba(13, 148, 136, 0.35) !important;
+    border-radius: 20px !important;
+    padding: 3px 12px !important;
+    font-size: 0.73rem !important;
+    font-weight: 500 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    line-height: 1.5 !important;
+    white-space: nowrap !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
+    box-shadow: none !important;
+}
+.qs-section-cats .stButton > button:hover {
+    background: rgba(13, 148, 136, 0.12) !important;
+    color: #2dd4bf !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* ── Tighten column gaps ── */
+.qs-section [data-testid="column"],
+.qs-section-cats [data-testid="column"] {
+    padding: 2px 3px !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-    # Open wrapper div so the .qs-section selector above scopes correctly
-    st.markdown("<div class='qs-section'>", unsafe_allow_html=True)
-
-    # Open wrapper div so the .qs-section selector above scopes correctly
-    st.markdown("<div class='qs-section'>", unsafe_allow_html=True)
-
     # ── ROW 1: category chips ─────────────────────────────────────────────
-    # Build aria-label CSS for each category button
+    # Build aria-label CSS for active category
     cat_styles = []
     for cat in cats:
         is_active = (cat == st.session_state.active_cat)
-        bg     = "#0d9488"                        if is_active else "rgba(255,255,255,0.05)"
-        color  = "#ffffff"                        if is_active else "#94a3b8"
-        border = "#0d9488"                        if is_active else "rgba(255,255,255,0.15)"
-        fw     = "700"                            if is_active else "500"
-        # aria-label equals the button's label text in Streamlit
-        cat_styles.append(
-            f'.qs-section .stButton > button[aria-label="{cat}"] {{'
-            f"background:{bg}!important;color:{color}!important;"
-            f"border-color:{border}!important;font-weight:{fw}!important;}}"
-        )
+        if is_active:
+            cat_styles.append(
+                f'.qs-section-cats .stButton > button[aria-label="{cat}"] {{'
+                f'background: rgba(13,148,136,0.25) !important;'
+                f'color: #2dd4bf !important;'
+                f'border-color: #0d9488 !important;'
+                f'font-weight: 700 !important;}}'
+            )
     st.markdown("<style>" + "\n".join(cat_styles) + "</style>", unsafe_allow_html=True)
 
+    st.markdown("<div class='qs-section-cats'>", unsafe_allow_html=True)
     cat_cols = st.columns(len(cats))
     for i, cat in enumerate(cats):
         with cat_cols[i]:
-            # key is stable; label never changes for categories
             if st.button(cat, key=f"cat_btn_{i}", use_container_width=True):
                 st.session_state.active_cat = cat
                 st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-top:8px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:6px'></div>", unsafe_allow_html=True)
 
     # ── ROW 2+: symptom chips for the active category ─────────────────────
     active_cat = st.session_state.active_cat
     symptoms   = sorted(categorized_symptoms.get(active_cat, []))
 
     # Build ONE style block using aria-label selectors — position-independent
+    # Selected chips get a filled teal background, matching the image's selected style
     sym_styles = []
     for sym in symptoms:
         label  = sym.replace("_", " ").title()
         is_sel = sym in st.session_state.symptoms_selected
-
-        # The rendered button label includes the tick when selected
         rendered_label = f"✓ {label}" if is_sel else label
 
-        bg     = "rgba(13,148,136,0.35)"  if is_sel else "rgba(255,255,255,0.04)"
-        color  = "#5eead4"                if is_sel else "#94a3b8"
-        border = "#0d9488"                if is_sel else "rgba(255,255,255,0.12)"
-        fw     = "600"                    if is_sel else "400"
-
-        sym_styles.append(
-            f'.qs-section .stButton > button[aria-label="{rendered_label}"] {{'
-            f"background:{bg}!important;color:{color}!important;"
-            f"border-color:{border}!important;font-weight:{fw}!important;}}"
-        )
+        if is_sel:
+            sym_styles.append(
+                f'.qs-section .stButton > button[aria-label="{rendered_label}"] {{'
+                f'background: rgba(13,148,136,0.30) !important;'
+                f'color: #5eead4 !important;'
+                f'border-color: #14b8a6 !important;'
+                f'font-weight: 600 !important;}}'
+            )
     st.markdown("<style>" + "\n".join(sym_styles) + "</style>", unsafe_allow_html=True)
+
+    st.markdown("<div class='qs-section'>", unsafe_allow_html=True)
 
     # Render symptom buttons in rows of 4
     COLS = 4
@@ -856,9 +864,7 @@ def render_quick_select(categorized_symptoms: dict):
             label     = sym.replace("_", " ").title()
             is_sel    = sym in st.session_state.symptoms_selected
             btn_label = f"✓ {label}" if is_sel else label
-
-            # Key is stable: category name + symptom name (no numeric index)
-            btn_key = f"sym__{active_cat}__{sym}"
+            btn_key   = f"sym__{active_cat}__{sym}"
 
             with cols[j]:
                 if st.button(btn_label, key=btn_key, use_container_width=True):
@@ -868,7 +874,6 @@ def render_quick_select(categorized_symptoms: dict):
                         st.session_state.symptoms_selected.append(sym)
                     st.rerun()
 
-    # Close wrapper div
     st.markdown("</div>", unsafe_allow_html=True)
 
 
