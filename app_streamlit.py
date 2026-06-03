@@ -130,14 +130,7 @@ div[data-baseweb="select"] > div:focus-within {
 }
 .stButton > button:active { transform: translateY(0); }
 
-/* sym__ buttons hidden — chips are rendered as HTML spans */
-[data-testid^="sym__"] button {
-    opacity: 0 !important; height: 0 !important; padding: 0 !important;
-    min-height: 0 !important; border: none !important; font-size: 0 !important;
-    line-height: 0 !important; overflow: hidden !important; pointer-events: none !important;
-}
-[data-testid^="sym__"] { height: 0 !important; overflow: hidden !important; padding: 0 !important; margin: 0 !important; }
-[data-testid^="cat_btn_"] { padding: 1px 1px !important; }
+/* chip buttons replaced by HTML anchor links — no st.button overrides needed */
 
 .result-card {
     background: linear-gradient(135deg, rgba(22,27,34,0.8) 0%, rgba(33,38,45,0.6) 100%);
@@ -722,116 +715,84 @@ def render_quick_select(categorized_symptoms: dict):
     symptoms   = sorted(categorized_symptoms.get(active_cat, []))
     selected   = st.session_state.symptoms_selected
 
-    # ── Category pill tabs — styled via per-render CSS
-    css_cats = []
+    # ── Handle toggle via query params set by HTML chip clicks
+    qp = st.query_params
+    if "toggle_sym" in qp:
+        sym = qp["toggle_sym"]
+        if sym in selected:
+            st.session_state.symptoms_selected.remove(sym)
+        else:
+            st.session_state.symptoms_selected.append(sym)
+        st.query_params.clear()
+        st.rerun()
+    if "set_cat" in qp:
+        cat_idx = int(qp["set_cat"])
+        if 0 <= cat_idx < len(cats):
+            st.session_state.active_cat = cats[cat_idx]
+        st.query_params.clear()
+        st.rerun()
+
+    selected = st.session_state.symptoms_selected  # refresh after possible update
+
+    # ── Category pill tabs as HTML links
+    cat_tabs_html = "<div style='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px'>"
     for i, cat in enumerate(cats):
         is_active = (cat == active_cat)
-        sel = f'[data-testid="cat_btn_{i}"] button'
         if is_active:
-            css_cats.append(
-                f"{sel}{{background:rgba(20,184,166,0.15)!important;"
-                f"color:#2dd4bf!important;border:1px solid rgba(20,184,166,0.45)!important;"
-                f"border-radius:20px!important;font-size:0.68rem!important;"
-                f"padding:2px 8px!important;font-weight:700!important;"
-                f"box-shadow:none!important;transform:none!important;"
-                f"line-height:1.3!important;min-height:0!important;}}"
+            style = (
+                "padding:3px 10px;border-radius:20px;font-size:0.68rem;font-weight:700;"
+                "background:rgba(20,184,166,0.18);color:#2dd4bf;"
+                "border:1px solid rgba(20,184,166,0.5);cursor:pointer;"
+                "text-decoration:none;white-space:nowrap;font-family:inherit;"
             )
         else:
-            css_cats.append(
-                f"{sel}{{background:transparent!important;"
-                f"color:#475569!important;border:1px solid rgba(71,85,105,0.3)!important;"
-                f"border-radius:20px!important;font-size:0.68rem!important;"
-                f"padding:2px 8px!important;font-weight:400!important;"
-                f"box-shadow:none!important;transform:none!important;"
-                f"line-height:1.3!important;min-height:0!important;}}"
+            style = (
+                "padding:3px 10px;border-radius:20px;font-size:0.68rem;font-weight:400;"
+                "background:transparent;color:#475569;"
+                "border:1px solid rgba(71,85,105,0.3);cursor:pointer;"
+                "text-decoration:none;white-space:nowrap;font-family:inherit;"
             )
+        cat_tabs_html += f"<a href='?set_cat={i}' style='{style}'>{cat}</a>"
+    cat_tabs_html += "</div>"
 
-    # Symptom toggle buttons — completely invisible, just functional
-    sym_css = (
-        "[data-testid^='sym__'] button{"
-        "opacity:0!important;height:0!important;padding:0!important;"
-        "min-height:0!important;border:none!important;background:transparent!important;"
-        "font-size:0!important;line-height:0!important;overflow:hidden!important;"
-        "pointer-events:none!important;}"
-        "[data-testid^='sym__']{height:0!important;overflow:hidden!important;"
-        "padding:0!important;margin:0!important;}"
-        "[data-testid^='cat_btn_']{padding:1px 1px!important;}"
-    )
-    st.markdown("<style>" + "".join(css_cats) + sym_css + "</style>", unsafe_allow_html=True)
-
-    # Category tab row
-    cat_cols = st.columns(len(cats))
-    for i, cat in enumerate(cats):
-        with cat_cols[i]:
-            if st.button(cat, key=f"cat_btn_{i}", use_container_width=True):
-                st.session_state.active_cat = cat
-                st.rerun()
-
-    # Thin gradient separator
-    st.markdown(
+    # Thin separator
+    cat_tabs_html += (
         "<div style='height:1px;background:linear-gradient(90deg,"
-        "transparent,rgba(20,184,166,0.25),transparent);margin:5px 0 8px'></div>",
-        unsafe_allow_html=True,
+        "transparent,rgba(20,184,166,0.2),transparent);margin:2px 0 7px'></div>"
     )
 
-    # ── Symptom chips as pure HTML spans — no Streamlit button styling
+    # ── Symptom chips as HTML links
     CHIPS_PER_ROW = 7
-    html_rows = "<div style='display:flex;flex-direction:column;gap:5px'>"
+    chip_html = "<div style='display:flex;flex-direction:column;gap:4px'>"
     for row_start in range(0, len(symptoms), CHIPS_PER_ROW):
         row_syms = symptoms[row_start: row_start + CHIPS_PER_ROW]
-        html_rows += "<div style='display:flex;flex-wrap:wrap;gap:4px'>"
+        chip_html += "<div style='display:flex;flex-wrap:wrap;gap:4px'>"
         for sym in row_syms:
             label  = sym.replace("_", " ").title()
             is_sel = sym in selected
             if is_sel:
-                chip_style = (
+                style = (
+                    "padding:3px 10px;border-radius:5px;font-size:0.71rem;font-weight:600;"
                     "background:rgba(20,184,166,0.18);color:#5eead4;"
-                    "border:1px solid rgba(20,184,166,0.6);border-radius:5px;"
-                    "padding:3px 10px;font-size:0.71rem;font-weight:600;"
-                    "cursor:pointer;white-space:nowrap;user-select:none;"
-                    "transition:background 0.15s,color 0.15s;"
-                    "font-family:inherit;"
+                    "border:1px solid rgba(20,184,166,0.6);"
+                    "text-decoration:none;white-space:nowrap;font-family:inherit;"
                 )
-                icon = "✓ "
+                chip_html += f"<a href='?toggle_sym={sym}' style='{style}'>✓ {label}</a>"
             else:
-                chip_style = (
+                style = (
+                    "padding:3px 10px;border-radius:5px;font-size:0.71rem;font-weight:400;"
                     "background:rgba(30,41,59,0.5);color:#64748b;"
-                    "border:1px solid rgba(71,85,105,0.35);border-radius:5px;"
-                    "padding:3px 10px;font-size:0.71rem;font-weight:400;"
-                    "cursor:pointer;white-space:nowrap;user-select:none;"
-                    "transition:background 0.15s,color 0.15s,border-color 0.15s;"
-                    "font-family:inherit;"
+                    "border:1px solid rgba(71,85,105,0.35);"
+                    "text-decoration:none;white-space:nowrap;font-family:inherit;"
                 )
-                icon = ""
-            # Each chip submits via a hidden form-like query param approach
-            html_rows += (
-                f"<span style='{chip_style}' "
-                f"title='{sym}'>{icon}{label}</span>"
-            )
-        html_rows += "</div>"
-    html_rows += "</div>"
+                chip_html += f"<a href='?toggle_sym={sym}' style='{style}'>{label}</a>"
+        chip_html += "</div>"
+    chip_html += "</div>"
 
-    st.markdown(html_rows, unsafe_allow_html=True)
-
-    # ── Real hidden st.buttons that actually toggle state
-    # Rendered invisibly; user can also click them if HTML chips don't fire
-    for row_start in range(0, len(symptoms), CHIPS_PER_ROW):
-        row_syms = symptoms[row_start: row_start + CHIPS_PER_ROW]
-        cols = st.columns(len(row_syms))
-        for j, sym in enumerate(row_syms):
-            label   = sym.replace("_", " ").title()
-            is_sel  = sym in selected
-            btn_key = f"sym__{active_cat}__{sym}"
-            with cols[j]:
-                if st.button(("✓ " if is_sel else "") + label, key=btn_key, use_container_width=True):
-                    if is_sel:
-                        st.session_state.symptoms_selected.remove(sym)
-                    else:
-                        st.session_state.symptoms_selected.append(sym)
-                    st.rerun()
+    st.markdown(cat_tabs_html + chip_html, unsafe_allow_html=True)
 
 
-# ──────────────────────────────────────────────
+
 # SIDEBAR — GLOBAL CONTROLS
 # ──────────────────────────────────────────────
 with st.sidebar:
