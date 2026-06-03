@@ -153,14 +153,6 @@ div[data-baseweb="select"] > div:focus-within {
 
 /* ══════════════════════════════════════════════════
    QUICK-SELECT CHIP OVERRIDES
-   These must live in the global block so they win
-   over the green .stButton rule above.
-   Target: any button whose key starts with
-   "sym__" or "cat_btn_" (set via the key= arg,
-   which Streamlit exposes as data-testid on the
-   wrapping div and as aria-label on the button).
-   We use [data-testid] on the wrapper + descendant
-   button as the scope — fully DOM-position-independent.
    ══════════════════════════════════════════════════ */
 
 /* Category row chips */
@@ -316,7 +308,35 @@ div[data-testid^="sym__"] button:hover {
     border-radius: 8px !important;
 }
 
-/* ── Slider */
+/* ── COMPACT ULTRA-SMALL SLIDER OVERRIDES ── */
+div[data-testid="stSlider"] {
+    margin-bottom: 0px !important;
+    padding-bottom: 0px !important;
+}
+div[data-testid="stSlider"] > label {
+    margin-bottom: 2px !important;
+    font-size: 0.85rem !important;
+}
+div[data-testid="stSlider"] [data-baseweb="slider"] {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+}
+/* Slider Track */
+div[data-testid="stSlider"] [role="slider"] {
+    height: 10px !important;
+    width: 10px !important;
+    top: -3px !important;
+    background: #21262d !important;
+    border: 2px solid #58a6ff !important;
+}
+/* Track filled portion background */
+div[data-testid="stSlider"] [data-baseweb="slider"] > div > div:first-child {
+    height: 4px !important;
+}
+/* Numerical display under the slider container */
+div[data-testid="stSlider"] [data-testid="stSliderTickBar"] {
+    display: none !important;
+}
 .stSlider .st-bk { background: linear-gradient(90deg, #1f6feb, #58a6ff) !important; }
 .stSlider .st-ao { background: #21262d !important; border: 2px solid #58a6ff !important; }
 
@@ -353,7 +373,6 @@ a:hover { color: #79c0ff; text-decoration: underline; }
 </style>
 """, unsafe_allow_html=True)
 
-
 # ──────────────────────────────────────────────
 # AMHARIC TRANSLATIONS
 # ──────────────────────────────────────────────
@@ -388,12 +407,10 @@ AMHARIC = {
         "ℹ️ ሙሉ የመድሃኒት መረጃ ለሐኪሞች ብቻ ይገኛል።",
 }
 
-
 def t(text: str, lang: str) -> str:
     if lang.lower() == "amharic":
         return AMHARIC.get(text, text)
     return text
-
 
 # ──────────────────────────────────────────────
 # GOOGLE TRANSLATE (optional)
@@ -405,7 +422,6 @@ def get_translator():
         return Translator()
     except Exception:
         return None
-
 
 def translate_content(text, target_lang="English"):
     if target_lang.lower() != "amharic":
@@ -422,7 +438,6 @@ def translate_content(text, target_lang="English"):
     except Exception:
         return text
 
-
 # ──────────────────────────────────────────────
 # LOAD DATA FILES
 # ──────────────────────────────────────────────
@@ -436,14 +451,11 @@ MODEL_FILES = [
     "models/decision_tree_model.pkl", "models/label_encoder.pkl",
 ]
 
-
 def check_files():
     return [f for f in DATA_FILES + MODEL_FILES if not os.path.exists(f)]
 
-
 def clean_disease_name(name: str) -> str:
     return str(name).lower().replace("_", " ").strip()
-
 
 @st.cache_data(show_spinner="Loading dataset…")
 def load_data():
@@ -474,14 +486,12 @@ def load_data():
     return (main_df, description_map, diets_map,
             medications_map, precautions_map, workout_map)
 
-
 @st.cache_resource(show_spinner="Loading ML models…")
 def load_models():
     svc = joblib.load("models/svc_model.pkl")
     dt  = joblib.load("models/decision_tree_model.pkl")
     le  = joblib.load("models/label_encoder.pkl")
     return svc, dt, le
-
 
 @st.cache_resource(show_spinner="Building symptom index…")
 def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
@@ -494,7 +504,6 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
     sym_matrix = vec.transform(sym_texts).toarray()
     dis_matrix = vec.transform(dis_texts).toarray()
     return vec, sym_matrix, dis_matrix
-
 
 # ──────────────────────────────────────────────
 # SYMPTOM CATEGORIZATION
@@ -533,7 +542,6 @@ def categorize_symptoms(symptom_list):
             categories["Other"].append(symptom)
     return {k: v for k, v in categories.items() if v}
 
-
 # ──────────────────────────────────────────────
 # ACCESS CONTROL
 # ──────────────────────────────────────────────
@@ -545,7 +553,6 @@ def check_access(age: int, role: str, user_id: str, lang: str):
     if role == "Doctor" and user_id != "0000":
         return False, t("Access Denied: Invalid ID for Doctor role.", lang)
     return True, ""
-
 
 # ──────────────────────────────────────────────
 # ROLE-BASED OUTPUT FILTER
@@ -597,7 +604,6 @@ def role_based_recs(role, lang, key,
             t("Precautions", lang):      precs,
             t("Workout/Activity", lang): workout,
         }, advice
-
 
 # ──────────────────────────────────────────────
 # PREDICTION SYSTEM
@@ -679,7 +685,6 @@ def integrated_prediction_system(
         "advice":               advice,
     }, ""
 
-
 # ──────────────────────────────────────────────
 # HEALTH RECOMMENDER
 # ──────────────────────────────────────────────
@@ -695,7 +700,6 @@ def health_recommender(
         role, lang, key,
         description_map, diets_map, medications_map, precautions_map, workout_map,
     )
-
 
 # ──────────────────────────────────────────────
 # CHATBOT
@@ -747,7 +751,6 @@ def chatbot_response(
     info_str = ("\n• " + "\n• ".join(info)) if isinstance(info, list) else str(info)
     return f"**{disease_title}** — {label}:\n{info_str}"
 
-
 # ──────────────────────────────────────────────
 # RENDER HELPERS
 # ──────────────────────────────────────────────
@@ -762,7 +765,6 @@ def render_recommendations(recs: dict):
             f"<div class='result-card'><h4>{label}</h4>{content}</div>",
             unsafe_allow_html=True,
         )
-
 
 def render_predictions(predictions: list):
     rows_html = (
@@ -788,9 +790,8 @@ def render_predictions(predictions: list):
         )
     st.markdown(rows_html + "</div>", unsafe_allow_html=True)
 
-
 # ──────────────────────────────────────────────
-# QUICK-SELECT SYMPTOM CHIPS  ← STYLED TO MATCH IMAGE
+# QUICK-SELECT SYMPTOM CHIPS
 # ──────────────────────────────────────────────
 def render_quick_select(categorized_symptoms: dict):
     """
@@ -809,7 +810,6 @@ def render_quick_select(categorized_symptoms: dict):
         st.session_state.symptoms_selected = []
 
     # ── Global chip style matching the image ─────────────────────────────
-    # All chips: dark bg, teal border, teal text, small pill shape
     st.markdown("""
 <style>
 /* ── Scope all quick-select styling inside .qs-section ── */
@@ -869,420 +869,172 @@ def render_quick_select(categorized_symptoms: dict):
 """, unsafe_allow_html=True)
 
     # ── ROW 1: category chips ─────────────────────────────────────────────
-    # Build aria-label CSS for active category
     cat_styles = []
     for cat in cats:
         is_active = (cat == st.session_state.active_cat)
         if is_active:
-            cat_styles.append(
-                f'.qs-section-cats .stButton > button[aria-label="{cat}"] {{'
-                f'background: rgba(13,148,136,0.25) !important;'
-                f'color: #2dd4bf !important;'
-                f'border-color: #0d9488 !important;'
-                f'font-weight: 700 !important;}}'
-            )
-    st.markdown("<style>" + "\n".join(cat_styles) + "</style>", unsafe_allow_html=True)
+            cat_styles.append(f'div[data-testid="cat_btn_{cat}"] button {{ background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%) !important; color: #ffffff !important; border-color: #14b8a6 !important; font-weight: 600 !important; }}')
+    if cat_styles:
+        st.markdown(f"<style>{' '.join(cat_styles)}</style>", unsafe_allow_html=True)
 
     st.markdown("<div class='qs-section-cats'>", unsafe_allow_html=True)
-    cat_cols = st.columns(len(cats))
+    cols_cat = st.columns(len(cats))
     for i, cat in enumerate(cats):
-        with cat_cols[i]:
-            if st.button(cat, key=f"cat_btn_{i}", use_container_width=True):
+        with cols_cat[i]:
+            if st.button(cat, key=f"cat_btn_{cat}"):
                 st.session_state.active_cat = cat
                 st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-top:6px'></div>", unsafe_allow_html=True)
-
-    # ── ROW 2+: symptom chips for the active category ─────────────────────
-    active_cat = st.session_state.active_cat
-    symptoms   = sorted(categorized_symptoms.get(active_cat, []))
-
-    # Build ONE style block using aria-label selectors — position-independent
-    # Selected chips get a filled teal background, matching the image's selected style
+    # ── ROW 2: items matching active category ──────────────────────────────
+    current_symptoms = categorized_symptoms.get(st.session_state.active_cat, [])
     sym_styles = []
-    for sym in symptoms:
-        label  = sym.replace("_", " ").title()
-        is_sel = sym in st.session_state.symptoms_selected
-        rendered_label = f"✓ {label}" if is_sel else label
-
+    for sym in current_symptoms:
+        is_sel = (sym in st.session_state.symptoms_selected)
         if is_sel:
-            sym_styles.append(
-                f'.qs-section .stButton > button[aria-label="{rendered_label}"] {{'
-                f'background: rgba(13,148,136,0.30) !important;'
-                f'color: #5eead4 !important;'
-                f'border-color: #14b8a6 !important;'
-                f'font-weight: 600 !important;}}'
-            )
-    st.markdown("<style>" + "\n".join(sym_styles) + "</style>", unsafe_allow_html=True)
+            sym_styles.append(f'div[data-testid="sym__{sym}"] button {{ background: rgba(13, 148, 136, 0.25) !important; border-color: #14b8a6 !important; color: #5eead4 !important; font-weight: 600 !important; }}')
+    if sym_styles:
+        st.markdown(f"<style>{' '.join(sym_styles)}</style>", unsafe_allow_html=True)
 
-    st.markdown("<div class='qs-section'>", unsafe_allow_html=True)
-
-    # Render symptom buttons in rows of 4
-    COLS = 4
-    for row_start in range(0, len(symptoms), COLS):
-        row_syms = symptoms[row_start : row_start + COLS]
-        cols = st.columns(len(row_syms))
-        for j, sym in enumerate(row_syms):
-            label     = sym.replace("_", " ").title()
-            is_sel    = sym in st.session_state.symptoms_selected
-            btn_label = f"✓ {label}" if is_sel else label
-            btn_key   = f"sym__{active_cat}__{sym}"
-
-            with cols[j]:
-                if st.button(btn_label, key=btn_key, use_container_width=True):
-                    if is_sel:
+    st.markdown("<div class='qs-section' style='margin-top: 6px;'>", unsafe_allow_html=True)
+    if current_symptoms:
+        cols_sym = st.columns(min(len(current_symptoms), 5))
+        for idx, sym in enumerate(current_symptoms):
+            col_idx = idx % 5
+            with cols_sym[col_idx]:
+                label = sym.replace("_", " ").title()
+                if sym in st.session_state.symptoms_selected:
+                    label = "✓ " + label
+                if st.button(label, key=f"sym__{sym}"):
+                    if sym in st.session_state.symptoms_selected:
                         st.session_state.symptoms_selected.remove(sym)
                     else:
                         st.session_state.symptoms_selected.append(sym)
                     st.rerun()
-
     st.markdown("</div>", unsafe_allow_html=True)
 
+# ──────────────────────────────────────────────
+# MAIN EXECUTION
+# ──────────────────────────────────────────────
+def main():
+    missing = check_files()
+    if missing:
+        st.error("### Missing required system files:")
+        for m in missing:
+            st.code(f" ❌ {m}")
+        st.info("Ensure training outputs match path configuration criteria.")
+        return
 
-# ──────────────────────────────────────────────
-# SIDEBAR — GLOBAL CONTROLS
-# ──────────────────────────────────────────────
-with st.sidebar:
+    main_df, desc_map, diet_map, meds_map, precs_map, work_map = load_data()
+    svc, dt, le = load_models()
+
+    symptom_list = tuple(main_df.drop(columns=["diseases"]).columns)
+    disease_names = tuple(clean_disease_name(d) for d in le.classes_)
+    tfidf_vec, sym_matrix, dis_matrix = build_tfidf_index(symptom_list, disease_names)
+    cat_symptoms_map = categorize_symptoms(symptom_list)
+
+    # ── SIDEBAR ───────────────────────────────────────────────────────────
+    with st.sidebar:
+        st.markdown("<div class='section-header'>Configuration Engine</div>", unsafe_allow_html=True)
+        lang = st.selectbox("Language / ቋንቋ", ["English", "Amharic"])
+        role = st.selectbox("Access Role", ["User", "Student", "Doctor"])
+        
+        user_id = ""
+        if role in ["Student", "Doctor"]:
+            user_id = st.text_input(f"Enter {role} Security ID Key", type="password")
+
+        st.markdown("<br><hr>", unsafe_allow_html=True)
+        age = st.slider("User Patient Age", min_value=1, max_value=100, value=25)
+
+    # ── MAIN PANEL HEADER ─────────────────────────────────────────────────
     st.markdown(
-        "<h2 style='text-align:center;margin-bottom:24px'>🏥 Healthcare Dashboard</h2>",
-        unsafe_allow_html=True,
-    )
-    st.markdown("---")
-    language = st.selectbox("🌐 Language", ["English", "Amharic"],
-                             label_visibility="collapsed")
-    st.markdown("---")
-    age  = st.number_input("👤 Your Age", min_value=1, max_value=120, value=25, step=1)
-    role = st.selectbox("👨‍⚕️ Your Role", ["Normal User", "Doctor", "Student"],
-                        label_visibility="collapsed")
-    user_id = ""
-    if role in ("Doctor", "Student"):
-        placeholder = "Doctor ID: 0000" if role == "Doctor" else "Student ID: 1111"
-        user_id = st.text_input(
-            "🔐 ID Number", placeholder=placeholder,
-            type="password", label_visibility="collapsed",
-        )
-    st.markdown("---")
-    threshold = st.slider(
-        "⚙️ Similarity Threshold", 0.3, 0.9, 0.6, 0.05,
-        help="Minimum confidence for symptom/disease matching",
-    )
-    st.markdown("---")
-    st.caption(
-        "⚕️ This system provides general health information only. "
-        "Always consult a qualified doctor for medical decisions."
+        f"<div class='main-header'>"
+        f"<div class='main-header-title'>🏥 Integrated Healthcare Dashboard</div>"
+        f"<div class='main-header-subtitle'>Streamlit Deep Diagnostics Protocol Environment</div>"
+        f"</div>",
+        unsafe_allow_html=True
     )
 
+    t1, t2, t3 = st.tabs([t("Disease Predictor", lang), t("Health Recommender", lang), t("Healthcare Chatbot", lang)])
 
-# ──────────────────────────────────────────────
-# LOAD EVERYTHING
-# ──────────────────────────────────────────────
-missing = check_files()
-if missing:
-    st.error("### ⚠️ Missing required files")
-    st.markdown(
-        "Please place the following files **in the same directory as `app.py`** "
-        "before running Streamlit:\n\n"
-        + "\n".join(f"- `{f}`" for f in missing)
-    )
-    st.markdown("""
-**Required folder structure:**
-```
-project/
-  app.py
-  requirements.txt
-  models/
-    svc_model.pkl
-    decision_tree_model.pkl
-    label_encoder.pkl
-  data/
-    Diseases_and_Symptoms_dataset.csv
-    description.csv
-    diets.csv
-    medications.csv
-    precautions.csv
-    workout.csv
-```
-""")
-    st.stop()
+    # ── TAB 1: PREDICTOR ──────────────────────────────────────────────────
+    with t1:
+        st.markdown(f"<div class='section-header'>{t('Disease Predictor', lang)}</div>", unsafe_allow_html=True)
+        
+        st.write("**Quick-Select Core Symptoms Inventory:**")
+        render_quick_select(cat_symptoms_map)
+        st.markdown("<br>", unsafe_allow_html=True)
 
-(main_df, description_map, diets_map,
- medications_map, precautions_map, workout_map) = load_data()
-svc_model, dt_model, le = load_models()
-
-symptom_list  = list(main_df.drop(columns=["diseases"]).columns)
-disease_names = list(description_map.keys())
-
-tfidf_vec, sym_matrix, dis_matrix = build_tfidf_index(
-    tuple(symptom_list), tuple(disease_names)
-)
-
-categorized_symptoms = categorize_symptoms(symptom_list)
-
-
-# ──────────────────────────────────────────────
-# HEADER
-# ──────────────────────────────────────────────
-st.markdown("""
-<div class='main-header'>
-  <div class='main-header-title'>🏥 Integrated Healthcare Dashboard</div>
-  <div class='main-header-subtitle'>Disease Prediction · Health Recommendations · AI Chatbot</div>
-</div>
-""", unsafe_allow_html=True)
-
-
-# ──────────────────────────────────────────────
-# TABS
-# ──────────────────────────────────────────────
-tab1, tab2, tab3 = st.tabs([
-    t("Disease Predictor", language),
-    t("Health Recommender", language),
-    t("Healthcare Chatbot", language),
-])
-
-
-# ══════════════════════════════════════════════
-# TAB 1 — DISEASE PREDICTOR
-# ══════════════════════════════════════════════
-with tab1:
-    # ── Session state init ──────────────────────────────────────────────
-    if "symptoms_selected" not in st.session_state:
-        st.session_state.symptoms_selected = []
-    if "symptoms_text" not in st.session_state:
-        st.session_state.symptoms_text = ""
-
-    # ── Card wrapper header ─────────────────────────────────────────────
-    st.markdown(
-        "<div style='background:rgba(22,27,34,0.6);border:1px solid rgba(255,255,255,0.08);"
-        "border-radius:16px;padding:20px 22px 16px'>"
-        "<div style='display:flex;align-items:center;gap:12px;margin-bottom:4px'>"
-        "<span style='font-size:1.6rem'>🩺</span>"
-        "<div><div style='font-size:1.1rem;font-weight:700;color:#e2e8f0'>"
-        "Symptom-Based Disease Predictor</div>"
-        "<div style='font-size:0.82rem;color:#64748b'>Enter your symptoms and our AI will identify possible conditions</div>"
-        "</div></div></div>",
-        unsafe_allow_html=True,
-    )
-
-    # ── Selected symptoms display ────────────────────────────────────────
-    if st.session_state.symptoms_selected:
-        chips_html = " ".join(
-            f"<span style='display:inline-block;background:rgba(13,148,136,0.25);"
-            f"border:1px solid #0d9488;color:#5eead4;border-radius:16px;"
-            f"padding:3px 12px;font-size:0.8rem;margin:2px'>"
-            f"✓ {s.replace('_',' ').title()}</span>"
-            for s in st.session_state.symptoms_selected
-        )
-        st.markdown(
-            f"<div style='margin:12px 0 4px'>"
-            f"<span style='font-size:0.72rem;color:#64748b;font-weight:700;"
-            f"text-transform:uppercase;letter-spacing:0.1em'>Selected ({len(st.session_state.symptoms_selected)}): </span>"
-            f"{chips_html}</div>",
-            unsafe_allow_html=True,
+        sel_str = ", ".join(st.session_state.symptoms_selected)
+        user_input = st.text_input(
+            "Symptoms Input Box (Selected inventory auto-updates below — or type manually):",
+            value=sel_str,
+            key="predict_input_field"
         )
 
-    # ── Quick-select symptom chips ───────────────────────────────────────
-    st.markdown(
-        "<div style='font-size:0.72rem;font-weight:700;letter-spacing:0.1em;"
-        "color:#64748b;text-transform:uppercase;margin:14px 0 6px'>Quick-select symptoms:</div>",
-        unsafe_allow_html=True,
-    )
-    render_quick_select(categorized_symptoms)
-
-    # ── OR divider ───────────────────────────────────────────────────────
-    st.markdown(
-        "<div style='display:flex;align-items:center;gap:12px;margin:14px 0 10px'>"
-        "<hr style='flex:1;border-color:rgba(255,255,255,0.1);margin:0'/>"
-        "<span style='color:#64748b;font-size:0.78rem;white-space:nowrap'>OR TYPE SYMPTOMS</span>"
-        "<hr style='flex:1;border-color:rgba(255,255,255,0.1);margin:0'/>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-    # ── Text input ───────────────────────────────────────────────────────
-    st.markdown(
-        "<div style='font-size:0.72rem;font-weight:700;letter-spacing:0.1em;"
-        "color:#64748b;text-transform:uppercase;margin-bottom:6px'>Symptoms (comma-separated)</div>",
-        unsafe_allow_html=True,
-    )
-    symptoms_input = st.text_input(
-        "Symptoms",
-        value=st.session_state.symptoms_text,
-        placeholder="hot flashes, sweating, weakness, feeling ill",
-        key="symptoms_textarea",
-        label_visibility="collapsed",
-    )
-
-    btn_col1, btn_col2 = st.columns([2, 1])
-    with btn_col1:
-        predict_btn = st.button(
-            f"✦ {t('Predict & Recommend', language)}",
-            key="predict_btn",
-            use_container_width=True,
-        )
-    with btn_col2:
-        clear_btn = st.button("✕ Clear", key="clear_predict", use_container_width=True)
-
-    if clear_btn:
-        st.session_state.pop("predict_result", None)
-        st.session_state.symptoms_selected = []
-        st.session_state.symptoms_text = ""
-        st.session_state.active_cat = list(categorized_symptoms.keys())[0]
-        st.rerun()
-
-    if predict_btn:
-        combined_input = symptoms_input.strip()
-        if st.session_state.symptoms_selected:
-            selected_str   = ", ".join(st.session_state.symptoms_selected)
-            combined_input = (selected_str + ", " + combined_input
-                              if combined_input else selected_str)
-
-        if not combined_input:
-            st.warning(t("Please enter symptoms.", language))
-        else:
-            with st.spinner("🔍 Analysing symptoms…"):
-                result, err = integrated_prediction_system(
-                    combined_input, age, role, user_id, language,
-                    main_df, le, svc_model, dt_model,
-                    description_map, diets_map, medications_map,
-                    precautions_map, workout_map,
-                    tfidf_vec, sym_matrix, threshold,
-                )
-            if err:
-                st.markdown(
-                    f"<div class='access-denied'>{err}</div>",
-                    unsafe_allow_html=True,
-                )
+        if st.button(t("Predict & Recommend", lang), key="btn_predict"):
+            if not user_input.strip():
+                st.warning(t("Please enter symptoms.", lang))
             else:
-                st.session_state["predict_result"] = result
-
-    if "predict_result" in st.session_state:
-        res = st.session_state["predict_result"]
-        st.markdown("---")
-        st.markdown(
-            "<div class='section-header'>✅ Matched Symptoms</div>",
-            unsafe_allow_html=True,
-        )
-        if res["matched_symptoms"]:
-            st.markdown(
-                " · ".join(
-                    f"<span style='background:linear-gradient(135deg,rgba(33,38,45,0.9),"
-                    f"rgba(88,166,255,0.2));padding:4px 12px;border-radius:6px;"
-                    f"font-size:0.85rem;color:#58a6ff;border:1px solid rgba(88,166,255,0.3)'>{s}</span>"
-                    for s in res["matched_symptoms"]
-                ),
-                unsafe_allow_html=True,
-            )
-
-        st.markdown(
-            "<br><div class='section-header'>🎯 Predicted Conditions</div>",
-            unsafe_allow_html=True,
-        )
-        render_predictions(res["predicted_conditions"])
-
-        with st.expander(f"📊 Health Plan — {res['top_disease']}", expanded=True):
-            render_recommendations(res["recommendations"])
-            if res["advice"]:
-                st.markdown(
-                    f"<div class='advice-banner'>{res['advice']}</div>",
-                    unsafe_allow_html=True,
+                res, err = integrated_prediction_system(
+                    user_input, age, role, user_id, lang,
+                    main_df, le, svc, dt,
+                    desc_map, diet_map, meds_map, precs_map, work_map,
+                    tfidf_vec, sym_matrix
                 )
+                if err:
+                    st.markdown(f"<div class='access-denied'>{err}</div>", unsafe_allow_html=True)
+                elif res:
+                    col_left, col_right = st.columns([1, 1.4])
+                    with col_left:
+                        st.markdown("**Matched Input Tokens:**")
+                        st.code(", ".join(res["matched_symptoms"]))
+                        render_predictions(res["predicted_conditions"])
+                    with col_right:
+                        st.markdown(
+                            f"Primary Condition Identified: <span class='disease-badge'>{res['top_disease']}</span>",
+                            unsafe_allow_html=True
+                        )
+                        render_recommendations(res["recommendations"])
+                        if res["advice"]:
+                            st.markdown(f"<div class='advice-banner'>{res['advice']}</div>", unsafe_allow_html=True)
 
+    # ── TAB 2: RECOMMENDER ────────────────────────────────────────────────
+    with t2:
+        st.markdown(f"<div class='section-header'>{t('Health Recommender', lang)}</div>", unsafe_allow_html=True)
+        chosen_disease = st.selectbox("Select Target Condition Profile:", ["Select Disease"] + sorted([d.title() for d in le.classes_]))
+        
+        if st.button(t("Get Plan", lang), key="btn_recommender"):
+            if chosen_disease == "Select Disease":
+                st.warning("Please select a valid disease profile.")
+            else:
+                recs, advice = health_recommender(chosen_disease, age, role, user_id, lang, desc_map, diet_map, meds_map, precs_map, work_map)
+                if recs is None:
+                    st.markdown(f"<div class='access-denied'>{advice}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"Management Stratum for: <span class='disease-badge'>{chosen_disease}</span>", unsafe_allow_html=True)
+                    render_recommendations(recs)
+                    if advice:
+                        st.markdown(f"<div class='advice-banner'>{advice}</div>", unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════
-# TAB 2 — HEALTH RECOMMENDER
-# ══════════════════════════════════════════════
-with tab2:
-    st.markdown(
-        "<div class='section-header'>🏥 Select a Disease</div>",
-        unsafe_allow_html=True,
-    )
+    # ── TAB 3: CHATBOT ────────────────────────────────────────────────────
+    with t3:
+        st.markdown(f"<div class='section-header'>{t('Healthcare Chatbot', lang)}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='chat-bot'>🤖 {t('Hello! How can I help you with health information today?', lang)}</div>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        query = st.text_input("Enter natural language question regarding conditions, metrics, rules, or regimes:")
+        if st.button(t("Ask Bot", lang), key="btn_chat"):
+            if not query.strip():
+                st.warning(t("Please enter a query.", lang))
+            else:
+                answer = chatbot_response(query, age, role, user_id, lang, desc_map, diet_map, meds_map, precs_map, work_map, disease_names, tfidf_vec, dis_matrix)
+                if "Access Denied" in answer:
+                    st.markdown(f"<div class='access-denied'>{answer}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div class='chat-bot'>🤖 {answer}</div>", unsafe_allow_html=True)
 
-    sorted_diseases  = sorted(disease_names)
-    selected_disease = st.selectbox(
-        "Disease:",
-        options=sorted_diseases,
-        format_func=lambda x: x.title(),
-        key="rec_disease",
-        label_visibility="collapsed",
-    )
+    st.markdown("<br><br><hr><center style='color:#8b949e; font-size:0.8rem;'>Medical Disclaimer: For testing and validation environments only.</center>", unsafe_allow_html=True)
 
-    col_r1, col_r2 = st.columns([1, 5])
-    with col_r1:
-        rec_btn   = st.button(t("Get Plan", language),  key="rec_btn",   use_container_width=True)
-        rec_clear = st.button("🗑️ Clear",               key="rec_clear", use_container_width=True)
-
-    if rec_clear:
-        st.session_state.pop("rec_result", None)
-        st.session_state.pop("rec_advice", None)
-
-    if rec_btn:
-        with st.spinner("📥 Fetching health plan…"):
-            recs, advice = health_recommender(
-                selected_disease, age, role, user_id, language,
-                description_map, diets_map, medications_map,
-                precautions_map, workout_map,
-            )
-        if recs is None:
-            st.markdown(
-                f"<div class='access-denied'>{advice}</div>",
-                unsafe_allow_html=True,
-            )
-        else:
-            st.session_state["rec_result"] = recs
-            st.session_state["rec_advice"] = advice
-
-    if "rec_result" in st.session_state:
-        with st.expander(f"💊 Health Plan — {selected_disease.title()}", expanded=True):
-            render_recommendations(st.session_state["rec_result"])
-            if st.session_state.get("rec_advice"):
-                st.markdown(
-                    f"<div class='advice-banner'>{st.session_state['rec_advice']}</div>",
-                    unsafe_allow_html=True,
-                )
-
-
-# ══════════════════════════════════════════════
-# TAB 3 — CHATBOT
-# ══════════════════════════════════════════════
-with tab3:
-    st.markdown(
-        "<div class='section-header'>💬 Healthcare Chatbot</div>",
-        unsafe_allow_html=True,
-    )
-    greeting = t("Hello! How can I help you with health information today?", language)
-    st.markdown(f"<div class='chat-bot'>🤖 {greeting}</div>", unsafe_allow_html=True)
-
-    chat_query = st.text_input(
-        "Your question:",
-        placeholder="e.g. What diet should I follow for Asthma?",
-        key="chat_query",
-        label_visibility="collapsed",
-    )
-    col_c1, col_c2 = st.columns([1, 6])
-    with col_c1:
-        chat_btn   = st.button(t("Ask Bot", language), key="chat_btn",   use_container_width=True)
-        chat_clear = st.button("🗑️ Clear",             key="chat_clear", use_container_width=True)
-
-    if chat_clear:
-        st.session_state.pop("chat_response", None)
-
-    if chat_btn:
-        if not chat_query.strip():
-            st.warning(t("Please enter a query.", language))
-        else:
-            with st.spinner("🤔 Thinking…"):
-                reply = chatbot_response(
-                    chat_query, age, role, user_id, language,
-                    description_map, diets_map, medications_map,
-                    precautions_map, workout_map,
-                    disease_names, tfidf_vec, dis_matrix,
-                    threshold,
-                )
-            st.session_state["chat_response"] = reply
-
-    if "chat_response" in st.session_state:
-        st.markdown(
-            f"<div class='chat-bot'>🤖 {st.session_state['chat_response']}</div>",
-            unsafe_allow_html=True,
-        )
+if __name__ == "__main__":
+    main()
