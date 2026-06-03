@@ -1,76 +1,27 @@
 """
-DROP-IN REPLACEMENT for render_quick_select() in your app.py
-Replace the entire render_quick_select function (and the CSS for chip buttons) with this.
+COMPLETE DROP-IN REPLACEMENT for render_quick_select() in your app.py
 
-Also add this to your ENHANCED CUSTOM CSS block (anywhere inside the <style> tag):
+Two strategies are used:
+  1. If Streamlit >= 1.37: uses st.pills() — the cleanest native solution
+  2. Fallback: uses st.multiselect() per category — always works
 
-    .chip-btn > button {
-        background: rgba(30,41,59,0.5) !important;
-        color: #64748b !important;
-        border: 1px solid rgba(71,85,105,0.35) !important;
-        border-radius: 5px !important;
-        padding: 2px 10px !important;
-        font-size: 0.71rem !important;
-        font-weight: 400 !important;
-        min-height: 0 !important;
-        height: auto !important;
-        line-height: 1.4 !important;
-        transition: all 0.2s ease !important;
-    }
-    .chip-btn > button:hover {
-        background: rgba(20,184,166,0.1) !important;
-        color: #94a3b8 !important;
-        border-color: rgba(20,184,166,0.4) !important;
-        transform: none !important;
-        box-shadow: none !important;
-    }
-    .chip-btn-active > button {
-        background: rgba(20,184,166,0.18) !important;
-        color: #5eead4 !important;
-        border: 1px solid rgba(20,184,166,0.6) !important;
-        border-radius: 5px !important;
-        padding: 2px 10px !important;
-        font-size: 0.71rem !important;
-        font-weight: 600 !important;
-        min-height: 0 !important;
-        height: auto !important;
-        line-height: 1.4 !important;
-        transition: all 0.2s ease !important;
-    }
-    .cat-btn > button {
-        background: transparent !important;
-        color: #475569 !important;
-        border: 1px solid rgba(71,85,105,0.3) !important;
-        border-radius: 20px !important;
-        padding: 2px 10px !important;
-        font-size: 0.68rem !important;
-        font-weight: 400 !important;
-        min-height: 0 !important;
-        height: auto !important;
-        line-height: 1.4 !important;
-        transition: all 0.2s ease !important;
-    }
-    .cat-btn > button:hover {
-        color: #94a3b8 !important;
-        border-color: rgba(71,85,105,0.6) !important;
-        transform: none !important;
-        box-shadow: none !important;
-    }
-    .cat-btn-active > button {
-        background: rgba(20,184,166,0.18) !important;
-        color: #2dd4bf !important;
-        border: 1px solid rgba(20,184,166,0.5) !important;
-        border-radius: 20px !important;
-        padding: 2px 10px !important;
-        font-size: 0.68rem !important;
-        font-weight: 700 !important;
-        min-height: 0 !important;
-        height: auto !important;
-        line-height: 1.4 !important;
-    }
+HOW TO APPLY:
+  - Replace the entire render_quick_select() function in app.py with the one below.
+  - No CSS changes needed (removes the broken JS + hidden input entirely).
+  - Also DELETE the hidden st.text_input("_qs", key="_qs_action", ...) block in Tab 1
+    and the action-handling block at the top of render_quick_select.
 """
 
 import streamlit as st
+from packaging import version
+
+
+def _streamlit_version() -> str:
+    try:
+        import streamlit
+        return streamlit.__version__
+    except Exception:
+        return "0.0.0"
 
 
 def render_quick_select(categorized_symptoms: dict):
@@ -82,45 +33,94 @@ def render_quick_select(categorized_symptoms: dict):
     if "symptoms_selected" not in st.session_state:
         st.session_state.symptoms_selected = []
 
-    active_cat = st.session_state.active_cat
+    use_pills = version.parse(_streamlit_version()) >= version.parse("1.37.0")
 
-    # ── Category pill row
-    cat_cols = st.columns(len(cats))
-    for i, cat in enumerate(cats):
-        is_active = (cat == active_cat)
-        css_class = "cat-btn-active" if is_active else "cat-btn"
-        with cat_cols[i]:
-            st.markdown(f"<div class='{css_class}'>", unsafe_allow_html=True)
-            if st.button(cat, key=f"cat_pill_{i}"):
-                st.session_state.active_cat = cat
-                st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
+    # ────────────────────────────────────────────
+    # STRATEGY 1 — st.pills  (Streamlit >= 1.37)
+    # ────────────────────────────────────────────
+    if use_pills:
+        # Category selector
+        active_cat = st.pills(
+            "Category",
+            options=cats,
+            default=st.session_state.active_cat,
+            key="cat_pills_selector",
+            label_visibility="collapsed",
+        )
+        if active_cat and active_cat != st.session_state.active_cat:
+            st.session_state.active_cat = active_cat
+            st.rerun()
 
-    st.markdown(
-        "<div style='height:1px;background:linear-gradient(90deg,"
-        "transparent,rgba(20,184,166,0.2),transparent);margin:4px 0 8px'></div>",
-        unsafe_allow_html=True,
-    )
+        active_cat = st.session_state.active_cat or cats[0]
 
-    # ── Symptom chips — 7 per row
-    symptoms       = sorted(categorized_symptoms.get(active_cat, []))
-    selected       = st.session_state.symptoms_selected
-    CHIPS_PER_ROW  = 7
+        st.markdown(
+            "<div style='height:1px;background:linear-gradient(90deg,"
+            "transparent,rgba(20,184,166,0.2),transparent);margin:4px 0 8px'></div>",
+            unsafe_allow_html=True,
+        )
 
-    for row_start in range(0, len(symptoms), CHIPS_PER_ROW):
-        row_syms  = symptoms[row_start: row_start + CHIPS_PER_ROW]
-        chip_cols = st.columns(len(row_syms))
-        for j, sym in enumerate(row_syms):
-            label     = sym.replace("_", " ").title()
-            is_sel    = sym in selected
-            css_class = "chip-btn-active" if is_sel else "chip-btn"
-            btn_label = f"✓ {label}" if is_sel else label
-            with chip_cols[j]:
-                st.markdown(f"<div class='{css_class}'>", unsafe_allow_html=True)
-                if st.button(btn_label, key=f"chip_{sym}"):
-                    if sym in st.session_state.symptoms_selected:
-                        st.session_state.symptoms_selected.remove(sym)
-                    else:
-                        st.session_state.symptoms_selected.append(sym)
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
+        symptoms = sorted(categorized_symptoms.get(active_cat, []))
+        sym_labels = {s: s.replace("_", " ").title() for s in symptoms}
+
+        # Show currently-selected that belong to this category so the widget
+        # reflects the correct state even after switching categories.
+        current_in_cat = [s for s in st.session_state.symptoms_selected if s in symptoms]
+
+        selected_now = st.pills(
+            "Symptoms",
+            options=symptoms,
+            format_func=lambda s: sym_labels[s],
+            selection_mode="multi",
+            default=current_in_cat,
+            key=f"sym_pills_{active_cat}",
+            label_visibility="collapsed",
+        )
+
+        # Merge: keep selections from OTHER categories, replace this category's selections
+        other_cats_selected = [
+            s for s in st.session_state.symptoms_selected if s not in symptoms
+        ]
+        merged = other_cats_selected + (selected_now or [])
+        if set(merged) != set(st.session_state.symptoms_selected):
+            st.session_state.symptoms_selected = merged
+            st.rerun()
+
+    # ────────────────────────────────────────────
+    # STRATEGY 2 — multiselect fallback (always works)
+    # ────────────────────────────────────────────
+    else:
+        # Category tabs via st.selectbox (compact)
+        active_cat = st.selectbox(
+            "Category",
+            options=cats,
+            index=cats.index(st.session_state.active_cat),
+            key="cat_selectbox",
+            label_visibility="collapsed",
+        )
+        if active_cat != st.session_state.active_cat:
+            st.session_state.active_cat = active_cat
+
+        st.markdown(
+            "<div style='height:1px;background:linear-gradient(90deg,"
+            "transparent,rgba(20,184,166,0.2),transparent);margin:4px 0 8px'></div>",
+            unsafe_allow_html=True,
+        )
+
+        symptoms = sorted(categorized_symptoms.get(active_cat, []))
+        current_in_cat = [s for s in st.session_state.symptoms_selected if s in symptoms]
+
+        selected_now = st.multiselect(
+            f"Select symptoms — {active_cat}",
+            options=symptoms,
+            default=current_in_cat,
+            format_func=lambda s: s.replace("_", " ").title(),
+            key=f"sym_multi_{active_cat}",
+            label_visibility="collapsed",
+        )
+
+        other_cats_selected = [
+            s for s in st.session_state.symptoms_selected if s not in symptoms
+        ]
+        merged = other_cats_selected + selected_now
+        if set(merged) != set(st.session_state.symptoms_selected):
+            st.session_state.symptoms_selected = merged
