@@ -275,6 +275,25 @@ div.clear-btn-container > div > button:hover {
     letter-spacing: 0.05em;
 }
 hr { border-color: rgba(88,166,255,0.1) !important; }
+
+/* ── Number input — fix invisible text in age box */
+.stNumberInput input {
+    background: rgba(22, 30, 40, 1) !important;
+    color: #e6edf3 !important;
+    border: 1px solid rgba(88, 166, 255, 0.35) !important;
+    border-radius: 8px !important;
+    font-size: 0.95rem !important;
+}
+.stNumberInput input:focus {
+    border-color: #58a6ff !important;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2) !important;
+}
+/* Step buttons (+ / -) */
+.stNumberInput button {
+    background: rgba(33, 38, 45, 1) !important;
+    color: #e6edf3 !important;
+    border-color: rgba(88, 166, 255, 0.25) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -474,25 +493,17 @@ def role_based_recs(role, lang, key,
         advice = "ℹ️ Full medication details are only available to licensed Doctors."
 
     else:
-        # Normal User — diet summary only, medications fully locked
-        if isinstance(diet, str) and diet not in ("N/A", ""):
-            sentences = [s.strip() for s in diet.replace(";", ".").split(".") if s.strip()]
-            # Show first 2 sentences max
-            diet_preview = ". ".join(sentences[:2]) + ("." if sentences[:2] else "")
-            diet_note    = "Full dietary plan available to Doctors and Students. Consult a nutritionist for a personalised plan."
-        else:
-            diet_preview = "Eat balanced meals and stay hydrated."
-            diet_note    = "Consult a nutritionist for a personalised plan."
-
+        # Normal User — diet fully locked, medications fully locked
         cards = [
-            {"label": t("Description",      lang), "content": desc,        "card_type": "full"},
-            {"label": t("Dietary Plan",      lang), "content": diet_preview,
-             "note": diet_note,                                              "card_type": "limited"},
+            {"label": t("Description",      lang), "content": desc,   "card_type": "full"},
+            {"label": t("Dietary Plan",      lang),
+             "content": "🔒 Dietary plan details are restricted. Please consult a licensed nutritionist or doctor for a personalised plan.",
+                                                                        "card_type": "locked"},
             {"label": t("Medications",       lang),
              "content": "🔒 Medication details are restricted to licensed Doctors only. Please consult a healthcare professional.",
-                                                                             "card_type": "locked"},
-            {"label": t("Precautions",       lang), "content": precs,      "card_type": "full"},
-            {"label": t("Workout/Activity",  lang), "content": workout,    "card_type": "full"},
+                                                                        "card_type": "locked"},
+            {"label": t("Precautions",       lang), "content": precs, "card_type": "full"},
+            {"label": t("Workout/Activity",  lang), "content": workout, "card_type": "full"},
         ]
         advice = ("⚠️ This information is for general awareness only. "
                   "Always consult a qualified doctor before taking any medication or following a treatment plan.")
@@ -676,11 +687,10 @@ def chatbot_response(
     if intent == "diet":
         raw   = diets_map.get(disease_key, "N/A")
         label = t("Dietary Plan", lang)
-        # Role-based filtering for diet
-        if role == "Normal User" and isinstance(raw, str) and raw not in ("N/A", ""):
-            sentences   = [s.strip() for s in raw.replace(";", ".").split(".") if s.strip()]
-            info        = ". ".join(sentences[:2]) + "."
-            restriction = "\n\n⚠️ *Full dietary plan is available to Doctors and Students. Consult a nutritionist for a complete plan.*"
+        # Role-based filtering for diet — Normal User fully locked
+        if role == "Normal User":
+            info        = "🔒 Dietary plan details are restricted. Please consult a licensed nutritionist or doctor for a personalised plan."
+            restriction = ""
         else:
             info        = raw
             restriction = ""
