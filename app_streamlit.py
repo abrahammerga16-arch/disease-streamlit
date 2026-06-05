@@ -1,6 +1,5 @@
 """
 Integrated Healthcare Dashboard — Streamlit version (Enhanced UI with Animations)
-Replicates the Google Colab notebook exactly:
   • Disease Predictor  (symptom input → ML prediction)
   • Health Recommender (disease dropdown → full health plan)
   • Healthcare Chatbot  (natural-language query → semantic answer)
@@ -20,9 +19,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 warnings.filterwarnings("ignore")
 
-# ──────────────────────────────────────────────
-# PAGE CONFIG
-# ──────────────────────────────────────────────
 st.set_page_config(
     page_title="Integrated Healthcare Dashboard",
     page_icon="🏥",
@@ -30,14 +26,10 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ──────────────────────────────────────────────
-# ENHANCED CUSTOM CSS WITH ANIMATIONS & BLINKING CURSOR
-# ──────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght=400;600&family=IBM+Plex+Sans:wght=300;400;600;700&family=Poppins:wght=300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Poppins:wght@300;400;600;700&display=swap');
 
-/* ── Keyframe Animations */
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(20px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -46,55 +38,29 @@ st.markdown("""
     from { opacity: 0; transform: translateX(-30px); }
     to   { opacity: 1; transform: translateX(0); }
 }
-@keyframes slideInRight {
-    from { opacity: 0; transform: translateX(30px); }
-    to   { opacity: 1; transform: translateX(0); }
-}
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.8; }
-}
-@keyframes pop {
-    0%   { transform: scale(0.8); opacity: 0; }
-    50%  { transform: scale(1.05); }
-    100% { transform: scale(1);   opacity: 1; }
-}
 
-/* Artificial Cursor Pipe Blinking Sequence */
-@keyframes blink-cursor {
-    0%, 100% { border-left-color: #58a6ff; }
-    50% { border-left-color: transparent; }
-}
-
-/* ── Global Styles */
 html, body, [class*="css"] {
-    font-family: 'Poppins', 'IBM Plex Sans', sans-serif;
+    font-family: 'Poppins', sans-serif;
     scroll-behavior: smooth;
 }
-
-/* ── Main background */
 .stApp {
     background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1f2d 100%);
     color: #e6edf3;
     animation: fadeInUp 0.8s ease-out;
 }
-
-/* ── Sidebar */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #161b22 0%, #0f1419 100%);
-    border-right: 1px solid rgba(48, 54, 61, 0.5);
-    box-shadow: inset -1px 0 0 rgba(88, 166, 255, 0.1);
+    border-right: 1px solid rgba(48,54,61,0.5);
 }
 section[data-testid="stSidebar"] * { color: #e6edf3 !important; }
 
-/* ── Tabs */
 .stTabs [data-baseweb="tab-list"] {
-    background: rgba(22, 27, 34, 0.6);
+    background: rgba(22,27,34,0.6);
     backdrop-filter: blur(10px);
     border-radius: 12px;
     padding: 6px;
     gap: 4px;
-    border: 1px solid rgba(48, 54, 61, 0.3);
+    border: 1px solid rgba(48,54,61,0.3);
 }
 .stTabs [data-baseweb="tab"] {
     background: transparent;
@@ -104,24 +70,20 @@ section[data-testid="stSidebar"] * { color: #e6edf3 !important; }
     letter-spacing: 0.04em;
     padding: 10px 24px;
     border: none !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s ease;
     font-size: 0.95rem;
 }
-.stTabs [data-baseweb="tab"]:hover {
-    background: rgba(88, 166, 255, 0.1);
-    color: #58a6ff;
-}
+.stTabs [data-baseweb="tab"]:hover { background: rgba(88,166,255,0.1); color: #58a6ff; }
 .stTabs [aria-selected="true"] {
     background: linear-gradient(135deg, #21262d 0%, #1f6feb 100%) !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 12px rgba(88, 166, 255, 0.25);
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(88,166,255,0.25);
 }
 
-/* ── Input fields */
 .stTextInput input, .stSelectbox select, .stTextArea textarea,
 div[data-baseweb="select"] > div {
-    background: rgba(33, 38, 45, 0.8) !important;
-    border: 1px solid rgba(48, 54, 61, 0.5) !important;
+    background: rgba(33,38,45,0.8) !important;
+    border: 1px solid rgba(48,54,61,0.5) !important;
     color: #e6edf3 !important;
     border-radius: 8px !important;
     transition: all 0.3s ease !important;
@@ -130,51 +92,35 @@ div[data-baseweb="select"] > div {
 .stTextInput input:focus, .stTextArea textarea:focus,
 div[data-baseweb="select"] > div:focus-within {
     border-color: #58a6ff !important;
-    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2) !important;
-    background: rgba(33, 38, 45, 1) !important;
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.2) !important;
 }
 
-/* Artificial Blinking Entry Pipe when focused and empty */
-.stTextArea textarea:focus:placeholder-shown {
-    animation: blink-cursor 1s step-end infinite;
-    border-left: 3px solid #58a6ff !important;
-    padding-left: 10px !important;
-}
-
-/* ── Buttons */
 .stButton > button {
     background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
-    color: #ffffff;
+    color: #fff;
     border: none;
     border-radius: 8px;
     font-weight: 600;
     padding: 10px 24px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s ease;
     font-size: 0.95rem;
-    position: relative;
-    overflow: hidden;
     width: 100%;
 }
 .stButton > button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(46, 160, 67, 0.4);
-    background: linear-gradient(135deg, #2ea043 0%, #3fb950 100%);
+    box-shadow: 0 8px 24px rgba(46,160,67,0.4);
 }
-.stButton > button:active { transform: translateY(0); }
 
-/* Custom Secondary Clear Button Styling */
 div.clear-btn-container > div > button {
     background: linear-gradient(135deg, #21262d 0%, #30363d 100%) !important;
     color: #f85149 !important;
-    border: 1px solid rgba(248, 81, 73, 0.4) !important;
+    border: 1px solid rgba(248,81,73,0.4) !important;
 }
 div.clear-btn-container > div > button:hover {
-    background: linear-gradient(135deg, rgba(248, 81, 73, 0.1) 0%, rgba(248, 81, 73, 0.2) 100%) !important;
-    box-shadow: 0 8px 24px rgba(248, 81, 73, 0.2) !important;
-    border-color: #f85149 !important;
+    background: rgba(248,81,73,0.1) !important;
+    box-shadow: 0 8px 24px rgba(248,81,73,0.2) !important;
 }
 
-/* ── Result cards */
 .result-card {
     background: linear-gradient(135deg, rgba(22,27,34,0.8) 0%, rgba(33,38,45,0.6) 100%);
     border: 1px solid rgba(88,166,255,0.2);
@@ -182,7 +128,7 @@ div.clear-btn-container > div > button:hover {
     padding: 20px 24px;
     margin-bottom: 16px;
     animation: fadeInUp 0.6s ease-out;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s ease;
 }
 .result-card:hover {
     border-color: rgba(88,166,255,0.4);
@@ -197,13 +143,51 @@ div.clear-btn-container > div > button:hover {
     text-transform: uppercase;
     margin-bottom: 12px;
 }
-.result-card p, .result-card li {
-    color: #c9d1d9;
-    font-size: 0.95rem;
-    line-height: 1.6;
+.result-card p, .result-card li { color: #c9d1d9; font-size: 0.95rem; line-height: 1.6; }
+
+/* Locked card for restricted content */
+.result-card-locked {
+    background: linear-gradient(135deg, rgba(45,14,14,0.5) 0%, rgba(33,38,45,0.4) 100%);
+    border: 1px solid rgba(248,81,73,0.25);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+}
+.result-card-locked h4 {
+    color: #f85149;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+.result-card-locked p { color: #8b949e; font-size: 0.95rem; line-height: 1.6; font-style: italic; }
+
+/* Partially visible card for limited content */
+.result-card-limited {
+    background: linear-gradient(135deg, rgba(22,27,34,0.8) 0%, rgba(33,38,45,0.6) 100%);
+    border: 1px solid rgba(240,136,62,0.3);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    animation: fadeInUp 0.6s ease-out;
+}
+.result-card-limited h4 {
+    color: #f0883e;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+.result-card-limited p { color: #c9d1d9; font-size: 0.95rem; line-height: 1.6; }
+.result-card-limited .restriction-note {
+    color: #f0883e;
+    font-size: 0.8rem;
+    margin-top: 8px;
+    font-style: italic;
 }
 
-/* ── Disease badge / confidence pill */
 .disease-badge {
     display: inline-block;
     background: linear-gradient(135deg, #1f6feb 0%, #388bfd 100%);
@@ -226,10 +210,8 @@ div.clear-btn-container > div > button:hover {
     color: #58a6ff;
     margin-left: 4px;
     font-weight: 600;
-    animation: slideInRight 0.4s ease-out;
 }
 
-/* ── Advice / warning banner */
 .advice-banner {
     background: linear-gradient(135deg, rgba(45,24,0,0.8) 0%, rgba(240,136,62,0.1) 100%);
     border-left: 4px solid #f0883e;
@@ -241,7 +223,6 @@ div.clear-btn-container > div > button:hover {
     animation: slideInLeft 0.5s ease-out;
 }
 
-/* ── Chat bubble */
 .chat-bot {
     background: linear-gradient(135deg, rgba(33,38,45,0.9) 0%, rgba(31,111,235,0.1) 100%);
     border-left: 4px solid #58a6ff;
@@ -254,7 +235,6 @@ div.clear-btn-container > div > button:hover {
     line-height: 1.6;
 }
 
-/* ── Section header */
 .section-header {
     color: #58a6ff;
     font-family: 'IBM Plex Mono', monospace;
@@ -267,20 +247,6 @@ div.clear-btn-container > div > button:hover {
     animation: slideInLeft 0.4s ease-out;
     font-weight: 700;
 }
-
-/* ── Number input */
-.stNumberInput input {
-    background: rgba(33,38,45,0.8) !important;
-    color: #e6edf3 !important;
-    border: 1px solid rgba(48,54,61,0.5) !important;
-    border-radius: 8px !important;
-}
-
-/* ── Slider */
-.stSlider .st-bk { background: linear-gradient(90deg, #1f6feb, #58a6ff) !important; }
-.stSlider .st-ao { background: #21262d !important; border: 2px solid #58a6ff !important; }
-
-/* ── Access denied */
 .access-denied {
     background: linear-gradient(135deg, rgba(45,14,14,0.8) 0%, rgba(248,81,73,0.1) 100%);
     border-left: 4px solid #f85149;
@@ -289,8 +255,6 @@ div.clear-btn-container > div > button:hover {
     color: #f85149;
     animation: slideInLeft 0.5s ease-out;
 }
-
-/* ── Main header */
 .main-header { text-align: center; animation: fadeInUp 0.8s ease-out; margin-bottom: 32px; }
 .main-header-title {
     font-family: 'Poppins', sans-serif;
@@ -302,20 +266,21 @@ div.clear-btn-container > div > button:hover {
     background-clip: text;
 }
 .main-header-subtitle { color: #8b949e; font-size: 1rem; letter-spacing: 0.05em; margin-top: 8px; }
-
-hr { border-color: rgba(88,166,255,0.1) !important; }
-a  { color: #58a6ff; transition: color 0.3s ease; text-decoration: none; }
-a:hover { color: #79c0ff; text-decoration: underline; }
-
-@media (max-width: 768px) {
-    .disease-badge, .conf-pill { display: block; margin: 6px 0; }
+.role-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
 }
+hr { border-color: rgba(88,166,255,0.1) !important; }
 </style>
 """, unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────────────
-# AMHARIC TRANSLATIONS
+# TRANSLATIONS
 # ──────────────────────────────────────────────
 AMHARIC = {
     "Disease": "በሽታ",
@@ -344,21 +309,14 @@ AMHARIC = {
     "Please enter a query.": "እባክዎ ጥያቄ ያስገቡ።",
     "medical_advice_disclaimer":
         "ማንኛውንም መድሃኒት ከመውሰድዎ በፊት ወይም ከባድ ምልክቶች ካጋጠሙዎት ሁልጊዜ ሐኪም ያማክሩ።",
-    "🔒 Medication details are restricted. Please consult a licensed doctor.":
-        "🔒 የመድሃኒት መረጃ የተገደበ ነው። እባክዎ ፈቃድ ያለው ሐኪም ያማክሩ።",
-    "ℹ️ Full medication details are only available to Doctors.":
-        "ℹ️ ሙሉ የመድሃኒት መረጃ ለሐኪሞች ብቻ ይገኛል።",
 }
 
-
 def t(text: str, lang: str) -> str:
-    if lang.lower() == "amharic":
-        return AMHARIC.get(text, text)
-    return text
+    return AMHARIC.get(text, text) if lang.lower() == "amharic" else text
 
 
 # ──────────────────────────────────────────────
-# GOOGLE TRANSLATE CONFIG
+# GOOGLE TRANSLATE
 # ──────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def get_translator():
@@ -367,7 +325,6 @@ def get_translator():
         return Translator()
     except Exception:
         return None
-
 
 def translate_content(text, target_lang="English"):
     if target_lang.lower() != "amharic":
@@ -386,27 +343,25 @@ def translate_content(text, target_lang="English"):
 
 
 # ──────────────────────────────────────────────
-# LOAD DATA FILES
+# FILE CHECKS
 # ──────────────────────────────────────────────
 DATA_FILES = [
     "data/Diseases_and_Symptoms_dataset.csv",
     "data/description.csv", "data/diets.csv",
     "data/medications.csv", "data/precautions.csv", "data/workout.csv",
 ]
-MODEL_FILES = [
-    "models/svc_model.pkl",
-    "models/decision_tree_model.pkl", "models/label_encoder.pkl",
-]
-
+MODEL_FILES = ["models/svc_model.pkl", "models/decision_tree_model.pkl", "models/label_encoder.pkl"]
 
 def check_files():
     return [f for f in DATA_FILES + MODEL_FILES if not os.path.exists(f)]
-
 
 def clean_disease_name(name: str) -> str:
     return str(name).lower().replace("_", " ").strip()
 
 
+# ──────────────────────────────────────────────
+# DATA LOADING
+# ──────────────────────────────────────────────
 @st.cache_data(show_spinner="Loading dataset…")
 def load_data():
     main_df        = pd.read_csv("data/Diseases_and_Symptoms_dataset.csv")
@@ -433,8 +388,7 @@ def load_data():
     workout_map = {clean_disease_name(r["Disease"]): r[workout_col]
                    for _, r in workout_df.iterrows()}
 
-    return (main_df, description_map, diets_map,
-            medications_map, precautions_map, workout_map)
+    return main_df, description_map, diets_map, medications_map, precautions_map, workout_map
 
 
 @st.cache_resource(show_spinner="Loading ML models…")
@@ -445,330 +399,15 @@ def load_models():
     return svc, dt, le
 
 
-@st.cache_resource(show_spinner="Building symptom index…")
+@st.cache_resource(show_spinner="Building search index…")
 def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
     sym_texts = [s.replace("_", " ") for s in symptom_list]
     dis_texts = [d.replace("_", " ") for d in disease_names]
     all_texts = sym_texts + dis_texts
-
     vec = TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 4)).fit(all_texts)
     sym_matrix = vec.transform(sym_texts).toarray()
     dis_matrix = vec.transform(dis_texts).toarray()
     return vec, sym_matrix, dis_matrix
-
-
-# ──────────────────────────────────────────────
-# V2 QUICK-SELECT SYMPTOM WIDGET
-# ──────────────────────────────────────────────
-def render_quick_select_symptoms(lang: str) -> None:
-    CATEGORIES_EN = {
-        "🌡️ General":       ["fever", "fatigue", "weakness", "chills", "sweating",
-                              "weight gain", "malaise", "lethargy", "weight loss",
-                              "night sweats"],
-        "🤕 Pain":            ["headache", "back pain", "chest pain", "joint pain",
-                              "muscle pain", "abdominal pain", "neck pain", "knee pain",
-                              "shoulder pain", "sore throat", "ear pain", "eye pain"],
-        "🫀 Cardio/Resp":    ["cough", "shortness of breath", "chest tightness",
-                              "palpitations", "irregular heartbeat",
-                              "difficulty breathing", "wheezing", "sneezing",
-                              "runny nose", "nasal congestion"],
-        "🧠 Neuro/Mental":   ["dizziness", "confusion", "anxiety", "depression",
-                              "insomnia", "memory loss", "seizures", "tremors",
-                              "fainting", "numbness", "blurred vision", "headache"],
-        "🤢 Gastro":         ["nausea", "vomiting", "diarrhea", "constipation",
-                              "stomach bloating", "loss of appetite", "heartburn",
-                              "indigestion", "blood in stool", "abdominal pain"],
-        "🩺 Skin":           ["skin rash", "itching", "acne", "skin dryness",
-                              "skin swelling", "jaundice", "skin lesion",
-                              "hives", "peeling skin"],
-        "👁️ Eye/Ear/Nose":  ["eye redness", "ear pain", "blurred vision",
-                              "runny nose", "nasal congestion", "hearing loss",
-                              "watery eyes", "sneezing"],
-        "🦴 Musculo":        ["joint stiffness", "muscle cramps", "swelling",
-                              "leg weakness", "arm weakness", "back stiffness",
-                              "peripheral edema"],
-        "🚻 Urinary":        ["frequent urination", "painful urination",
-                              "blood in urine", "urinary retention", "dark urine"],
-        "🔬 Other":          ["jaundice", "hair loss", "swollen lymph nodes",
-                              "high blood sugar", "low blood pressure"],
-    }
-
-    CAT_AM = {
-        "🌡️ General":      "አጠቃላይ",
-        "🤕 Pain":          "ህመም",
-        "🫀 Cardio/Resp":   "ልብ/መተንፈሻ",
-        "🧠 Neuro/Mental":  "ነርቭ/አዕምሮ",
-        "🤢 Gastro":        "የምግብ መፈጨት",
-        "🩺 Skin":          "ቆዳ",
-        "👁️ Eye/Ear/Nose": "ዓይን/ጆሮ/አፍንጫ",
-        "🦴 Musculo":       "ጡንቻ",
-        "🚻 Urinary":       "የሽንት",
-        "🔬 Other":         "ሌላ",
-    }
-
-    SYMPTOM_AM = {
-        "fever": "ትኩሳት", "fatigue": "ድካም", "weakness": "ድክመት",
-        "chills": "ብርድ", "sweating": "ላብ", "weight gain": "ክብደት መጨመር",
-        "malaise": "ስሜት መጥፎ", "lethargy": "ዝላይ", "weight loss": "ክብደት መቀነስ",
-        "night sweats": "ሌሊት ላብ",
-        "headache": "ራስ ምታት", "back pain": "የጀርባ ህመም",
-        "chest pain": "የደረት ህመም", "joint pain": "የመገጣጠሚያ ህመም",
-        "muscle pain": "የጡንቻ ህመም", "abdominal pain": "የሆድ ህመም",
-        "neck pain": "የአንገት ህመም", "knee pain": "የጉልበት ህመም",
-        "shoulder pain": "የትከሻ ህመም", "sore throat": "ጉሮሮ ህመም",
-        "ear pain": "የጆሮ ህመም", "eye pain": "የዓይን ህመም",
-        "cough": "ሳል", "shortness of breath": "መተንፈስ ማጠር",
-        "chest tightness": "ደረት መጠበቅ", "palpitations": "ልብ ምት ስሜት",
-        "irregular heartbeat": "ያልተስተካከለ የልብ ምት",
-        "difficulty breathing": "ለመተንፈስ ችግር",
-        "wheezing": "ድምፅ ሲተነፍሱ", "sneezing": "ማስነጠስ",
-        "runny nose": "አፍንጫ ፍሳሽ", "nasal congestion": "አፍንጫ መዘጋት",
-        "dizziness": "ራስ ዞር", "confusion": "ግራ መጋባት",
-        "anxiety": "ጭንቀት", "depression": "ድብርት",
-        "insomnia": "እንቅልፍ ማጣት", "memory loss": "ትውስታ ማጣት",
-        "seizures": "ቅብጠት", "tremors": "መርበድበድ",
-        "fainting": "ዋዛ ማጣት", "numbness": "ደንዘዝ ስሜት",
-        "blurred vision": "ደበዘዘ ዕይታ",
-        "nausea": "ማቅለሽлеш", "vomiting": "ማስታወክ", "diarrhea": "ተቅማጥ",
-        "constipation": "ሆድ መጠፍጠፍ", "stomach bloating": "ሆድ ማበጥ",
-        "loss of appetite": "የምግብ ፍቅር ማጣት", "heartburn": "ሆድ ማቃጠል",
-        "indigestion": "ምግብ አለመፈጨት", "blood in stool": "ሰገራ ውስጥ ደም",
-        "skin rash": "ቆዳ ሽፍታ", "itching": "ማሳከክ", "acne": "ሽፍታ",
-        "skin dryness": "ቆዳ ደረቅ", "skin swelling": "ቆዳ ማበጥ",
-        "jaundice": "ቢጫ በሽታ", "skin lesion": "ቆዳ ቁስለት",
-        "hives": "ድርቀት", "peeling skin": "ቆዳ መላጥ",
-        "eye redness": "ቀይ ዓይን", "hearing loss": "የመስሚያ ችግር",
-        "watery eyes": "እንባ ዓይን",
-        "joint stiffness": "መገጣጠሚያ ጥበቃ", "muscle cramps": "ጡንቻ ቁርጠት",
-        "swelling": "ማበጥ", "leg weakness": "የእግር ድክመት",
-        "arm weakness": "የእጅ ድክመት", "back stiffness": "ጀርባ ጥበቃ",
-        "peripheral edema": "ዳርቻ ማበጥ",
-        "frequent urination": "ተደጋጋሚ ሽንት",
-        "painful urination": "ሽንት ሲሸኑ ህመም",
-        "blood in urine": "ሽንት ውስጥ ደም",
-        "urinary retention": "ሽንት ማቆር", "dark urine": "ጨለማ ሽንት",
-        "hair loss": "ፀጉር መርገፍ", "swollen lymph nodes": "ሊምፍ ኖድ ማበጥ",
-        "high blood sugar": "ከፍተኛ የደም ስኳር",
-        "low blood pressure": "ዝቅተኛ የደም ግፊት",
-    }
-
-    is_am = lang.lower() == "amharic"
-
-    js_cats = {}
-    for cat_en, symptoms in CATEGORIES_EN.items():
-        label = CAT_AM.get(cat_en, cat_en) if is_am else cat_en
-        js_cats[label] = [
-            {
-                "en":      s,
-                "display": SYMPTOM_AM.get(s, s) if is_am else s.title(),
-            }
-            for s in symptoms
-        ]
-
-    current_val = st.session_state.get("symptoms_text", "")
-    current_list = [s.strip().lower() for s in current_val.split(",") if s.strip()]
-
-    quick_label = "ምልክቶችን ፈጥኖ ይምረጡ:" if is_am else "Quick-select symptoms:"
-    or_text     = "ወይም ምልክቶችን ይተይቡ"   if is_am else "or type symptoms"
-
-    html_code = f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{
-    background: transparent;
-    font-family: 'Poppins', 'DM Sans', -apple-system, sans-serif;
-    padding: 4px 2px 0;
-  }}
-  .qs-label {{
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: rgba(255,255,255,0.38);
-    font-weight: 600;
-    margin-bottom: 10px;
-  }}
-  .cat-tabs {{
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 12px;
-  }}
-  .cat-tab {{
-    padding: 5px 12px;
-    border-radius: 100px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.04);
-    color: rgba(255,255,255,0.5);
-    font-size: 0.72rem;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.18s ease;
-    font-family: inherit;
-  }}
-  .cat-tab:hover {{
-    border-color: #0d9488;
-    color: #14b8a6;
-    background: rgba(13,148,136,0.1);
-  }}
-  .cat-tab.active {{
-    background: rgba(13,148,136,0.2);
-    border-color: #14b8a6;
-    color: #14b8a6;
-  }}
-  .pills-wrap {{
-    display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-    max-height: 118px;
-    overflow-y: auto;
-    padding: 2px 2px 6px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(13,148,136,0.45) transparent;
-  }}
-  .pills-wrap::-webkit-scrollbar {{ width: 4px; }}
-  .pills-wrap::-webkit-scrollbar-track {{ background: transparent; }}
-  .pills-wrap::-webkit-scrollbar-thumb {{ background: rgba(13,148,136,0.45); border-radius: 4px; }}
-  
-  .pill {{
-    padding: 5px 13px;
-    border-radius: 100px;
-    border: 1px solid rgba(255,255,255,0.14);
-    background: rgba(255,255,255,0.05);
-    color: rgba(255,255,255,0.75);
-    font-size: 0.77rem;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.16s ease;
-    user-select: none;
-    font-family: inherit;
-  }}
-  .pill:hover {{
-    border-color: #14b8a6;
-    color: #fff;
-    background: rgba(13,148,136,0.12);
-    transform: translateY(-1px);
-  }}
-  .pill[aria-label^="✓"] {{
-    background: rgba(13, 148, 136, 0.25) !important;
-    border-color: #14b8a6 !important;
-    color: #14b8a6 !important;
-    font-weight: 600 !important;
-  }}
-  .or-div {{
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 14px 0 2px;
-    color: rgba(255,255,255,0.22);
-    font-size: 0.67rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }}
-  .or-div::before, .or-div::after {{ content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }}
-</style>
-</head>
-<body>
-
-<div class="qs-label">{quick_label}</div>
-<div class="cat-tabs" id="catTabs"></div>
-<div class="pills-wrap" id="pillsWrap"></div>
-<div class="or-div">{or_text}</div>
-
-<script>
-  var CATS    = {json.dumps(js_cats, ensure_ascii=False)};
-  var KEYS    = Object.keys(CATS);
-  var active  = KEYS[0];
-  var selected = {json.dumps(current_list)};
-
-  var tabsEl  = document.getElementById('catTabs');
-  var pillsEl = document.getElementById('pillsWrap');
-
-  function renderTabs() {{
-    tabsEl.innerHTML = '';
-    KEYS.forEach(function(k) {{
-      var b = document.createElement('button');
-      b.className = 'cat-tab' + (k === active ? ' active' : '');
-      b.textContent = k;
-      b.onclick = function() {{
-        active = k;
-        renderTabs();
-        renderPills();
-      }};
-      tabsEl.appendChild(b);
-    }});
-  }}
-
-  function renderPills() {{
-    pillsEl.innerHTML = '';
-    var items = CATS[active] || [];
-    items.forEach(function(item) {{
-      var en      = item.en;
-      var display = item.display;
-      var isSel   = selected.indexOf(en.toLowerCase()) !== -1;
-      var p = document.createElement('button');
-      p.className = 'pill';
-      
-      var rawLabel = isSel ? '✓ ' + display : display;
-      p.setAttribute('aria-label', rawLabel);
-      p.textContent = rawLabel;
-      
-      p.onclick = (function(sym) {{
-        return function() {{ toggleSym(sym); }};
-      }})(en);
-      pillsEl.appendChild(p);
-    }});
-  }}
-
-  function syncToStreamlit() {{
-    var val = selected.join(', ');
-    try {{
-      var doc = window.parent.document;
-      var areas = doc.querySelectorAll('textarea');
-      for (var i = 0; i < areas.length; i++) {{
-        var ta = areas[i];
-        if (ta.placeholder && ta.placeholder.indexOf('headache') !== -1) {{
-          var nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-            window.parent.HTMLTextAreaElement.prototype, 'value'
-          ).set;
-          nativeInputValueSetter.call(ta, val);
-          ta.dispatchEvent(new window.parent.Event('input', {{ bubbles: true }}));
-          
-          // Adjust state styling based on current content string sizes
-          if(val.length > 0) {{
-             ta.style.borderLeft = "1px solid #58a6ff";
-          }} else {{
-             ta.style.borderLeft = "3px solid #58a6ff";
-          }}
-          break;
-        }}
-      }}
-    }} catch(e) {{}}
-  }}
-
-  function toggleSym(sym) {{
-    var lo  = sym.toLowerCase();
-    var idx = selected.indexOf(lo);
-    if (idx === -1) {{
-      selected.push(lo);
-    }} else {{
-      selected.splice(idx, 1);
-    }}
-    renderPills();
-    syncToStreamlit();
-  }}
-
-  renderTabs();
-  renderPills();
-</script>
-</body>
-</html>
-"""
-    components.html(html_code, height=220, scrolling=False)
 
 
 # ──────────────────────────────────────────────
@@ -785,10 +424,13 @@ def check_access(age: int, role: str, user_id: str, lang: str):
 
 
 # ──────────────────────────────────────────────
-# ROLE-BASED OUTPUT FILTER
+# ROLE-BASED RECOMMENDATIONS
+# Returns list of dicts: {label, content, card_type}
+# card_type: "full" | "limited" | "locked"
 # ──────────────────────────────────────────────
 def role_based_recs(role, lang, key,
-                    description_map, diets_map, medications_map, precautions_map, workout_map):
+                    description_map, diets_map, medications_map,
+                    precautions_map, workout_map):
     desc    = translate_content(description_map.get(key, "N/A"), lang)
     diet    = translate_content(diets_map.get(key, "N/A"), lang)
     meds    = translate_content(medications_map.get(key, "N/A"), lang)
@@ -796,44 +438,97 @@ def role_based_recs(role, lang, key,
     workout = translate_content(workout_map.get(key, "N/A"), lang)
 
     if role == "Doctor":
-        return {
-            t("Description", lang):      desc,
-            t("Dietary Plan", lang):     diet,
-            t("Medications", lang):      meds,
-            t("Precautions", lang):      precs,
-            t("Workout/Activity", lang): workout,
-        }, ""
+        # Full access — everything visible
+        cards = [
+            {"label": t("Description",      lang), "content": desc,    "card_type": "full"},
+            {"label": t("Dietary Plan",      lang), "content": diet,    "card_type": "full"},
+            {"label": t("Medications",       lang), "content": meds,    "card_type": "full"},
+            {"label": t("Precautions",       lang), "content": precs,   "card_type": "full"},
+            {"label": t("Workout/Activity",  lang), "content": workout, "card_type": "full"},
+        ]
+        advice = ""
 
     elif role == "Student":
-        if isinstance(meds, str) and meds != "N/A":
-            meds_limited = ", ".join(
-                w.split()[0] for w in meds.split(",") if w.strip()
-            ) + " (drug classes only — full details restricted)"
+        # Medications shown as drug-class names only
+        if isinstance(meds, str) and meds not in ("N/A", ""):
+            drug_classes = []
+            for item in meds.split(","):
+                item = item.strip()
+                if item:
+                    # Keep only first word (drug class / generic name stem)
+                    drug_classes.append(item.split()[0].rstrip(".,;"))
+            meds_display = ", ".join(dict.fromkeys(drug_classes))  # deduplicate, preserve order
+            meds_note    = "Drug class names shown only. Full details restricted to licensed Doctors."
         else:
-            meds_limited = "Full medication details restricted to Doctors only."
-        return {
-            t("Description", lang):      desc,
-            t("Dietary Plan", lang):     diet,
-            t("Medications", lang):      meds_limited,
-            t("Precautions", lang):      precs,
-            t("Workout/Activity", lang): workout,
-        }, "ℹ️ Full medication details are only available to Doctors."
+            meds_display = "N/A"
+            meds_note    = "Full medication details restricted to Doctors only."
 
-    else:  # Normal User
-        if isinstance(diet, str) and diet != "N/A":
-            diet_limited = diet.split(".")[0].strip() + ". (Full dietary plan restricted — consult a nutritionist.)"
+        cards = [
+            {"label": t("Description",      lang), "content": desc,         "card_type": "full"},
+            {"label": t("Dietary Plan",      lang), "content": diet,         "card_type": "full"},
+            {"label": t("Medications",       lang), "content": meds_display,
+             "note": meds_note,                                               "card_type": "limited"},
+            {"label": t("Precautions",       lang), "content": precs,        "card_type": "full"},
+            {"label": t("Workout/Activity",  lang), "content": workout,      "card_type": "full"},
+        ]
+        advice = "ℹ️ Full medication details are only available to licensed Doctors."
+
+    else:
+        # Normal User — diet summary only, medications fully locked
+        if isinstance(diet, str) and diet not in ("N/A", ""):
+            sentences = [s.strip() for s in diet.replace(";", ".").split(".") if s.strip()]
+            # Show first 2 sentences max
+            diet_preview = ". ".join(sentences[:2]) + ("." if sentences[:2] else "")
+            diet_note    = "Full dietary plan available to Doctors and Students. Consult a nutritionist for a personalised plan."
         else:
-            diet_limited = "Eat balanced meals and stay hydrated. Consult a nutritionist for a personalised plan."
-        meds_hidden = "🔒 Medication details are restricted. Please consult a licensed doctor."
+            diet_preview = "Eat balanced meals and stay hydrated."
+            diet_note    = "Consult a nutritionist for a personalised plan."
+
+        cards = [
+            {"label": t("Description",      lang), "content": desc,        "card_type": "full"},
+            {"label": t("Dietary Plan",      lang), "content": diet_preview,
+             "note": diet_note,                                              "card_type": "limited"},
+            {"label": t("Medications",       lang),
+             "content": "🔒 Medication details are restricted to licensed Doctors only. Please consult a healthcare professional.",
+                                                                             "card_type": "locked"},
+            {"label": t("Precautions",       lang), "content": precs,      "card_type": "full"},
+            {"label": t("Workout/Activity",  lang), "content": workout,    "card_type": "full"},
+        ]
         advice = ("⚠️ This information is for general awareness only. "
-                  "Always consult a qualified doctor before taking any medication.")
-        return {
-            t("Description", lang):      desc,
-            t("Dietary Plan", lang):     diet_limited,
-            t("Medications", lang):      meds_hidden,
-            t("Precautions", lang):      precs,
-            t("Workout/Activity", lang): workout,
-        }, advice
+                  "Always consult a qualified doctor before taking any medication or following a treatment plan.")
+
+    return cards, advice
+
+
+# ──────────────────────────────────────────────
+# RENDER RECOMMENDATION CARDS
+# ──────────────────────────────────────────────
+def render_rec_cards(cards: list):
+    for card in cards:
+        label     = card["label"]
+        content   = card["content"]
+        card_type = card.get("card_type", "full")
+        note      = card.get("note", "")
+
+        if isinstance(content, list):
+            body = "<ul style='margin:0;padding-left:18px'>" + \
+                   "".join(f"<li>{i}</li>" for i in content) + "</ul>"
+        else:
+            body = f"<p style='margin:0'>{content}</p>"
+
+        if note:
+            body += f"<p class='restriction-note' style='margin-top:8px;color:#f0883e;font-size:0.8rem;font-style:italic'>⚠️ {note}</p>"
+
+        css_class = {
+            "full":    "result-card",
+            "limited": "result-card-limited",
+            "locked":  "result-card-locked",
+        }.get(card_type, "result-card")
+
+        st.markdown(
+            f"<div class='{css_class}'><h4>{label}</h4>{body}</div>",
+            unsafe_allow_html=True,
+        )
 
 
 # ──────────────────────────────────────────────
@@ -843,8 +538,7 @@ def integrated_prediction_system(
     user_input, age, role, user_id, lang,
     main_df, le, svc_model, dt_model,
     description_map, diets_map, medications_map, precautions_map, workout_map,
-    tfidf_vec, sym_matrix,
-    threshold=0.6,
+    tfidf_vec, sym_matrix, threshold=0.6,
 ):
     ok, msg = check_access(age, role, user_id, lang)
     if not ok:
@@ -859,8 +553,8 @@ def integrated_prediction_system(
         if raw in symptom_list:
             matched_symptoms.add(raw)
             continue
-        raw_vec = tfidf_vec.transform([raw.replace("_", " ")]).toarray()
-        sims    = cosine_similarity(raw_vec, sym_matrix)[0]
+        raw_vec  = tfidf_vec.transform([raw.replace("_", " ")]).toarray()
+        sims     = cosine_similarity(raw_vec, sym_matrix)[0]
         best_idx = int(np.argmax(sims))
         if sims[best_idx] >= threshold:
             matched_symptoms.add(symptom_list[best_idx])
@@ -881,27 +575,19 @@ def integrated_prediction_system(
             for rank, idx in enumerate(top4_idx):
                 disease = le.inverse_transform([idx])[0]
                 conf    = f"{proba[idx] * 100:.1f}%"
-                preds.append({
-                    "model":      name,
-                    "disease":    disease.title(),
-                    "confidence": conf,
-                    "top":        rank == 0,
-                })
+                preds.append({"model": name, "disease": disease.title(),
+                               "confidence": conf, "top": rank == 0})
         except AttributeError:
             pred_idx = model.predict(feature_vector)[0]
             disease  = le.inverse_transform([pred_idx])[0]
-            preds.append({
-                "model":      name,
-                "disease":    disease.title(),
-                "confidence": "N/A",
-                "top":        True,
-            })
+            preds.append({"model": name, "disease": disease.title(),
+                          "confidence": "N/A", "top": True})
 
     top_disease = next(p["disease"] for p in preds if p["top"] and p["model"] == "SVC")
     top_key     = clean_disease_name(top_disease)
-    preds       = [p for p in preds if p["model"] == "SVC"]
+    svc_preds   = [p for p in preds if p["model"] == "SVC"]
 
-    recs, advice = role_based_recs(
+    cards, advice = role_based_recs(
         role, lang, top_key,
         description_map, diets_map, medications_map, precautions_map, workout_map,
     )
@@ -909,281 +595,572 @@ def integrated_prediction_system(
     matched_display = [s.replace("_", " ").title() for s in matched_symptoms]
     return {
         "matched_symptoms":     matched_display,
-        "predicted_conditions": preds,
+        "predicted_conditions": svc_preds,
         "top_disease":          top_disease,
-        "recommendations":      recs,
+        "rec_cards":            cards,
         "advice":               advice,
     }, ""
 
 
 # ──────────────────────────────────────────────
-# HEALTH RECOMMENDER
+# CHATBOT  — fixed & robust
 # ──────────────────────────────────────────────
-def health_recommender(
-    disease_name, age, role, user_id, lang,
-    description_map, diets_map, medications_map, precautions_map, workout_map
+def chatbot_response(
+    query, age, role, user_id, lang,
+    description_map, diets_map, medications_map, precautions_map, workout_map,
+    tfidf_vec, threshold=0.3,
 ):
     ok, msg = check_access(age, role, user_id, lang)
     if not ok:
-        return None, msg
+        return msg
 
-    top_key = clean_disease_name(disease_name)
-    recs, advice = role_based_recs(
-        role, lang, top_key,
-        description_map, diets_map, medications_map, precautions_map, workout_map,
-    )
+    q = query.lower().strip()
 
-    return {
-        "top_disease":     disease_name.title(),
-        "recommendations": recs,
-        "advice":          advice
-    }, ""
+    # ── Detect intent keyword ──────────────────────────────────────────
+    INTENT_KEYWORDS = {
+        "diet":       ["diet", "food", "eat", "nutrition", "meal", "drink", "አመጋገብ"],
+        "medication": ["medicine", "medication", "drug", "pill", "treat", "tablet",
+                       "prescription", "dose", "መድሃኒት"],
+        "precaution": ["precaution", "avoid", "prevent", "careful", "warning", "ጥንቃቄ"],
+        "workout":    ["workout", "exercise", "activity", "fitness", "sport", "physical", "ስፖርት"],
+        "description":["what is", "describe", "about", "explain", "overview",
+                       "definition", "meaning", "symptom", "cause", "sign"],
+    }
+
+    intent = "description"  # default
+    for key, keywords in INTENT_KEYWORDS.items():
+        if any(kw in q for kw in keywords):
+            intent = key
+            break
+
+    # ── Find best-matching disease ─────────────────────────────────────
+    # Build a rich corpus: disease name + its description for better matching
+    disease_keys   = list(description_map.keys())
+    rich_texts     = []
+    for dk in disease_keys:
+        desc = description_map.get(dk, "")
+        rich_texts.append(f"{dk} {desc}")
+
+    if not rich_texts:
+        return "Sorry, the knowledge base is empty."
+
+    # Use a word-level vectorizer for chatbot (better for natural language)
+    chat_vec    = TfidfVectorizer(
+        analyzer="word",
+        ngram_range=(1, 2),
+        stop_words="english",
+        min_df=1,
+    ).fit(rich_texts)
+
+    rich_matrix = chat_vec.transform(rich_texts).toarray()
+    q_vec       = chat_vec.transform([q]).toarray()
+    sims        = cosine_similarity(q_vec, rich_matrix)[0]
+    best_idx    = int(np.argmax(sims))
+    best_sim    = float(sims[best_idx])
+
+    if best_sim < threshold:
+        fallback = (
+            "I couldn't find specific information for that query. "
+            "Try asking about a specific disease, e.g.:\n"
+            "• *What is diabetes?*\n"
+            "• *What diet should I follow for asthma?*\n"
+            "• *What medications are used for hypertension?*\n"
+            "• *What precautions should I take for migraine?*"
+        )
+        return translate_content(fallback, lang) if lang.lower() == "amharic" else fallback
+
+    disease_key   = disease_keys[best_idx]
+    disease_title = disease_key.title()
+
+    # ── Retrieve content based on intent ──────────────────────────────
+    if intent == "diet":
+        raw   = diets_map.get(disease_key, "N/A")
+        label = t("Dietary Plan", lang)
+        # Role-based filtering for diet
+        if role == "Normal User" and isinstance(raw, str) and raw not in ("N/A", ""):
+            sentences   = [s.strip() for s in raw.replace(";", ".").split(".") if s.strip()]
+            info        = ". ".join(sentences[:2]) + "."
+            restriction = "\n\n⚠️ *Full dietary plan is available to Doctors and Students. Consult a nutritionist for a complete plan.*"
+        else:
+            info        = raw
+            restriction = ""
+
+    elif intent == "medication":
+        raw   = medications_map.get(disease_key, "N/A")
+        label = t("Medications", lang)
+        # Role-based filtering for medications
+        if role == "Normal User":
+            info        = "🔒 Medication details are restricted. Please consult a licensed doctor."
+            restriction = ""
+        elif role == "Student":
+            if isinstance(raw, str) and raw not in ("N/A", ""):
+                drug_classes = [item.strip().split()[0].rstrip(".,;")
+                                for item in raw.split(",") if item.strip()]
+                info = ", ".join(dict.fromkeys(drug_classes))
+            else:
+                info = "N/A"
+            restriction = "\n\n⚠️ *Drug class names only. Full details restricted to Doctors.*"
+        else:
+            info        = raw
+            restriction = ""
+
+    elif intent == "precaution":
+        raw   = precautions_map.get(disease_key, [])
+        label = t("Precautions", lang)
+        if isinstance(raw, list):
+            info = "\n" + "\n".join(f"• {p}" for p in raw) if raw else "N/A"
+        else:
+            info = str(raw)
+        restriction = ""
+
+    elif intent == "workout":
+        info        = workout_map.get(disease_key, "N/A")
+        label       = t("Workout/Activity", lang)
+        restriction = ""
+
+    else:  # description
+        info        = description_map.get(disease_key, "N/A")
+        label       = t("Description", lang)
+        restriction = ""
+
+    info = translate_content(info, lang)
+    if isinstance(info, list):
+        info_str = "\n" + "\n".join(f"• {i}" for i in info)
+    else:
+        info_str = str(info)
+
+    return f"**{disease_title}** — {label}:\n\n{info_str}{restriction}"
 
 
 # ──────────────────────────────────────────────
-# CALLBACK PARAMETERS FOR RESETS
+# QUICK-SELECT WIDGET (iframe-based, always visible)
+# ──────────────────────────────────────────────
+def render_quick_select_symptoms(lang: str) -> None:
+    CATEGORIES_EN = {
+        "🌡️ General":      ["fever", "fatigue", "weakness", "chills", "sweating",
+                             "weight gain", "malaise", "lethargy", "weight loss", "night sweats"],
+        "🤕 Pain":          ["headache", "back pain", "chest pain", "joint pain",
+                             "muscle pain", "abdominal pain", "neck pain", "knee pain",
+                             "shoulder pain", "sore throat", "ear pain", "eye pain"],
+        "🫀 Cardio/Resp":   ["cough", "shortness of breath", "chest tightness",
+                             "palpitations", "difficulty breathing", "wheezing",
+                             "sneezing", "runny nose", "nasal congestion"],
+        "🧠 Neuro/Mental":  ["dizziness", "confusion", "anxiety", "depression",
+                             "insomnia", "memory loss", "seizures", "tremors",
+                             "fainting", "numbness", "blurred vision"],
+        "🤢 Gastro":        ["nausea", "vomiting", "diarrhea", "constipation",
+                             "stomach bloating", "loss of appetite", "heartburn",
+                             "indigestion", "blood in stool"],
+        "🩺 Skin":          ["skin rash", "itching", "acne", "skin dryness",
+                             "jaundice", "skin lesion", "hives", "peeling skin"],
+        "👁️ Eye/Ear/Nose": ["eye redness", "ear pain", "blurred vision",
+                             "runny nose", "hearing loss", "watery eyes", "sneezing"],
+        "🦴 Musculo":       ["joint stiffness", "muscle cramps", "swelling",
+                             "leg weakness", "back stiffness", "peripheral edema"],
+        "🚻 Urinary":       ["frequent urination", "painful urination",
+                             "blood in urine", "urinary retention", "dark urine"],
+        "🔬 Other":         ["jaundice", "hair loss", "swollen lymph nodes",
+                             "high blood sugar", "low blood pressure"],
+    }
+
+    SYMPTOM_AM = {
+        "fever": "ትኩሳት", "fatigue": "ድካም", "weakness": "ድክመት",
+        "chills": "ብርድ", "sweating": "ላብ", "weight gain": "ክብደት መጨመር",
+        "malaise": "ስሜት መጥፎ", "lethargy": "ዝላይ", "weight loss": "ክብደት መቀነስ",
+        "night sweats": "ሌሊት ላብ", "headache": "ራስ ምታት", "back pain": "የጀርባ ህመም",
+        "chest pain": "የደረት ህመም", "joint pain": "የመገጣጠሚያ ህመም",
+        "muscle pain": "የጡንቻ ህመም", "abdominal pain": "የሆድ ህመም",
+        "neck pain": "የአንገት ህመም", "knee pain": "የጉልበት ህመም",
+        "shoulder pain": "የትከሻ ህመም", "sore throat": "ጉሮሮ ህመም",
+        "ear pain": "የጆሮ ህመም", "eye pain": "የዓይን ህመም",
+        "cough": "ሳል", "shortness of breath": "መተንፈስ ማጠር",
+        "chest tightness": "ደረት መጠበቅ", "palpitations": "ልብ ምት ስሜት",
+        "difficulty breathing": "ለመተንፈስ ችግር", "wheezing": "ድምፅ ሲተነፍሱ",
+        "sneezing": "ማስነጠስ", "runny nose": "አፍንጫ ፍሳሽ",
+        "nasal congestion": "አፍንጫ መዘጋት", "dizziness": "ራስ ዞር",
+        "confusion": "ግራ መጋባት", "anxiety": "ጭንቀት", "depression": "ድብርት",
+        "insomnia": "እንቅልፍ ማጣት", "memory loss": "ትውስታ ማጣት",
+        "seizures": "ቅብጠት", "tremors": "መርበድበድ", "fainting": "ዋዛ ማጣት",
+        "numbness": "ደንዘዝ ስሜት", "blurred vision": "ደበዘዘ ዕይታ",
+        "nausea": "ማቅለሽለሽ", "vomiting": "ማስታወክ", "diarrhea": "ተቅማጥ",
+        "constipation": "ሆድ መጠፍጠፍ", "stomach bloating": "ሆድ ማበጥ",
+        "loss of appetite": "የምግብ ፍቅር ማጣት", "heartburn": "ሆድ ማቃጠል",
+        "indigestion": "ምግብ አለመፈጨት", "blood in stool": "ሰገራ ውስጥ ደም",
+        "skin rash": "ቆዳ ሽፍታ", "itching": "ማሳከክ", "acne": "ሽፍታ",
+        "skin dryness": "ቆዳ ደረቅ", "jaundice": "ቢጫ በሽታ",
+        "skin lesion": "ቆዳ ቁስለት", "hives": "ድርቀት", "peeling skin": "ቆዳ መላጥ",
+        "eye redness": "ቀይ ዓይን", "hearing loss": "የመስሚያ ችግር",
+        "watery eyes": "እንባ ዓይን", "joint stiffness": "መገጣጠሚያ ጥበቃ",
+        "muscle cramps": "ጡንቻ ቁርጠት", "swelling": "ማበጥ",
+        "leg weakness": "የእግር ድክመት", "back stiffness": "ጀርባ ጥበቃ",
+        "peripheral edema": "ዳርቻ ማበጥ", "frequent urination": "ተደጋጋሚ ሽንት",
+        "painful urination": "ሽንት ሲሸኑ ህመም", "blood in urine": "ሽንት ውስጥ ደም",
+        "urinary retention": "ሽንት ማቆር", "dark urine": "ጨለማ ሽንት",
+        "hair loss": "ፀጉር መርገፍ", "swollen lymph nodes": "ሊምፍ ኖድ ማበጥ",
+        "high blood sugar": "ከፍተኛ የደም ስኳር", "low blood pressure": "ዝቅተኛ የደም ግፊት",
+    }
+
+    CAT_AM = {
+        "🌡️ General": "አጠቃላይ", "🤕 Pain": "ህመም", "🫀 Cardio/Resp": "ልብ/መተንፈሻ",
+        "🧠 Neuro/Mental": "ነርቭ/አዕምሮ", "🤢 Gastro": "የምግብ መፈጨት", "🩺 Skin": "ቆዳ",
+        "👁️ Eye/Ear/Nose": "ዓይን/ጆሮ/አፍንጫ", "🦴 Musculo": "ጡንቻ",
+        "🚻 Urinary": "የሽንት", "🔬 Other": "ሌላ",
+    }
+
+    is_am   = lang.lower() == "amharic"
+    js_cats = {}
+    for cat_en, symptoms in CATEGORIES_EN.items():
+        label = CAT_AM.get(cat_en, cat_en) if is_am else cat_en
+        js_cats[label] = [
+            {"en": s, "display": SYMPTOM_AM.get(s, s) if is_am else s.title()}
+            for s in symptoms
+        ]
+
+    current_val  = st.session_state.get("symptoms_text", "")
+    current_list = [s.strip().lower() for s in current_val.split(",") if s.strip()]
+    quick_label  = "ምልክቶችን ፈጥኖ ይምረጡ:" if is_am else "Quick-select symptoms:"
+    or_text      = "ወይም ምልክቶችን ይተይቡ" if is_am else "or type symptoms below"
+
+    html_code = f"""<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ background: transparent; font-family: 'Poppins','DM Sans',-apple-system,sans-serif; padding: 4px 2px 0; }}
+.qs-label {{ font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.38); font-weight: 600; margin-bottom: 10px; }}
+.cat-tabs {{ display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }}
+.cat-tab {{ padding: 5px 12px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.5); font-size: 0.72rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.18s ease; font-family: inherit; }}
+.cat-tab:hover {{ border-color: #0d9488; color: #14b8a6; background: rgba(13,148,136,0.1); }}
+.cat-tab.active {{ background: rgba(13,148,136,0.2); border-color: #14b8a6; color: #14b8a6; }}
+.pills-wrap {{ display: flex; flex-wrap: wrap; gap: 7px; max-height: 118px; overflow-y: auto; padding: 2px 2px 6px; scrollbar-width: thin; scrollbar-color: rgba(13,148,136,0.45) transparent; }}
+.pills-wrap::-webkit-scrollbar {{ width: 4px; }}
+.pills-wrap::-webkit-scrollbar-thumb {{ background: rgba(13,148,136,0.45); border-radius: 4px; }}
+.pill {{ padding: 5px 13px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.75); font-size: 0.77rem; cursor: pointer; white-space: nowrap; transition: all 0.16s ease; user-select: none; font-family: inherit; }}
+.pill:hover {{ border-color: #14b8a6; color: #fff; background: rgba(13,148,136,0.12); transform: translateY(-1px); }}
+.pill.sel {{ background: rgba(13,148,136,0.25) !important; border-color: #14b8a6 !important; color: #14b8a6 !important; font-weight: 600 !important; }}
+.or-div {{ display: flex; align-items: center; gap: 10px; margin: 14px 0 2px; color: rgba(255,255,255,0.22); font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.1em; }}
+.or-div::before, .or-div::after {{ content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }}
+</style></head><body>
+<div class="qs-label">{quick_label}</div>
+<div class="cat-tabs" id="catTabs"></div>
+<div class="pills-wrap" id="pillsWrap"></div>
+<div class="or-div">{or_text}</div>
+<script>
+var CATS    = {json.dumps(js_cats, ensure_ascii=False)};
+var KEYS    = Object.keys(CATS);
+var active  = KEYS[0];
+var selected = {json.dumps(current_list)};
+
+function renderTabs() {{
+  var el = document.getElementById('catTabs'); el.innerHTML = '';
+  KEYS.forEach(function(k) {{
+    var b = document.createElement('button');
+    b.className = 'cat-tab' + (k === active ? ' active' : '');
+    b.textContent = k;
+    b.onclick = function() {{ active = k; renderTabs(); renderPills(); }};
+    el.appendChild(b);
+  }});
+}}
+function renderPills() {{
+  var el = document.getElementById('pillsWrap'); el.innerHTML = '';
+  (CATS[active] || []).forEach(function(item) {{
+    var isSel = selected.indexOf(item.en.toLowerCase()) !== -1;
+    var p = document.createElement('button');
+    p.className = 'pill' + (isSel ? ' sel' : '');
+    p.textContent = (isSel ? '✓ ' : '') + item.display;
+    p.onclick = (function(sym) {{ return function() {{ toggleSym(sym); }}; }})(item.en);
+    el.appendChild(p);
+  }});
+}}
+function syncToStreamlit() {{
+  var val = selected.join(', ');
+  try {{
+    var doc = window.parent.document;
+    var areas = doc.querySelectorAll('textarea');
+    for (var i = 0; i < areas.length; i++) {{
+      var ta = areas[i];
+      if (ta.placeholder && ta.placeholder.indexOf('headache') !== -1) {{
+        var setter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, 'value').set;
+        setter.call(ta, val);
+        ta.dispatchEvent(new window.parent.Event('input', {{ bubbles: true }}));
+        break;
+      }}
+    }}
+  }} catch(e) {{}}
+}}
+function toggleSym(sym) {{
+  var lo = sym.toLowerCase();
+  var idx = selected.indexOf(lo);
+  if (idx === -1) {{ selected.push(lo); }} else {{ selected.splice(idx, 1); }}
+  renderPills(); syncToStreamlit();
+}}
+renderTabs(); renderPills();
+</script></body></html>"""
+
+    components.html(html_code, height=220, scrolling=False)
+
+
+# ──────────────────────────────────────────────
+# CALLBACKS
 # ──────────────────────────────────────────────
 def clear_symptoms_callback():
-    st.session_state["symptoms_text"] = ""
+    st.session_state["symptoms_text"]    = ""
     st.session_state["prediction_result"] = None
-    st.session_state["prediction_error"] = None
-
+    st.session_state["prediction_error"]  = None
 
 def clear_diagnosis_callback():
     st.session_state["prediction_result"] = None
-    st.session_state["prediction_error"] = None
+    st.session_state["prediction_error"]  = None
 
 
 # ──────────────────────────────────────────────
-# APP MAIN ENGINE
+# MAIN
 # ──────────────────────────────────────────────
 def main():
     missing = check_files()
     if missing:
-        st.error(f"Missing required execution dependencies: {missing}")
+        st.error(f"Missing required files: {missing}")
         return
 
     main_df, desc_map, diets_map, meds_map, precs_map, workout_map = load_data()
     svc, dt, le = load_models()
-    
-    symptom_list = tuple(main_df.drop(columns=["diseases"]).columns)
+
+    symptom_list  = tuple(main_df.drop(columns=["diseases"]).columns)
     disease_names = tuple(main_df["diseases"].unique())
     vec, sym_matrix, _ = build_tfidf_index(symptom_list, disease_names)
 
-    # ── Sidebar Layout Config
-    st.sidebar.markdown(f'<div class="section-header">User Profile Context</div>', unsafe_allow_html=True)
-    lang = st.sidebar.selectbox("Interface Language / ቋንቋ", ["English", "Amharic"])
-    role = st.sidebar.selectbox("Security Context Role", ["Normal User", "Student", "Doctor"])
-    
+    # ── Sidebar
+    st.sidebar.markdown('<div class="section-header">User Profile</div>', unsafe_allow_html=True)
+    lang    = st.sidebar.selectbox("🌐 Language", ["English", "Amharic"])
+    role    = st.sidebar.selectbox("👤 Role", ["Normal User", "Student", "Doctor"])
     user_id = ""
-    if role in ["Student", "Doctor"]:
-        user_id = st.sidebar.text_input("Role Authorization Token ID", type="password")
-        
-    age = st.sidebar.number_input("Biological Evaluation Age", min_value=0, max_value=120, value=25)
+    if role in ("Student", "Doctor"):
+        placeholder = "Doctor ID: 0000" if role == "Doctor" else "Student ID: 1111"
+        user_id = st.sidebar.text_input("🔐 ID", placeholder=placeholder,
+                                        type="password", label_visibility="collapsed")
+    age = st.sidebar.number_input("🎂 Age", min_value=0, max_value=120, value=25)
 
-    # Initialize Tracking States Safely
-    if "prediction_result" not in st.session_state:
-        st.session_state["prediction_result"] = None
-    if "prediction_error" not in st.session_state:
-        st.session_state["prediction_error"] = None
+    # Role badge in sidebar
+    role_colors = {"Doctor": "#1f6feb", "Student": "#2ea043", "Normal User": "#6e7681"}
+    rc = role_colors.get(role, "#6e7681")
+    st.sidebar.markdown(
+        f"<div style='margin-top:8px'>"
+        f"<span class='role-badge' style='background:rgba({int(rc[1:3],16)},{int(rc[3:5],16)},{int(rc[5:7],16)},0.2);"
+        f"color:{rc};border:1px solid {rc}40'>● {role}</span></div>",
+        unsafe_allow_html=True,
+    )
+    st.sidebar.markdown("---")
+    st.sidebar.caption("⚕️ General health information only. Always consult a qualified doctor.")
 
-    # ── Main Header
-    st.markdown(f"""
-    <div class="main-header">
-        <h1 class="main-header-title">Integrated Healthcare Dashboard</h1>
-        <p class="main-header-subtitle">Intelligent Core ML Engine Diagnosis Hub</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # ── Session state init
+    for key in ("prediction_result", "prediction_error", "chat_response"):
+        if key not in st.session_state:
+            st.session_state[key] = None
 
-    tab1, tab2, tab3 = st.tabs([t("Disease Predictor", lang), t("Health Recommender", lang), t("Healthcare Chatbot", lang)])
+    # ── Header
+    st.markdown("""
+    <div class='main-header'>
+      <div class='main-header-title'>🏥 Integrated Healthcare Dashboard</div>
+      <div class='main-header-subtitle'>Disease Prediction · Health Recommendations · AI Chatbot</div>
+    </div>""", unsafe_allow_html=True)
 
-    # TAB 1: DISEASE PREDICTOR INTERACTION
+    tab1, tab2, tab3 = st.tabs([
+        t("Disease Predictor",  lang),
+        t("Health Recommender", lang),
+        t("Healthcare Chatbot", lang),
+    ])
+
+    # ══════════════════════════════════════════
+    # TAB 1 — DISEASE PREDICTOR
+    # ══════════════════════════════════════════
     with tab1:
-        st.markdown(f'<div class="section-header">{t("Disease Predictor", lang)}</div>', unsafe_allow_html=True)
-        
+        st.markdown('<div class="section-header">🩺 Symptom-Based Disease Predictor</div>',
+                    unsafe_allow_html=True)
         render_quick_select_symptoms(lang)
-        
-        # Core Text Input Field Area Definitions
+
         user_input = st.text_area(
-            "Or type symptoms manually:",
+            "Symptoms",
             key="symptoms_text",
-            placeholder="e.g., headache, fever, chills"
+            placeholder="e.g., headache, fever, chills",
+            label_visibility="collapsed",
         )
-        
-        # Client-side focus engine wrapper trigger
-        components.html(
-            """
-            <script>
-                var doc = window.parent.document;
-                var textArea = doc.querySelector('textarea[placeholder*="headache"]');
-                if (textArea) {
-                    textArea.focus();
-                }
-            </script>
-            """,
-            height=0,
-            width=0,
-        )
-        
-        # Action Buttons Layout Matrix
+
         col1, col2 = st.columns(2)
-        
         with col1:
-            if st.button(t("Predict & Recommend", lang)):
+            if st.button(f"✦ {t('Predict & Recommend', lang)}", use_container_width=True):
                 if not user_input.strip():
                     st.warning(t("Please enter symptoms.", lang))
-                    st.session_state["prediction_result"] = None
-                    st.session_state["prediction_error"] = None
                 else:
-                    res, err_msg = integrated_prediction_system(
-                        user_input, age, role, user_id, lang,
-                        main_df, le, svc, dt,
-                        desc_map, diets_map, meds_map, precs_map, workout_map,
-                        vec, sym_matrix
-                    )
+                    with st.spinner("🔍 Analysing symptoms…"):
+                        res, err = integrated_prediction_system(
+                            user_input, age, role, user_id, lang,
+                            main_df, le, svc, dt,
+                            desc_map, diets_map, meds_map, precs_map, workout_map,
+                            vec, sym_matrix,
+                        )
                     st.session_state["prediction_result"] = res
-                    st.session_state["prediction_error"] = err_msg
+                    st.session_state["prediction_error"]  = err
 
         with col2:
             st.markdown('<div class="clear-btn-container">', unsafe_allow_html=True)
-            st.button(
-                t("Clear Symptoms", lang), 
-                key="clear_symptoms_btn", 
-                on_click=clear_symptoms_callback
-            )
+            st.button(t("Clear Symptoms", lang), key="clear_sym",
+                      on_click=clear_symptoms_callback, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # ── Diagnosis Display Workspace
         if st.session_state["prediction_error"]:
-            st.markdown(f'<div class="access-denied">{st.session_state["prediction_error"]}</div>', unsafe_allow_html=True)
-            
+            st.markdown(
+                f'<div class="access-denied">{st.session_state["prediction_error"]}</div>',
+                unsafe_allow_html=True,
+            )
+
         elif st.session_state["prediction_result"]:
             res = st.session_state["prediction_result"]
-            
             st.markdown("---")
-            st.markdown("### System Diagnosis Results")
-            
-            st.markdown(f'**Matched Symptoms Context:** {", ".join(res["matched_symptoms"])}')
-            
-            badge_html = ""
-            for p in res["predicted_conditions"]:
-                badge_html += f'<div class="disease-badge">{p["disease"]} <span class="conf-pill">{p["confidence"]}</span></div>'
-            st.markdown(badge_html, unsafe_allow_html=True)
-            
-            st.markdown("---")
-            for title, content in res["recommendations"].items():
-                st.markdown(f"""
-                <div class="result-card">
-                    <h4>{title}</h4>
-                    <p>{content if not isinstance(content, list) else ", ".join(content)}</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-            if res["advice"]:
-                st.markdown(f'<div class="advice-banner">{res["advice"]}</div>', unsafe_allow_html=True)
-                st.caption(f'_{t("medical_advice_disclaimer", lang)}_')
-                
-            st.markdown('<div class="clear-btn-container" style="margin-top: 20px; max-width: 200px;">', unsafe_allow_html=True)
-            st.button(
-                t("Clear Diagnosis", lang), 
-                key="clear_diagnosis_btn", 
-                on_click=clear_diagnosis_callback
+
+            # Matched symptoms
+            st.markdown('<div class="section-header">✅ Matched Symptoms</div>',
+                        unsafe_allow_html=True)
+            chips = " · ".join(
+                f"<span style='background:rgba(88,166,255,0.15);padding:4px 12px;"
+                f"border-radius:6px;font-size:0.85rem;color:#58a6ff;"
+                f"border:1px solid rgba(88,166,255,0.3)'>{s}</span>"
+                for s in res["matched_symptoms"]
             )
+            st.markdown(chips, unsafe_allow_html=True)
+
+            # Predictions
+            st.markdown('<br><div class="section-header">🎯 Predicted Conditions</div>',
+                        unsafe_allow_html=True)
+            rows = (
+                "<div style='background:rgba(22,27,34,0.7);border:1px solid rgba(88,166,255,0.2);"
+                "border-radius:10px;padding:14px 16px;margin-bottom:8px'>"
+                "<div style='color:#79c0ff;font-size:0.75rem;font-weight:700;"
+                "letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px'>"
+                "🤖 SVC — Top Predictions</div>"
+            )
+            for rank, p in enumerate(res["predicted_conditions"]):
+                bg  = "linear-gradient(135deg,#1f6feb,#388bfd)" if rank == 0 else "rgba(33,38,45,0.8)"
+                col = "#fff" if rank == 0 else "#8b949e"
+                bar = p["confidence"].replace("%", "") if p["confidence"] != "N/A" else "0"
+                rows += (
+                    f"<div style='display:flex;align-items:center;gap:10px;margin-bottom:8px'>"
+                    f"<span style='min-width:18px;color:#8b949e;font-size:0.75rem'>#{rank+1}</span>"
+                    f"<span style='flex:1;background:{bg};color:{col};padding:5px 12px;"
+                    f"border-radius:16px;font-size:0.85rem;font-weight:600'>{p['disease']}</span>"
+                    f"<span style='min-width:48px;text-align:right;color:#58a6ff;"
+                    f"font-size:0.82rem;font-weight:700'>{p['confidence']}</span></div>"
+                    f"<div style='height:3px;background:rgba(48,54,61,0.5);border-radius:2px;margin-bottom:6px'>"
+                    f"<div style='height:3px;width:{bar}%;background:linear-gradient(90deg,#1f6feb,#58a6ff);"
+                    f"border-radius:2px'></div></div>"
+                )
+            st.markdown(rows + "</div>", unsafe_allow_html=True)
+
+            # Health plan
+            with st.expander(f"📊 Health Plan — {res['top_disease']}", expanded=True):
+                render_rec_cards(res["rec_cards"])
+                if res["advice"]:
+                    st.markdown(
+                        f'<div class="advice-banner">{res["advice"]}</div>',
+                        unsafe_allow_html=True,
+                    )
+
+            st.markdown('<div class="clear-btn-container" style="margin-top:16px;max-width:200px">',
+                        unsafe_allow_html=True)
+            st.button(t("Clear Diagnosis", lang), key="clear_diag",
+                      on_click=clear_diagnosis_callback, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # TAB 2: EXPLICIT ADVICE INTERACTION ROUTER
+    # ══════════════════════════════════════════
+    # TAB 2 — HEALTH RECOMMENDER
+    # ══════════════════════════════════════════
     with tab2:
-        st.markdown(f'<div class="section-header">{t("Health Recommender", lang)}</div>', unsafe_allow_html=True)
-        sorted_diseases = sorted([d.title() for d in disease_names])
-        selected_disease = st.selectbox("Select Target Condition Profile Database:", sorted_diseases)
-        
-        if st.button(t("Get Plan", lang)):
-            res, err_msg = health_recommender(
-                selected_disease, age, role, user_id, lang,
-                desc_map, diets_map, meds_map, precs_map, workout_map
-            )
-            if err_msg:
-                st.markdown(f'<div class="access-denied">{err_msg}</div>', unsafe_allow_html=True)
-            elif res:
-                st.markdown(f"### Treatment Outline Matrix: {res['top_disease']}")
-                for title, content in res["recommendations"].items():
-                    st.markdown(f"""
-                    <div class="result-card">
-                        <h4>{title}</h4>
-                        <p>{content if not isinstance(content, list) else ", ".join(content)}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                if res["advice"]:
-                    st.markdown(f'<div class="advice-banner">{res["advice"]}</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">🏥 Select a Disease</div>',
+                    unsafe_allow_html=True)
+        sorted_diseases  = sorted(list(desc_map.keys()))
+        selected_disease = st.selectbox(
+            "Disease", options=sorted_diseases,
+            format_func=lambda x: x.title(),
+            label_visibility="collapsed",
+        )
 
-    # TAB 3: NLP KNOWLEDGE ENHANCED SIMULATOR 
-    with tab3:
-        st.markdown(f'<div class="section-header">{t("Healthcare Chatbot", lang)}</div>', unsafe_allow_html=True)
-        disease_descriptions = [desc_map.get(clean_disease_name(d), "") for d in disease_names]
-        
-        bot_query = st.text_input(
-            "Inquire regarding specific biological conditions, treatments, or symptoms:"
-        )
-        
-        # Dynamic chat focus scripting injection
-        components.html(
-            """
-            <script>
-                var doc = window.parent.document;
-                var inputs = doc.querySelectorAll('input');
-                for (var i = 0; i < inputs.length; i++) {
-                    if(inputs[i].getAttribute('aria-label') && inputs[i].getAttribute('aria-label').includes('Inquire regarding')) {
-                        inputs[i].focus();
-                        break;
-                    }
-                }
-            </script>
-            """,
-            height=0,
-            width=0,
-        )
-        
-        if st.button(t("Ask Bot", lang)):
-            if not bot_query.strip():
-                st.info(t("Please enter a query.", lang))
+        col_r1, col_r2 = st.columns([1, 5])
+        with col_r1:
+            get_plan = st.button(t("Get Plan", lang), use_container_width=True)
+
+        if get_plan:
+            ok, err_msg = check_access(age, role, user_id, lang)
+            if not ok:
+                st.markdown(f'<div class="access-denied">{err_msg}</div>',
+                            unsafe_allow_html=True)
             else:
-                ok, err_msg = check_access(age, role, user_id, lang)
-                if not ok:
-                    st.markdown(f'<div class="access-denied">{err_msg}</div>', unsafe_allow_html=True)
-                else:
-                    q_vec = vec.transform([bot_query.lower()]).toarray()
-                    s_texts = [s.replace("_", " ") for s in symptom_list]
-                    d_texts = [d.replace("_", " ") for d in disease_names]
-                    
-                    s_matrix = vec.transform(s_texts).toarray()
-                    d_matrix = vec.transform(d_texts).toarray()
-                    desc_matrix = vec.transform(disease_descriptions).toarray()
-                    
-                    sim_s = cosine_similarity(q_vec, s_matrix)[0]
-                    sim_d = cosine_similarity(q_vec, d_matrix)[0]
-                    sim_desc = cosine_similarity(q_vec, desc_matrix)[0]
-                    
-                    best_s = np.argmax(sim_s)
-                    best_d = np.argmax(sim_d)
-                    best_desc = np.argmax(sim_desc)
-                    
-                    max_val = max(sim_s[best_s], sim_d[best_d], sim_desc[best_desc])
-                    
-                    if max_val < 0.2:
-                        ans = "I apologize, but I am unable to confidently resolve your query relative to our verified parameters. Could you elaborate on specific indicators?"
-                    else:
-                        if max_val == sim_s[best_s]:
-                            target_sym = symptom_list[best_s].replace("_", " ")
-                            ans = f"Your query closely correlates with the cataloged symptom framework for **{target_sym}**. This observation signature can point to multi-tier profile types inside the core disease matrix diagnostics tool."
-                        elif max_val == sim_d[best_d]:
-                            target_dis = disease_names[best_d]
-                            ans = f"Your inquiry targets the diagnostic profile for **{target_dis}**. {desc_map.get(clean_disease_name(target_dis), 'No comprehensive summary available for this profile entry.')}"
-                        else:
-                            target_dis = disease_names[best_desc]
-                            ans = f"In reviewing treatment knowledge spaces for structural context: {disease_descriptions[best_desc]}"
-                            
-                    translated_ans = translate_content(ans, lang)
-                    st.markdown(f'<div class="chat-bot">🤖 <b>Bot Response:</b><br/>{translated_ans}</div>', unsafe_allow_html=True)
+                key = clean_disease_name(selected_disease)
+                cards, advice = role_based_recs(
+                    role, lang, key,
+                    desc_map, diets_map, meds_map, precs_map, workout_map,
+                )
+                with st.expander(f"💊 Health Plan — {selected_disease.title()}", expanded=True):
+                    render_rec_cards(cards)
+                    if advice:
+                        st.markdown(
+                            f'<div class="advice-banner">{advice}</div>',
+                            unsafe_allow_html=True,
+                        )
+
+    # ══════════════════════════════════════════
+    # TAB 3 — CHATBOT
+    # ══════════════════════════════════════════
+    with tab3:
+        st.markdown('<div class="section-header">💬 Healthcare Chatbot</div>',
+                    unsafe_allow_html=True)
+
+        greeting = t("Hello! How can I help you with health information today?", lang)
+        st.markdown(f'<div class="chat-bot">🤖 {greeting}</div>', unsafe_allow_html=True)
+
+        # Example queries
+        st.markdown(
+            "<div style='margin:10px 0 4px;font-size:0.72rem;color:#475569;"
+            "text-transform:uppercase;letter-spacing:0.1em;font-weight:600'>"
+            "Example queries:</div>"
+            "<div style='font-size:0.82rem;color:#8b949e;margin-bottom:12px'>"
+            "• <em>What is diabetes?</em> &nbsp;|&nbsp; "
+            "• <em>What diet should I follow for asthma?</em> &nbsp;|&nbsp; "
+            "• <em>What medications are used for hypertension?</em> &nbsp;|&nbsp; "
+            "• <em>What precautions for migraine?</em></div>",
+            unsafe_allow_html=True,
+        )
+
+        chat_query = st.text_input(
+            "Your question:",
+            placeholder="e.g. What diet should I follow for Asthma?",
+            key="chat_query",
+            label_visibility="collapsed",
+        )
+
+        col_c1, col_c2 = st.columns([1, 6])
+        with col_c1:
+            ask_btn = st.button(t("Ask Bot", lang), use_container_width=True)
+
+        with col_c2:
+            st.markdown('<div class="clear-btn-container">', unsafe_allow_html=True)
+            if st.button("🗑️ Clear", key="chat_clear", use_container_width=True):
+                st.session_state["chat_response"] = None
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        if ask_btn:
+            if not chat_query.strip():
+                st.warning(t("Please enter a query.", lang))
+            else:
+                with st.spinner("🤔 Thinking…"):
+                    reply = chatbot_response(
+                        chat_query, age, role, user_id, lang,
+                        desc_map, diets_map, meds_map, precs_map, workout_map,
+                        vec,
+                    )
+                st.session_state["chat_response"] = reply
+
+        if st.session_state.get("chat_response"):
+            st.markdown(
+                f'<div class="chat-bot">🤖 {st.session_state["chat_response"]}</div>',
+                unsafe_allow_html=True,
+            )
 
 
 if __name__ == "__main__":
