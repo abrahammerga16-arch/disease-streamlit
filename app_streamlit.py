@@ -24,7 +24,7 @@ warnings.filterwarnings("ignore")
 # ══════════════════════════════════════════════════════════════════════════════
 from supabase import create_client, Client
 
-SUPABASE_URL: str = st.secrets["https://wpzueewhzimmtrtjdmoe.supabase.co/rest/v1/"]
+SUPABASE_URL: str = st.secrets["https://wpzueewhzimmtrtjdmoe.supabase.co"]
 SUPABASE_KEY: str = st.secrets["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndwenVlZXdoemltbXRydGpkbW9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Mjk1MDUsImV4cCI6MjA5NjMwNTUwNX0.XZVyzqrvGkO2xJg3jw1IBcSHIpf-m3Uua40Sz2UE7w8"]
 
 @st.cache_resource
