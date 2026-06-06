@@ -5,9 +5,10 @@ Integrated Healthcare Dashboard — Streamlit version (Enhanced UI with Animatio
   • Healthcare Chatbot  (natural-language query → semantic answer)
   • Role / Age / ID access control  ← signup/login via Colab Flask API
   • English ↔ Amharic UI
+  • NLP paragraph symptom extraction (NEW)
 """
 
-import os, json, warnings, requests
+import os, re, json, warnings, requests
 import numpy as np
 import pandas as pd
 import joblib
@@ -336,6 +337,18 @@ hr { border-color: rgba(88,166,255,0.1) !important; }
     font-weight: 600;
     margin-bottom: 8px;
 }
+/* ── NLP extraction info banner ── */
+.nlp-info-banner {
+    background: linear-gradient(135deg, rgba(31,111,235,0.08) 0%, rgba(33,38,45,0.6) 100%);
+    border-left: 3px solid rgba(88,166,255,0.5);
+    padding: 10px 14px;
+    border-radius: 0 8px 8px 0;
+    color: #8b949e;
+    font-size: 0.82rem;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+.nlp-info-banner span { color: #58a6ff; font-weight: 600; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -472,14 +485,126 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# NLP SYMPTOM EXTRACTOR  ←  NEW: handles free-form paragraphs
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Words/phrases that signal the following content is negated
+NEGATION_TRIGGERS = [
+    "no ", "not ", "without ", "don't have", "doesn't have",
+    "do not have", "i have no", "haven't", "havent",
+    "denies", "denied", "no history of", "no sign of",
+    "no complaint of", "absence of",
+]
+
+# Filler words that add noise but carry no symptom meaning
+FILLER_RE = re.compile(
+    r"\b(i|i've|i have|i am|i'm|been|having|some|really|very|quite|"
+    r"a\s+bit|little|a\s+lot|feel|feeling|seems|seem|also|and|but|for|"
+    r"the|a|an|my|me|with|since|past|two|three|one|few|several|many|"
+    r"days|day|weeks|week|hours|hour|terrible|awful|bad|mild|severe|"
+    r"chronic|sudden|slight|slightly|intense|occasionally|sometimes|"
+    r"today|yesterday|lately|recently|currently|experiencing|suffer|"
+    r"suffering|complaining|complaint|though|however|about|around|"
+    r"kind\s+of|sort\s+of|type\s+of|bit\s+of|lot\s+of|still|keep|"
+    r"keeps|kept|started|starting|getting|got|have|has|had)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_negated(sentence: str) -> bool:
+    """Return True if the sentence contains a negation trigger."""
+    sl = sentence.lower()
+    return any(trigger in sl for trigger in NEGATION_TRIGGERS)
+
+
+def _fuzzy_match(phrase: str, symptom_list: list, tfidf_vec, sym_matrix, threshold: float):
+    """
+    Match a cleaned phrase against the symptom list.
+    Uses TF-IDF cosine similarity (same vectoriser as the rest of the app).
+    Returns the best matching symptom string, or None if below threshold.
+    """
+    phrase_norm = phrase.replace("_", " ").strip()
+    if not phrase_norm or len(phrase_norm) < 3:
+        return None
+
+    # Exact match shortcut
+    phrase_key = phrase_norm.replace(" ", "_").lower()
+    if phrase_key in symptom_list:
+        return phrase_key
+
+    vec_query = tfidf_vec.transform([phrase_norm]).toarray()
+    sims = cosine_similarity(vec_query, sym_matrix)[0]
+    best_idx = int(np.argmax(sims))
+    if sims[best_idx] >= threshold:
+        return symptom_list[best_idx]
+    return None
+
+
+def extract_symptoms_from_text(
+    user_input: str,
+    symptom_list: list,
+    tfidf_vec,
+    sym_matrix,
+    threshold: float = 0.35,
+) -> tuple[set, set]:
+    """
+    Parse free-form text (paragraph, comma list, or mixed) and return:
+        confirmed_symptoms  – set of matched symptom strings
+        negated_symptoms    – set of explicitly denied symptoms (for display)
+
+    Strategy:
+      1. Split on sentence boundaries (.!?;)
+      2. Per sentence, detect negation context
+      3. Split each sentence into clauses (comma / conjunctions / newlines)
+      4. Strip filler words from each clause
+      5. Fuzzy-match cleaned clause against symptom list
+      6. Exclude anything negated
+    """
+    # Split into sentences first
+    sentences = re.split(r"[.!?;]+", user_input)
+
+    matched: set = set()
+    negated: set = set()
+
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+
+        is_neg = _is_negated(sentence)
+
+        # Split sentence into smaller clauses
+        clauses = re.split(
+            r"[,\n]|\band\b|\bor\b|\bbut\b|\balso\b|\bwith\b|\bplus\b",
+            sentence,
+            flags=re.IGNORECASE,
+        )
+
+        for clause in clauses:
+            # Remove filler words
+            cleaned = FILLER_RE.sub(" ", clause)
+            # Collapse whitespace and normalise
+            cleaned = re.sub(r"\s+", " ", cleaned).strip().lower()
+            # Convert spaces to underscores for symptom-list lookup
+            cleaned_key = cleaned.replace(" ", "_")
+
+            sym = _fuzzy_match(cleaned_key, symptom_list, tfidf_vec, sym_matrix, threshold)
+            if sym:
+                if is_neg:
+                    negated.add(sym)
+                else:
+                    matched.add(sym)
+
+    # Final confirmed = matched minus anything explicitly negated
+    confirmed = matched - negated
+    return confirmed, negated
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # ACCESS CONTROL  ←  Uses hardcoded COLAB_API_URL constant
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _api_login(role: str, user_id: str) -> tuple[bool, str]:
-    """
-    Call POST {COLAB_API_URL}/login on the Colab Flask server.
-    Returns (success, message).
-    """
     base = COLAB_API_URL.rstrip("/")
     try:
         resp = requests.post(
@@ -500,10 +625,6 @@ def _api_login(role: str, user_id: str) -> tuple[bool, str]:
 
 
 def _api_signup(role: str, user_id: str, name: str = "") -> tuple[bool, str]:
-    """
-    Call POST {COLAB_API_URL}/signup on the Colab Flask server.
-    Returns (success, message).
-    """
     base = COLAB_API_URL.rstrip("/")
     try:
         resp = requests.post(
@@ -524,17 +645,10 @@ def _api_signup(role: str, user_id: str, name: str = "") -> tuple[bool, str]:
 
 
 def check_access(age: int, role: str, user_id: str, lang: str) -> tuple[bool, str]:
-    """
-    Central access-control gate used by all three tabs.
-    • Age check is local (no API needed).
-    • Student / Doctor identity is verified via the Colab /login endpoint.
-    • Normal User always passes (no ID required).
-    """
     if age < 18:
         return False, t("Access Denied: Information is not available for users under 18.", lang)
 
     if role in ("Student", "Doctor"):
-        # Use the cached login state from session so we don't hit the API on every render
         logged_in_as = st.session_state.get("logged_in_as")
         if (
             logged_in_as
@@ -542,14 +656,13 @@ def check_access(age: int, role: str, user_id: str, lang: str) -> tuple[bool, st
             and logged_in_as.get("user_id", "").upper() == user_id.strip().upper()
         ):
             return True, ""
-        # Not cached — try a live login check
         ok, msg = _api_login(role, user_id)
         if ok:
             st.session_state["logged_in_as"] = {"role": role, "user_id": user_id.strip().upper()}
             return True, ""
         return False, msg
 
-    return True, ""   # Normal User — no check needed
+    return True, ""
 
 
 # ──────────────────────────────────────────────
@@ -647,35 +760,36 @@ def render_rec_cards(cards: list):
 
 
 # ──────────────────────────────────────────────
-# PREDICTION SYSTEM
+# PREDICTION SYSTEM  ←  updated to use NLP extractor
 # ──────────────────────────────────────────────
 def integrated_prediction_system(
     user_input, age, role, user_id, lang,
     main_df, le, svc_model, dt_model,
     description_map, diets_map, medications_map, precautions_map, workout_map,
-    tfidf_vec, sym_matrix, threshold=0.6,
+    tfidf_vec, sym_matrix, threshold=0.35,
 ):
     ok, msg = check_access(age, role, user_id, lang)
     if not ok:
         return None, msg
 
     symptom_list = list(main_df.drop(columns=["diseases"]).columns)
-    raw_symptoms = [s.strip().lower().replace(" ", "_")
-                    for s in user_input.split(",") if s.strip()]
-    matched_symptoms = set()
 
-    for raw in raw_symptoms:
-        if raw in symptom_list:
-            matched_symptoms.add(raw)
-            continue
-        raw_vec  = tfidf_vec.transform([raw.replace("_", " ")]).toarray()
-        sims     = cosine_similarity(raw_vec, sym_matrix)[0]
-        best_idx = int(np.argmax(sims))
-        if sims[best_idx] >= threshold:
-            matched_symptoms.add(symptom_list[best_idx])
+    # ── NEW: NLP paragraph extractor replaces simple comma-split ──────────────
+    matched_symptoms, negated_symptoms = extract_symptoms_from_text(
+        user_input, symptom_list, tfidf_vec, sym_matrix, threshold
+    )
+    # ─────────────────────────────────────────────────────────────────────────
 
     if not matched_symptoms:
-        return None, "⚠️ No recognised symptoms found. Try terms like: headache, fever, cough, vomiting."
+        hint = ""
+        if negated_symptoms:
+            hint = f" (Negated symptoms detected: {', '.join(s.replace('_',' ') for s in negated_symptoms)})"
+        return None, (
+            "⚠️ No recognised symptoms found. Try describing your symptoms naturally, e.g.:\n"
+            "• *I have a headache and sore throat*\n"
+            "• *I've been feeling tired with fever and chills*\n"
+            "• *My joints ache and I'm short of breath*" + hint
+        )
 
     feature_vector = pd.DataFrame(
         [[1 if s in matched_symptoms else 0 for s in symptom_list]],
@@ -707,9 +821,12 @@ def integrated_prediction_system(
         description_map, diets_map, medications_map, precautions_map, workout_map,
     )
 
-    matched_display = [s.replace("_", " ").title() for s in matched_symptoms]
+    matched_display  = [s.replace("_", " ").title() for s in matched_symptoms]
+    negated_display  = [s.replace("_", " ").title() for s in negated_symptoms]
+
     return {
         "matched_symptoms":     matched_display,
+        "negated_symptoms":     negated_display,   # shown in UI as excluded
         "predicted_conditions": svc_preds,
         "top_disease":          top_disease,
         "rec_cards":            cards,
@@ -718,12 +835,12 @@ def integrated_prediction_system(
 
 
 # ──────────────────────────────────────────────
-# CHATBOT
+# CHATBOT  ←  updated to use NLP extractor for disease lookup
 # ──────────────────────────────────────────────
 def chatbot_response(
     query, age, role, user_id, lang,
     description_map, diets_map, medications_map, precautions_map, workout_map,
-    tfidf_vec, threshold=0.3,
+    tfidf_vec, symptom_list=None, sym_matrix=None, threshold=0.3,
 ):
     ok, msg = check_access(age, role, user_id, lang)
     if not ok:
@@ -764,12 +881,34 @@ def chatbot_response(
     ).fit(rich_texts)
 
     rich_matrix = chat_vec.transform(rich_texts).toarray()
-    q_vec       = chat_vec.transform([q]).toarray()
+
+    # ── NEW: use NLP-cleaned query for better matching ────────────────────────
+    q_cleaned = FILLER_RE.sub(" ", q)
+    q_cleaned = re.sub(r"\s+", " ", q_cleaned).strip()
+    q_vec     = chat_vec.transform([q_cleaned]).toarray()
+    # ─────────────────────────────────────────────────────────────────────────
+
     sims        = cosine_similarity(q_vec, rich_matrix)[0]
     best_idx    = int(np.argmax(sims))
     best_sim    = float(sims[best_idx])
 
     if best_sim < threshold:
+        # ── NEW: try to extract symptoms from query and suggest diseases ──────
+        if symptom_list is not None and sym_matrix is not None:
+            confirmed, _ = extract_symptoms_from_text(
+                query, symptom_list, tfidf_vec, sym_matrix, threshold=0.35
+            )
+            if confirmed:
+                sym_names = ", ".join(s.replace("_", " ") for s in list(confirmed)[:5])
+                fallback = (
+                    f"I found possible symptoms in your message: *{sym_names}*.\n\n"
+                    "Try using the **Disease Predictor** tab to get a full diagnosis based on those symptoms. "
+                    "Or ask about a specific disease, e.g.:\n"
+                    "• *What is diabetes?*\n"
+                    "• *What diet should I follow for asthma?*"
+                )
+                return translate_content(fallback, lang) if lang.lower() == "amharic" else fallback
+        # ─────────────────────────────────────────────────────────────────────
         fallback = (
             "I couldn't find specific information for that query. "
             "Try asking about a specific disease, e.g.:\n"
@@ -945,14 +1084,12 @@ def render_quick_select_symptoms(lang: str) -> None:
     }
 
     SYMPTOM_AM = {
-        # General
         "fever": "ትኩሳት", "chills": "ብርድ", "sweating": "ላብ",
         "fatigue": "ድካም", "weakness": "ድክመት", "feeling ill": "ታሞ ስሜት",
         "weight gain": "ክብደት መጨመር", "ache all over": "ሙሉ አካል ህመም",
         "flu-like syndrome": "ጉንፋን መሰል ምልክቶች", "restlessness": "ጸጥ አለማለት",
         "sleepiness": "ድካም/ናፍቆት", "decreased appetite": "የምግብ ፍቅር መቀነስ",
         "fluid retention": "ፈሳሽ ማቆር",
-        # Neuro/Mental
         "anxiety and nervousness": "ጭንቀት እና ነርቭ", "depression": "ድብርት",
         "insomnia": "እንቅልፍ ማጣት", "dizziness": "ራስ ዞር",
         "abnormal involuntary movements": "ያልተፈለጉ እንቅስቃሴዎች",
@@ -966,7 +1103,6 @@ def render_quick_select_symptoms(lang: str) -> None:
         "low self-esteem": "ዝቅተኛ ራስ-ግምት", "excessive anger": "ከፍተኛ ቁጣ",
         "hostile behavior": "ጠበኛ ባህሪ", "drug abuse": "የዕፅ አጠቃቀም",
         "abusing alcohol": "የአልኮል ሱሰኝነት",
-        # Cardio/Resp
         "shortness of breath": "መተንፈስ ማጠር", "sharp chest pain": "ሹል የደረት ህመም",
         "chest tightness": "ደረት መጠበቅ", "palpitations": "ልብ ምት ስሜት",
         "irregular heartbeat": "ያልተስተካከለ ልብ ምት", "breathing fast": "ፈጣን መተንፈስ",
@@ -976,7 +1112,6 @@ def render_quick_select_symptoms(lang: str) -> None:
         "hoarse voice": "ሻካራ ድምፅ", "hemoptysis": "ደም አሳልፎ ማስወጣት",
         "coughing up sputum": "ምራቅ ማሳል", "increased heart rate": "ልብ ምት መጨመር",
         "decreased heart rate": "ልብ ምት መቀነስ", "burning chest pain": "የሚቃጠል የደረት ህመም",
-        # ENT
         "sore throat": "ጉሮሮ ህመም", "difficulty speaking": "ለመናገር ችግር",
         "nasal congestion": "አፍንጫ መዘጋት", "throat swelling": "ጉሮሮ ማበጥ",
         "diminished hearing": "ሰሚ ማቀዝቀዝ", "difficulty in swallowing": "ለመዋጥ ችግር",
@@ -987,7 +1122,6 @@ def render_quick_select_symptoms(lang: str) -> None:
         "swollen or red tonsils": "ቲንሲሎች ማበጥ", "sneezing": "ማስነጠስ",
         "coryza": "አፍንጫ ፍሳሽ", "sinus congestion": "ሳይነስ መዘጋት",
         "painful sinuses": "ሳይነስ ህመም", "nosebleed": "አፍንጫ ደም",
-        # Gastro
         "sharp abdominal pain": "ሹል የሆድ ህመም", "upper abdominal pain": "የላይ ሆድ ህመም",
         "burning abdominal pain": "የሚቃጠል የሆድ ህመም", "lower abdominal pain": "የታች ሆድ ህመም",
         "nausea": "ማቅለሽለሽ", "vomiting": "ማስታወክ", "vomiting blood": "ደም ማስታወክ",
@@ -999,7 +1133,6 @@ def render_quick_select_symptoms(lang: str) -> None:
         "pain of the anus": "የፊንጥ ህመም",
         "mass or swelling around the anus": "የፊንጥ አካባቢ ማበጥ",
         "itching of the anus": "የፊንጥ ማሳከክ",
-        # Pain
         "headache": "ራስ ምታት", "frontal headache": "ፊት ራስ ምታት",
         "back pain": "የጀርባ ህመም", "low back pain": "የታች ጀርባ ህመም",
         "neck pain": "የአንገት ህመም", "shoulder pain": "የትከሻ ህመም",
@@ -1012,7 +1145,6 @@ def render_quick_select_symptoms(lang: str) -> None:
         "suprapubic pain": "የታች ሆድ ህመም", "side pain": "የጎን ህመም",
         "facial pain": "የፊት ህመም", "bones are painful": "አጥንቶች ህማም",
         "back cramps or spasms": "የጀርባ ቁርጠት", "cramps and spasms": "ቁርጠት",
-        # Musculo
         "arm stiffness or tightness": "ክንድ ድርቀት", "arm swelling": "ክንድ ማበጥ",
         "arm weakness": "ክንድ ድክመት", "arm lump or mass": "ክንድ እብጠት",
         "wrist swelling": "ሚዳቃ ማበጥ",
@@ -1029,7 +1161,6 @@ def render_quick_select_symptoms(lang: str) -> None:
         "back stiffness or tightness": "ጀርባ ድርቀት",
         "neck mass": "አንገት እብጠት", "neck swelling": "አንገት ማበጥ",
         "peripheral edema": "ዳርቻ ማበጥ", "problems with movement": "እንቅስቃሴ ችግር",
-        # Skin
         "abnormal appearing skin": "ቆዳ ለውጥ", "skin lesion": "ቆዳ ቁስለት",
         "acne or pimples": "ሽፍታ/ፊጥ", "skin growth": "ቆዳ ዕድገት",
         "skin moles": "የቆዳ ምልክቶች", "warts": "ዕጢ",
@@ -1039,7 +1170,6 @@ def render_quick_select_symptoms(lang: str) -> None:
         "irregular appearing scalp": "ጭንቅላት ለውጥ", "jaundice": "ቢጫ በሽታ",
         "diaper rash": "ዳይፐር ሽፍታ", "eyelid lesion or rash": "ዐይን ሽፍታ",
         "irregular appearing nails": "ጥፍር ለውጥ",
-        # Eye
         "diminished vision": "ዕይታ መቀነስ", "double vision": "ድርብ ዕይታ",
         "symptoms of eye": "የዓይን ምልክቶች", "pain in eye": "የዓይን ህመም",
         "abnormal movement of eyelid": "የዐይን ሽፋን እንቅስቃሴ",
@@ -1050,7 +1180,6 @@ def render_quick_select_symptoms(lang: str) -> None:
         "spots or clouds in vision": "ዕይታ ደበዘዘ", "bleeding from eye": "ዓይን ደም",
         "mass on eyelid": "የዐይን ሽፋን እብጠት", "swollen eye": "ዓይን ማበጥ",
         "eyelid swelling": "የዐይን ሽፋን ማበጥ", "white discharge from eye": "ዓይን ፈሳሽ",
-        # Urinary/Repro
         "painful urination": "ሽንት ሲሸኑ ህመም", "frequent urination": "ተደጋጋሚ ሽንት",
         "involuntary urination": "ያለፈቃድ ሽንት", "blood in urine": "ሽንት ውስጥ ደም",
         "retention of urine": "ሽንት ማቆር", "unusual color or odor to urine": "ሽንት ቀለም/ሽታ ለውጥ",
@@ -1064,7 +1193,6 @@ def render_quick_select_symptoms(lang: str) -> None:
         "pain during intercourse": "ወሲብ ጊዜ ህመም", "impotence": "ወሲብ ድካም",
         "symptoms of the scrotum and testes": "የፍልፈል ምልክቶች",
         "swelling of scrotum": "ፍልፈል ማበጥ", "pain in testicles": "ፍልፈል ህመም",
-        # Women's Health
         "hot flashes": "ሙቀት ፍላጻ", "intermenstrual bleeding": "ወር አበባ መካከል ደም",
         "pain during pregnancy": "እርግዝና ጊዜ ህመም",
         "problems during pregnancy": "እርግዝና ጊዜ ችግሮች",
@@ -1076,10 +1204,8 @@ def render_quick_select_symptoms(lang: str) -> None:
         "painful menstruation": "ወር አበባ ህመም", "infertility": "መካንነት",
         "frequent menstruation": "ተደጋጋሚ ወር አበባ",
         "blood clots during menstrual periods": "ወር አበባ ደም ስብ",
-        # Pediatric
         "lack of growth": "እድገት ማጣት", "irritable infant": "ቅሬታ ሕፃን",
         "infant feeding problem": "ሕፃን ምግብ ችግር", "pulling at ears": "ጆሮ መጎተት",
-        # Other
         "back mass or lump": "ጀርባ እብጠት", "jaw swelling": "መንጋጋ ማበጥ",
         "lip swelling": "ከንፈር ማበጥ", "toothache": "ጥርስ ህመም",
         "mouth ulcer": "አፍ ቁስለት", "gum pain": "ድድ ህመም",
@@ -1117,7 +1243,7 @@ def render_quick_select_symptoms(lang: str) -> None:
     current_val  = st.session_state.get("symptoms_text", "")
     current_list = [s.strip().lower() for s in current_val.split(",") if s.strip()]
     quick_label  = "ምልክቶችን ፈጥኖ ይምረጡ:" if is_am else "Quick-select symptoms:"
-    or_text      = "ወይም ምልክቶችን ይተይቡ" if is_am else "or type symptoms below"
+    or_text      = "ወይም ምልክቶችን ይተይቡ" if is_am else "or type symptoms below — comma list OR full sentence/paragraph"
 
     html_code = f"""<!DOCTYPE html><html><head><meta charset="UTF-8">
 <style>
@@ -1210,21 +1336,13 @@ def clear_diagnosis_callback():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SIDEBAR — Sign Up / Login panel (no ngrok URL field; URL is hardcoded)
+# SIDEBAR — Sign Up / Login panel
 # ══════════════════════════════════════════════════════════════════════════════
 def render_sidebar_auth(role: str, lang: str) -> str:
-    """
-    Renders the Sign Up / Login section in the sidebar for Student / Doctor roles.
-    Returns the active user_id string (empty string if not logged in).
-    The Colab API URL is hardcoded as COLAB_API_URL — no UI input required.
-    """
-
-    # ── Session state keys ───────────────────────────────────────────────────
     if "logged_in_as"   not in st.session_state: st.session_state["logged_in_as"]   = None
     if "auth_msg"       not in st.session_state: st.session_state["auth_msg"]        = ("", False)
     if "auth_mode"      not in st.session_state: st.session_state["auth_mode"]       = "login"
 
-    # ── If already logged in as this role, show badge + logout ───────────────
     li = st.session_state.get("logged_in_as")
     if li and li.get("role") == role:
         uid = li["user_id"]
@@ -1239,7 +1357,6 @@ def render_sidebar_auth(role: str, lang: str) -> str:
             st.rerun()
         return uid
 
-    # ── Mode toggle: Login / Sign Up ─────────────────────────────────────────
     mode_col1, mode_col2 = st.sidebar.columns(2)
     with mode_col1:
         if st.button("🔑 Login",   key="mode_login",  use_container_width=True):
@@ -1252,7 +1369,6 @@ def render_sidebar_auth(role: str, lang: str) -> str:
 
     mode = st.session_state["auth_mode"]
 
-    # ── ID format hint ────────────────────────────────────────────────────────
     prefix      = "ST" if role == "Student" else "DR"
     hint        = f"ID must start with <b>{prefix}</b> — e.g. {prefix}001"
     placeholder = f"e.g. {prefix}001"
@@ -1263,7 +1379,6 @@ def render_sidebar_auth(role: str, lang: str) -> str:
     )
 
     if mode == "signup":
-        # ── Sign Up form ──────────────────────────────────────────────────────
         su_id   = st.sidebar.text_input("Choose an ID",  placeholder=placeholder, key="su_id_field")
         su_name = st.sidebar.text_input("Your name (optional)", placeholder="Full name", key="su_name_field")
         if st.sidebar.button("✅ Create Account", key="signup_submit_btn", use_container_width=True):
@@ -1273,13 +1388,11 @@ def render_sidebar_auth(role: str, lang: str) -> str:
                 ok, msg = _api_signup(role, su_id.strip(), su_name.strip())
                 st.session_state["auth_msg"] = (msg, ok)
                 if ok:
-                    # Auto-login after successful signup
                     st.session_state["logged_in_as"] = {
                         "role": role, "user_id": su_id.strip().upper()
                     }
                     st.rerun()
     else:
-        # ── Login form ────────────────────────────────────────────────────────
         li_id = st.sidebar.text_input("Your ID", placeholder=placeholder,
                                       type="password", key="li_id_field")
         if st.sidebar.button("🔓 Login", key="login_submit_btn", use_container_width=True):
@@ -1294,7 +1407,6 @@ def render_sidebar_auth(role: str, lang: str) -> str:
                     }
                     st.rerun()
 
-    # ── Auth feedback message ─────────────────────────────────────────────────
     msg_text, msg_ok = st.session_state["auth_msg"]
     if msg_text:
         css = "auth-success" if msg_ok else "auth-error"
@@ -1303,7 +1415,7 @@ def render_sidebar_auth(role: str, lang: str) -> str:
             unsafe_allow_html=True,
         )
 
-    return ""   # not logged in yet
+    return ""
 
 
 # ──────────────────────────────────────────────
@@ -1328,7 +1440,6 @@ def main():
     role = st.sidebar.selectbox("👤 Role", ["Normal User", "Student", "Doctor"])
     age  = st.sidebar.number_input("🎂 Age", min_value=0, max_value=120, value=25)
 
-    # ── Auth panel — only for Student / Doctor ───────────────────────────────
     user_id = ""
     if role in ("Student", "Doctor"):
         st.sidebar.markdown("---")
@@ -1338,7 +1449,6 @@ def main():
         )
         user_id = render_sidebar_auth(role, lang)
 
-    # ── Role badge ────────────────────────────────────────────────────────────
     role_colors = {"Doctor": "#1f6feb", "Student": "#2ea043", "Normal User": "#6e7681"}
     rc = role_colors.get(role, "#6e7681")
     st.sidebar.markdown(
@@ -1350,12 +1460,10 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.caption("⚕️ General health information only. Always consult a qualified doctor.")
 
-    # ── Session state init ────────────────────────────────────────────────────
     for key in ("prediction_result", "prediction_error", "chat_response"):
         if key not in st.session_state:
             st.session_state[key] = None
 
-    # ── Header ────────────────────────────────────────────────────────────────
     st.markdown("""
     <div class='main-header'>
       <div class='main-header-title'>🏥 Integrated Healthcare Dashboard</div>
@@ -1374,12 +1482,24 @@ def main():
     with tab1:
         st.markdown('<div class="section-header">🩺 Symptom-Based Disease Predictor</div>',
                     unsafe_allow_html=True)
+
+        # ── NLP info banner (NEW) ─────────────────────────────────────────────
+        st.markdown(
+            "<div class='nlp-info-banner'>"
+            "<span>✦ Smart symptom extraction</span> — you can type naturally: "
+            "<em>\"I've been having terrible headaches and my throat is sore. Also feel tired with some chills.\"</em> "
+            "Commas, sentences, or paragraphs all work. Negations like "
+            "<em>\"no vomiting\"</em> are automatically excluded."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
         render_quick_select_symptoms(lang)
 
         user_input = st.text_area(
             "Symptoms",
             key="symptoms_text",
-            placeholder="e.g., headache, fever, chills",
+            placeholder="e.g., headache, fever, chills  — or write naturally: I have a headache and sore throat",
             label_visibility="collapsed",
         )
 
@@ -1424,6 +1544,19 @@ def main():
                 for s in res["matched_symptoms"]
             )
             st.markdown(chips, unsafe_allow_html=True)
+
+            # ── Show negated symptoms if any (NEW) ────────────────────────────
+            if res.get("negated_symptoms"):
+                neg_chips = " · ".join(
+                    f"<span style='background:rgba(248,81,73,0.08);padding:4px 12px;"
+                    f"border-radius:6px;font-size:0.82rem;color:#f85149;"
+                    f"border:1px solid rgba(248,81,73,0.25);text-decoration:line-through'>{s}</span>"
+                    for s in res["negated_symptoms"]
+                )
+                st.markdown(
+                    f"<div style='margin-top:8px;font-size:0.78rem;color:#8b949e'>Excluded (negated): {neg_chips}</div>",
+                    unsafe_allow_html=True,
+                )
 
             st.markdown('<br><div class="section-header">🎯 Predicted Conditions</div>',
                         unsafe_allow_html=True)
@@ -1549,6 +1682,8 @@ def main():
                         chat_query, age, role, user_id, lang,
                         desc_map, diets_map, meds_map, precs_map, workout_map,
                         vec,
+                        symptom_list=list(symptom_list),
+                        sym_matrix=sym_matrix,
                     )
                 st.session_state["chat_response"] = reply
 
