@@ -1426,7 +1426,7 @@ def main():
             f'<div class="section-header">{"Student" if role=="Student" else "Doctor"} Access</div>',
             unsafe_allow_html=True,
         )
-        user_id = render_sidebar_auth(role, lang)
+        user_id = render_sidebar_auth()(role, lang)
 
     role_colors = {"Doctor": "#1f6feb", "Student": "#2ea043", "Normal User": "#6e7681"}
     rc = role_colors.get(role, "#6e7681")
