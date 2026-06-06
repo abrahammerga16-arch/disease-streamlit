@@ -29,77 +29,43 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Dark and Light Mode Configuration ──────────────────────────────────────────
-if "theme_mode" not in st.session_state:
-    st.session_state["theme_mode"] = "Dark"
-
-with st.sidebar:
-    st.session_state["theme_mode"] = st.selectbox(
-        "🌓 Choose Theme Theme / ጭብጥ ይምረጡ",
-        ["Dark", "Light"],
-        index=0 if st.session_state["theme_mode"] == "Dark" else 1
-    )
-
-if st.session_state["theme_mode"] == "Dark":
-    # Dark Mode Styles
-    theme_bg = "linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1f2d 100%)"
-    theme_text = "#e6edf3"
-    sidebar_bg = "linear-gradient(180deg, #161b22 0%, #0f1419 100%)"
-    sidebar_border = "rgba(48,54,61,0.5)"
-    sidebar_text = "#e6edf3 !important"
-    input_bg = "rgba(33,38,45,0.8) !important"
-    input_border = "rgba(48,54,61,0.5) !important"
-    card_bg = "linear-gradient(135deg, rgba(22,27,34,0.8) 0%, rgba(33,38,45,0.6) 100%)"
-    card_text = "#c9d1d9"
-else:
-    # Light Mode Styles
-    theme_bg = "linear-gradient(135deg, #f0f2f5 0%, #ffffff 50%, #eef2f7 100%)"
-    theme_text = "#1f2937"
-    sidebar_bg = "linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%)"
-    sidebar_border = "rgba(209,213,219,0.8)"
-    sidebar_text = "#1f2937 !important"
-    input_bg = "#ffffff !important"
-    input_border = "rgba(156,163,175,0.8) !important"
-    card_bg = "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
-    card_text = "#374151"
-
-st.markdown(f"""
+st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Poppins:wght@300;400;600;700&display=swap');
 
-@keyframes fadeInUp {{
-    from {{ opacity: 0; transform: translateY(20px); }}
-    to   {{ opacity: 1; transform: translateY(0); }}
-}}
-@keyframes slideInLeft {{
-    from {{ opacity: 0; transform: translateX(-30px); }}
-    to   {{ opacity: 1; transform: translateX(0); }}
-}}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-30px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
 
-html, body, [class*="css"] {{
+html, body, [class*="css"] {
     font-family: 'Poppins', sans-serif;
     scroll-behavior: smooth;
-}}
-.stApp {{
-    background: {theme_bg};
-    color: {theme_text};
+}
+.stApp {
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1f2d 100%);
+    color: #e6edf3;
     animation: fadeInUp 0.8s ease-out;
-}}
-section[data-testid="stSidebar"] {{
-    background: {sidebar_bg};
-    border-right: 1px solid {sidebar_border};
-}}
-section[data-testid="stSidebar"] * {{ color: {sidebar_text}; }}
+}
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #161b22 0%, #0f1419 100%);
+    border-right: 1px solid rgba(48,54,61,0.5);
+}
+section[data-testid="stSidebar"] * { color: #e6edf3 !important; }
 
-.stTabs [data-baseweb="tab-list"] {{
+.stTabs [data-baseweb="tab-list"] {
     background: rgba(22,27,34,0.6);
     backdrop-filter: blur(10px);
     border-radius: 12px;
     padding: 6px;
     gap: 4px;
     border: 1px solid rgba(48,54,61,0.3);
-}}
-.stTabs [data-baseweb="tab"] {{
+}
+.stTabs [data-baseweb="tab"] {
     background: transparent;
     color: #8b949e;
     border-radius: 8px;
@@ -109,30 +75,30 @@ section[data-testid="stSidebar"] * {{ color: {sidebar_text}; }}
     border: none !important;
     transition: all 0.3s ease;
     font-size: 0.95rem;
-}}
-.stTabs [data-baseweb="tab"]:hover {{ background: rgba(88,166,255,0.1); color: #58a6ff; }}
-.stTabs [aria-selected="true"] {{
+}
+.stTabs [data-baseweb="tab"]:hover { background: rgba(88,166,255,0.1); color: #58a6ff; }
+.stTabs [aria-selected="true"] {
     background: linear-gradient(135deg, #21262d 0%, #1f6feb 100%) !important;
     color: #fff !important;
     box-shadow: 0 4px 12px rgba(88,166,255,0.25);
-}}
+}
 
 .stTextInput input, .stSelectbox select, .stTextArea textarea,
-div[data-baseweb="select"] > div {{
-    background: {input_bg};
-    border: {input_border};
-    color: {theme_text} !important;
+div[data-baseweb="select"] > div {
+    background: rgba(33,38,45,0.8) !important;
+    border: 1px solid rgba(48,54,61,0.5) !important;
+    color: #e6edf3 !important;
     border-radius: 8px !important;
     transition: all 0.3s ease !important;
     font-size: 0.95rem !important;
-}}
+}
 .stTextInput input:focus, .stTextArea textarea:focus,
-div[data-baseweb="select"] > div:focus-within {{
+div[data-baseweb="select"] > div:focus-within {
     border-color: #58a6ff !important;
     box-shadow: 0 0 0 3px rgba(88,166,255,0.2) !important;
-}}
+}
 
-.stButton > button {{
+.stButton > button {
     background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
     color: #fff;
     border: none;
@@ -142,88 +108,88 @@ div[data-baseweb="select"] > div:focus-within {{
     transition: all 0.3s ease;
     font-size: 0.95rem;
     width: 100%;
-}}
-.stButton > button:hover {{
+}
+.stButton > button:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(46,160,67,0.4);
-}}
+}
 
-div.clear-btn-container > div > button {{
+div.clear-btn-container > div > button {
     background: linear-gradient(135deg, #21262d 0%, #30363d 100%) !important;
     color: #f85149 !important;
     border: 1px solid rgba(248,81,73,0.4) !important;
-}}
-div.clear-btn-container > div > button:hover {{
+}
+div.clear-btn-container > div > button:hover {
     background: rgba(248,81,73,0.1) !important;
     box-shadow: 0 8px 24px rgba(248,81,73,0.2) !important;
-}}
+}
 
-.result-card {{
-    background: {card_bg};
+.result-card {
+    background: linear-gradient(135deg, rgba(22,27,34,0.8) 0%, rgba(33,38,45,0.6) 100%);
     border: 1px solid rgba(88,166,255,0.2);
     border-radius: 12px;
     padding: 20px 24px;
     margin-bottom: 16px;
     animation: fadeInUp 0.6s ease-out;
     transition: all 0.3s ease;
-}}
-.result-card:hover {{
+}
+.result-card:hover {
     border-color: rgba(88,166,255,0.4);
     box-shadow: 0 8px 32px rgba(88,166,255,0.15);
     transform: translateY(-4px);
-}}
-.result-card h4 {{
+}
+.result-card h4 {
     color: #58a6ff;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.82rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     margin-bottom: 12px;
-}}
-.result-card p, .result-card li {{ color: {card_text}; font-size: 0.95rem; line-height: 1.6; }}
+}
+.result-card p, .result-card li { color: #c9d1d9; font-size: 0.95rem; line-height: 1.6; }
 
-.result-card-locked {{
+.result-card-locked {
     background: linear-gradient(135deg, rgba(45,14,14,0.5) 0%, rgba(33,38,45,0.4) 100%);
     border: 1px solid rgba(248,81,73,0.25);
     border-radius: 12px;
     padding: 20px 24px;
     margin-bottom: 16px;
-}}
-.result-card-locked h4 {{
+}
+.result-card-locked h4 {
     color: #f85149;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.82rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     margin-bottom: 12px;
-}}
-.result-card-locked p {{ color: #8b949e; font-size: 0.95rem; line-height: 1.6; font-style: italic; }}
+}
+.result-card-locked p { color: #8b949e; font-size: 0.95rem; line-height: 1.6; font-style: italic; }
 
-.result-card-limited {{
-    background: {card_bg};
+.result-card-limited {
+    background: linear-gradient(135deg, rgba(22,27,34,0.8) 0%, rgba(33,38,45,0.6) 100%);
     border: 1px solid rgba(240,136,62,0.3);
     border-radius: 12px;
     padding: 20px 24px;
     margin-bottom: 16px;
     animation: fadeInUp 0.6s ease-out;
-}}
-.result-card-limited h4 {{
+}
+.result-card-limited h4 {
     color: #f0883e;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.82rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     margin-bottom: 12px;
-}}
-.result-card-limited p {{ color: {card_text}; font-size: 0.95rem; line-height: 1.6; }}
-.result-card-limited .restriction-note {{
+}
+.result-card-limited p { color: #c9d1d9; font-size: 0.95rem; line-height: 1.6; }
+.result-card-limited .restriction-note {
     color: #f0883e;
     font-size: 0.8rem;
     margin-top: 8px;
     font-style: italic;
-}}
+}
 
-.disease-badge {{
+.disease-badge {
     display: inline-block;
     background: linear-gradient(135deg, #1f6feb 0%, #388bfd 100%);
     color: #fff;
@@ -234,8 +200,8 @@ div.clear-btn-container > div > button:hover {{
     margin: 4px 8px 4px 0;
     animation: slideInLeft 0.4s ease-out;
     box-shadow: 0 4px 12px rgba(31,111,235,0.3);
-}}
-.conf-pill {{
+}
+.conf-pill {
     display: inline-block;
     background: linear-gradient(135deg, rgba(33,38,45,0.9) 0%, rgba(88,166,255,0.15) 100%);
     border: 1px solid rgba(88,166,255,0.3);
@@ -245,9 +211,9 @@ div.clear-btn-container > div > button:hover {{
     color: #58a6ff;
     margin-left: 4px;
     font-weight: 600;
-}}
+}
 
-.advice-banner {{
+.advice-banner {
     background: linear-gradient(135deg, rgba(45,24,0,0.8) 0%, rgba(240,136,62,0.1) 100%);
     border-left: 4px solid #f0883e;
     padding: 12px 18px;
@@ -256,21 +222,21 @@ div.clear-btn-container > div > button:hover {{
     font-size: 0.9rem;
     margin-top: 16px;
     animation: slideInLeft 0.5s ease-out;
-}}
+}
 
-.chat-bot {{
+.chat-bot {
     background: linear-gradient(135deg, rgba(33,38,45,0.9) 0%, rgba(31,111,235,0.1) 100%);
     border-left: 4px solid #58a6ff;
     padding: 16px 20px;
     border-radius: 0 12px 12px 0;
-    color: {card_text};
+    color: #c9d1d9;
     font-size: 0.95rem;
     margin-top: 12px;
     animation: slideInLeft 0.5s ease-out;
     line-height: 1.6;
-}}
+}
 
-.section-header {{
+.section-header {
     color: #58a6ff;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.75rem;
@@ -281,17 +247,17 @@ div.clear-btn-container > div > button:hover {{
     margin-bottom: 18px;
     animation: slideInLeft 0.4s ease-out;
     font-weight: 700;
-}}
-.access-denied {{
+}
+.access-denied {
     background: linear-gradient(135deg, rgba(45,14,14,0.8) 0%, rgba(248,81,73,0.1) 100%);
     border-left: 4px solid #f85149;
     padding: 12px 18px;
     border-radius: 0 8px 8px 0;
     color: #f85149;
     animation: slideInLeft 0.5s ease-out;
-}}
-.main-header {{ text-align: center; animation: fadeInUp 0.8s ease-out; margin-bottom: 32px; }}
-.main-header-title {{
+}
+.main-header { text-align: center; animation: fadeInUp 0.8s ease-out; margin-bottom: 32px; }
+.main-header-title {
     font-family: 'Poppins', sans-serif;
     font-size: 2.8rem;
     font-weight: 700;
@@ -300,43 +266,43 @@ div.clear-btn-container > div > button:hover {{
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
-.main-header-subtitle {{ color: #8b949e; font-size: 1rem; letter-spacing: 0.05em; margin-top: 8px; }}
-.role-badge {{
+.main-header-subtitle { color: #8b949e; font-size: 1rem; letter-spacing: 0.05em; margin-top: 8px; }
+.role-badge {
     display: inline-block;
     padding: 3px 12px;
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.05em;
-}}
-hr {{ border-color: rgba(88,166,255,0.1) !important; }}
+}
+hr { border-color: rgba(88,166,255,0.1) !important; }
 
-.stNumberInput input {{
+.stNumberInput input {
     background: rgba(22, 30, 40, 1) !important;
     color: #e6edf3 !important;
     border: 1px solid rgba(88, 166, 255, 0.35) !important;
     border-radius: 8px !important;
     font-size: 0.95rem !important;
-}}
-.stNumberInput input:focus {{
+}
+.stNumberInput input:focus {
     border-color: #58a6ff !important;
     box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2) !important;
-}}
-.stNumberInput button {{
+}
+.stNumberInput button {
     background: rgba(33, 38, 45, 1) !important;
     color: #e6edf3 !important;
     border-color: rgba(88, 166, 255, 0.25) !important;
-}}
+}
 
 /* ── Auth panel styles ── */
-.auth-panel {{
+.auth-panel {
     background: rgba(22,27,34,0.7);
     border: 1px solid rgba(48,54,61,0.6);
     border-radius: 10px;
     padding: 14px 16px;
     margin-bottom: 10px;
-}}
-.auth-success {{
+}
+.auth-success {
     background: rgba(35,134,54,0.15);
     border-left: 3px solid #2ea043;
     border-radius: 0 6px 6px 0;
@@ -344,8 +310,8 @@ hr {{ border-color: rgba(88,166,255,0.1) !important; }}
     color: #3fb950;
     font-size: 0.82rem;
     margin-top: 6px;
-}}
-.auth-error {{
+}
+.auth-error {
     background: rgba(248,81,73,0.1);
     border-left: 3px solid #f85149;
     border-radius: 0 6px 6px 0;
@@ -353,14 +319,14 @@ hr {{ border-color: rgba(88,166,255,0.1) !important; }}
     color: #f85149;
     font-size: 0.82rem;
     margin-top: 6px;
-}}
-.auth-info {{
+}
+.auth-info {
     color: #8b949e;
     font-size: 0.72rem;
     margin-top: 6px;
     font-style: italic;
-}}
-.logged-in-badge {{
+}
+.logged-in-badge {
     background: rgba(35,134,54,0.2);
     border: 1px solid rgba(46,160,67,0.4);
     border-radius: 8px;
@@ -369,7 +335,7 @@ hr {{ border-color: rgba(88,166,255,0.1) !important; }}
     font-size: 0.8rem;
     font-weight: 600;
     margin-bottom: 8px;
-}}
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -625,7 +591,7 @@ def role_based_recs(role, lang, key,
             {"label": t("Description",      lang), "content": desc,         "card_type": "full"},
             {"label": t("Dietary Plan",      lang), "content": diet,         "card_type": "full"},
             {"label": t("Medications",       lang), "content": meds_display,
-             "note": meds_note,                                                "card_type": "limited"},
+             "note": meds_note,                                               "card_type": "limited"},
             {"label": t("Precautions",       lang), "content": precs,        "card_type": "full"},
             {"label": t("Workout/Activity",  lang), "content": workout,      "card_type": "full"},
         ]
@@ -905,5 +871,693 @@ def render_quick_select_symptoms(lang: str) -> None:
             "ear pain", "ringing in ear", "plugged feeling in ear", "itchy ear(s)",
             "fluid in ear", "redness in ear", "bleeding from ear",
             "swollen or red tonsils", "sneezing", "coryza", "sinus congestion",
-        ]
+            "painful sinuses", "nosebleed",
+        ],
+        "🤢 Gastro": [
+            "sharp abdominal pain", "upper abdominal pain", "burning abdominal pain",
+            "lower abdominal pain", "nausea", "vomiting", "vomiting blood", "diarrhea",
+            "constipation", "stomach bloating", "heartburn", "regurgitation",
+            "blood in stool", "melena", "rectal bleeding", "changes in stool appearance",
+            "pain of the anus", "mass or swelling around the anus", "itching of the anus",
+        ],
+        "🤕 Pain": [
+            "headache", "frontal headache", "back pain", "low back pain",
+            "neck pain", "shoulder pain", "hip pain", "knee pain", "leg pain",
+            "foot or toe pain", "ankle pain", "elbow pain", "arm pain",
+            "wrist pain", "hand or finger pain", "joint pain", "rib pain",
+            "groin pain", "suprapubic pain", "side pain", "facial pain",
+            "bones are painful", "back cramps or spasms", "cramps and spasms",
+        ],
+        "🦴 Musculo/Limbs": [
+            "arm stiffness or tightness", "arm swelling", "arm weakness", "arm lump or mass",
+            "wrist swelling", "hand or finger swelling", "hand or finger stiffness or tightness",
+            "hand or finger weakness", "hand or finger lump or mass",
+            "knee swelling", "knee stiffness or tightness",
+            "leg swelling", "leg weakness", "ankle swelling",
+            "foot or toe swelling", "elbow swelling",
+            "shoulder stiffness or tightness", "hip stiffness or tightness",
+            "back stiffness or tightness", "neck mass", "neck swelling",
+            "peripheral edema", "problems with movement",
+        ],
+        "🩺 Skin": [
+            "abnormal appearing skin", "skin lesion", "acne or pimples", "skin growth",
+            "skin moles", "warts", "skin rash", "itching of skin",
+            "skin dryness, peeling, scaliness, or roughness", "skin irritation",
+            "itchy scalp", "irregular appearing scalp", "jaundice",
+            "diaper rash", "eyelid lesion or rash", "irregular appearing nails",
+        ],
+        "👁️ Eye": [
+            "diminished vision", "double vision", "symptoms of eye", "pain in eye",
+            "abnormal movement of eyelid", "foreign body sensation in eye",
+            "eye redness", "lacrimation", "itchiness of eye", "blindness",
+            "eye burns or stings", "spots or clouds in vision",
+            "bleeding from eye", "mass on eyelid", "swollen eye", "eyelid swelling",
+            "white discharge from eye",
+        ],
+        "🚻 Urinary/Repro": [
+            "painful urination", "frequent urination", "involuntary urination",
+            "blood in urine", "retention of urine", "unusual color or odor to urine",
+            "excessive urination at night", "low urine output", "hesitancy",
+            "symptoms of bladder", "symptoms of the kidneys", "kidney mass",
+            "symptoms of prostate",
+            "vaginal itching", "vaginal discharge", "vaginal pain", "vaginal redness",
+            "pain during intercourse", "impotence",
+            "symptoms of the scrotum and testes", "swelling of scrotum", "pain in testicles",
+        ],
+        "🤰 Women's Health": [
+            "hot flashes", "intermenstrual bleeding", "pain during pregnancy",
+            "problems during pregnancy", "spotting or bleeding during pregnancy",
+            "uterine contractions", "recent pregnancy", "pelvic pain",
+            "long menstrual periods", "heavy menstrual flow", "unpredictable menstruation",
+            "painful menstruation", "infertility", "frequent menstruation",
+            "blood clots during menstrual periods",
+        ],
+        "👶 Pediatric": [
+            "lack of growth", "irritable infant", "infant feeding problem",
+            "pulling at ears", "diaper rash",
+        ],
+        "🔬 Other": [
+            "jaundice", "back mass or lump", "neck mass", "jaw swelling",
+            "lip swelling", "toothache", "mouth ulcer", "gum pain",
+            "mouth dryness", "mouth pain", "bleeding gums", "pain in gums",
+            "allergic reaction", "symptoms of the face", "lower body pain",
+        ],
     }
+
+    SYMPTOM_AM = {
+        # General
+        "fever": "ትኩሳት", "chills": "ብርድ", "sweating": "ላብ",
+        "fatigue": "ድካም", "weakness": "ድክመት", "feeling ill": "ታሞ ስሜት",
+        "weight gain": "ክብደት መጨመር", "ache all over": "ሙሉ አካል ህመም",
+        "flu-like syndrome": "ጉንፋን መሰል ምልክቶች", "restlessness": "ጸጥ አለማለት",
+        "sleepiness": "ድካም/ናፍቆት", "decreased appetite": "የምግብ ፍቅር መቀነስ",
+        "fluid retention": "ፈሳሽ ማቆር",
+        # Neuro/Mental
+        "anxiety and nervousness": "ጭንቀት እና ነርቭ", "depression": "ድብርት",
+        "insomnia": "እንቅልፍ ማጣት", "dizziness": "ራስ ዞር",
+        "abnormal involuntary movements": "ያልተፈለጉ እንቅስቃሴዎች",
+        "depressive or psychotic symptoms": "ድብርት ወይም ሳይኮቲክ ምልክቶች",
+        "disturbance of memory": "የትውስታ ችግር", "paresthesia": "መቆጥቆጥ ስሜት",
+        "loss of sensation": "ስሜት ማጣት", "focal weakness": "ጠቃላይ ድክመት",
+        "seizures": "ቅብጠት", "delusions or hallucinations": "ቅዠት",
+        "fainting": "ዋዛ ማጣት", "temper problems": "ቁጣ ችግር",
+        "fears and phobias": "ፍርሃቶች", "obsessions and compulsions": "ቋሚ ሃሳቦች",
+        "antisocial behavior": "ፀረ-ማህበራዊ ባህሪ", "hysterical behavior": "ሂስቴሪካዊ ባህሪ",
+        "low self-esteem": "ዝቅተኛ ራስ-ግምት", "excessive anger": "ከፍተኛ ቁጣ",
+        "hostile behavior": "ጠበኛ ባህሪ", "drug abuse": "የዕፅ አጠቃቀም",
+        "abusing alcohol": "የአልኮል ሱሰኝነት",
+        # Cardio/Resp
+        "shortness of breath": "መተንፈስ ማጠር", "sharp chest pain": "ሹል የደረት ህመም",
+        "chest tightness": "ደረት መጠበቅ", "palpitations": "ልብ ምት ስሜት",
+        "irregular heartbeat": "ያልተስተካከለ ልብ ምት", "breathing fast": "ፈጣን መተንፈስ",
+        "cough": "ሳል", "wheezing": "ሲፏፏ ድምፅ", "difficulty breathing": "ለመተንፈስ ችግር",
+        "congestion in chest": "ደረት ውስጥ ብናኝ", "abnormal breathing sounds": "ያልተለመዱ የትንፋሽ ድምፆች",
+        "hurts to breath": "ሲተነፍሱ ህመም", "apnea": "መተንፈስ መቆም",
+        "hoarse voice": "ሻካራ ድምፅ", "hemoptysis": "ደም አሳልፎ ማስወጣት",
+        "coughing up sputum": "ምራቅ ማሳል", "increased heart rate": "ልብ ምት መጨመር",
+        "decreased heart rate": "ልብ ምት መቀነስ", "burning chest pain": "የሚቃጠል የደረት ህመም",
+        # ENT
+        "sore throat": "ጉሮሮ ህመም", "difficulty speaking": "ለመናገር ችግር",
+        "nasal congestion": "አፍንጫ መዘጋት", "throat swelling": "ጉሮሮ ማበጥ",
+        "diminished hearing": "ሰሚ ማቀዝቀዝ", "difficulty in swallowing": "ለመዋጥ ችግር",
+        "pus draining from ear": "ጆሮ ፕስ", "ear pain": "የጆሮ ህመም",
+        "ringing in ear": "ጆሮ ድምፅ", "plugged feeling in ear": "ጆሮ መዘጋት",
+        "itchy ear(s)": "ጆሮ ማሳከክ", "fluid in ear": "ጆሮ ውስጥ ፈሳሽ",
+        "redness in ear": "ጆሮ ቀያ", "bleeding from ear": "ጆሮ ደም",
+        "swollen or red tonsils": "ቲንሲሎች ማበጥ", "sneezing": "ማስነጠስ",
+        "coryza": "አፍንጫ ፍሳሽ", "sinus congestion": "ሳይነስ መዘጋት",
+        "painful sinuses": "ሳይነስ ህመም", "nosebleed": "አፍንጫ ደም",
+        # Gastro
+        "sharp abdominal pain": "ሹል የሆድ ህመም", "upper abdominal pain": "የላይ ሆድ ህመም",
+        "burning abdominal pain": "የሚቃጠል የሆድ ህመም", "lower abdominal pain": "የታች ሆድ ህመም",
+        "nausea": "ማቅለሽለሽ", "vomiting": "ማስታወክ", "vomiting blood": "ደም ማስታወክ",
+        "diarrhea": "ተቅማጥ", "constipation": "ሆድ መጠፍጠፍ",
+        "stomach bloating": "ሆድ ማበጥ", "heartburn": "ሆድ ማቃጠል",
+        "regurgitation": "ምግብ መመለስ", "blood in stool": "ሰገራ ውስጥ ደም",
+        "melena": "ጥቁር ሰገራ", "rectal bleeding": "የፊንጥ ደም",
+        "changes in stool appearance": "ሰገራ ቀለም ለውጥ",
+        "pain of the anus": "የፊንጥ ህመም",
+        "mass or swelling around the anus": "የፊንጥ አካባቢ ማበጥ",
+        "itching of the anus": "የፊንጥ ማሳከክ",
+        # Pain
+        "headache": "ራስ ምታት", "frontal headache": "ፊት ራስ ምታት",
+        "back pain": "የጀርባ ህመም", "low back pain": "የታች ጀርባ ህመም",
+        "neck pain": "የአንገት ህመም", "shoulder pain": "የትከሻ ህመም",
+        "hip pain": "የጭን ህመም", "knee pain": "የጉልበት ህመም",
+        "leg pain": "የእግር ህመም", "foot or toe pain": "የጣት/እግር ህመም",
+        "ankle pain": "የቁርጭምጭሚት ህመም", "elbow pain": "የክርን ህመም",
+        "arm pain": "የክንድ ህመም", "wrist pain": "የሚዳቃ ህመም",
+        "hand or finger pain": "የእጅ/ጣት ህመም", "joint pain": "የመገጣጠሚያ ህመም",
+        "rib pain": "የጎን ሳምባ ህመም", "groin pain": "የጉሮሮ ህመም",
+        "suprapubic pain": "የታች ሆድ ህመም", "side pain": "የጎን ህመም",
+        "facial pain": "የፊት ህመም", "bones are painful": "አጥንቶች ህማም",
+        "back cramps or spasms": "የጀርባ ቁርጠት", "cramps and spasms": "ቁርጠት",
+        # Musculo
+        "arm stiffness or tightness": "ክንድ ድርቀት", "arm swelling": "ክንድ ማበጥ",
+        "arm weakness": "ክንድ ድክመት", "arm lump or mass": "ክንድ እብጠት",
+        "wrist swelling": "ሚዳቃ ማበጥ",
+        "hand or finger swelling": "እጅ/ጣት ማበጥ",
+        "hand or finger stiffness or tightness": "እጅ/ጣት ድርቀት",
+        "hand or finger weakness": "እጅ/ጣት ድክመት",
+        "hand or finger lump or mass": "እጅ/ጣት እብጠት",
+        "knee swelling": "ጉልበት ማበጥ", "knee stiffness or tightness": "ጉልበት ድርቀት",
+        "leg swelling": "እግር ማበጥ", "leg weakness": "እግር ድክመት",
+        "ankle swelling": "ቁርጭምጭሚት ማበጥ", "foot or toe swelling": "ጣት/እግር ማበጥ",
+        "elbow swelling": "ክርን ማበጥ",
+        "shoulder stiffness or tightness": "ትከሻ ድርቀት",
+        "hip stiffness or tightness": "ጭን ድርቀት",
+        "back stiffness or tightness": "ጀርባ ድርቀት",
+        "neck mass": "አንገት እብጠት", "neck swelling": "አንገት ማበጥ",
+        "peripheral edema": "ዳርቻ ማበጥ", "problems with movement": "እንቅስቃሴ ችግር",
+        # Skin
+        "abnormal appearing skin": "ቆዳ ለውጥ", "skin lesion": "ቆዳ ቁስለት",
+        "acne or pimples": "ሽፍታ/ፊጥ", "skin growth": "ቆዳ ዕድገት",
+        "skin moles": "የቆዳ ምልክቶች", "warts": "ዕጢ",
+        "skin rash": "ቆዳ ሽፍታ", "itching of skin": "ቆዳ ማሳከክ",
+        "skin dryness, peeling, scaliness, or roughness": "ቆዳ ደረቅ/መላጥ",
+        "skin irritation": "ቆዳ ቅርጫ", "itchy scalp": "ጭንቅላት ማሳከክ",
+        "irregular appearing scalp": "ጭንቅላት ለውጥ", "jaundice": "ቢጫ በሽታ",
+        "diaper rash": "ዳይፐር ሽፍታ", "eyelid lesion or rash": "ዐይን ሽፍታ",
+        "irregular appearing nails": "ጥፍር ለውጥ",
+        # Eye
+        "diminished vision": "ዕይታ መቀነስ", "double vision": "ድርብ ዕይታ",
+        "symptoms of eye": "የዓይን ምልክቶች", "pain in eye": "የዓይን ህመም",
+        "abnormal movement of eyelid": "የዐይን ሽፋን እንቅስቃሴ",
+        "foreign body sensation in eye": "ዓይን ውስጥ ነገር ስሜት",
+        "eye redness": "ቀይ ዓይን", "lacrimation": "ዕንባ",
+        "itchiness of eye": "ዓይን ማሳከክ", "blindness": "ዓይነ ስውርነት",
+        "eye burns or stings": "ዓይን ማቃጠል",
+        "spots or clouds in vision": "ዕይታ ደበዘዘ", "bleeding from eye": "ዓይን ደም",
+        "mass on eyelid": "የዐይን ሽፋን እብጠት", "swollen eye": "ዓይን ማበጥ",
+        "eyelid swelling": "የዐይን ሽፋን ማበጥ", "white discharge from eye": "ዓይን ፈሳሽ",
+        # Urinary/Repro
+        "painful urination": "ሽንት ሲሸኑ ህመም", "frequent urination": "ተደጋጋሚ ሽንት",
+        "involuntary urination": "ያለፈቃድ ሽንት", "blood in urine": "ሽንት ውስጥ ደም",
+        "retention of urine": "ሽንት ማቆር", "unusual color or odor to urine": "ሽንት ቀለም/ሽታ ለውጥ",
+        "excessive urination at night": "ሌሊት ሽንት", "low urine output": "ሽንት መቀነስ",
+        "hesitancy": "ሽንት ማቅማማት",
+        "symptoms of bladder": "የፊኛ ምልክቶች",
+        "symptoms of the kidneys": "የኩላሊት ምልክቶች", "kidney mass": "ኩላሊት እብጠት",
+        "symptoms of prostate": "የፕሮስቴት ምልክቶች",
+        "vaginal itching": "ብልት ማሳከክ", "vaginal discharge": "ብልት ፍሳሽ",
+        "vaginal pain": "ብልት ህመም", "vaginal redness": "ብልት ቀያ",
+        "pain during intercourse": "ወሲብ ጊዜ ህመም", "impotence": "ወሲብ ድካም",
+        "symptoms of the scrotum and testes": "የፍልፈል ምልክቶች",
+        "swelling of scrotum": "ፍልፈል ማበጥ", "pain in testicles": "ፍልፈል ህመም",
+        # Women's Health
+        "hot flashes": "ሙቀት ፍላጻ", "intermenstrual bleeding": "ወር አበባ መካከል ደም",
+        "pain during pregnancy": "እርግዝና ጊዜ ህመም",
+        "problems during pregnancy": "እርግዝና ጊዜ ችግሮች",
+        "spotting or bleeding during pregnancy": "እርግዝና ጊዜ ደም",
+        "uterine contractions": "የማህፀን መኮማተር", "recent pregnancy": "ቅርብ ጊዜ እርግዝና",
+        "pelvic pain": "የዳሌ ህመም",
+        "long menstrual periods": "ረዥም ወር አበባ",
+        "heavy menstrual flow": "ከባድ ወር አበባ", "unpredictable menstruation": "ያልተስተካከለ ወር አበባ",
+        "painful menstruation": "ወር አበባ ህመም", "infertility": "መካንነት",
+        "frequent menstruation": "ተደጋጋሚ ወር አበባ",
+        "blood clots during menstrual periods": "ወር አበባ ደም ስብ",
+        # Pediatric
+        "lack of growth": "እድገት ማጣት", "irritable infant": "ቅሬታ ሕፃን",
+        "infant feeding problem": "ሕፃን ምግብ ችግር", "pulling at ears": "ጆሮ መጎተት",
+        # Other
+        "back mass or lump": "ጀርባ እብጠት", "jaw swelling": "መንጋጋ ማበጥ",
+        "lip swelling": "ከንፈር ማበጥ", "toothache": "ጥርስ ህመም",
+        "mouth ulcer": "አፍ ቁስለት", "gum pain": "ድድ ህመም",
+        "mouth dryness": "አፍ ደረቅ", "mouth pain": "አፍ ህመም",
+        "bleeding gums": "ድድ ደም", "pain in gums": "ድድ ህመም",
+        "allergic reaction": "አለርጂ", "symptoms of the face": "የፊት ምልክቶች",
+        "lower body pain": "የታች አካል ህመም",
+    }
+
+    CAT_AM = {
+        "🌡️ General": "አጠቃላይ",
+        "🧠 Neuro/Mental": "ነርቭ/አዕምሮ",
+        "🫀 Cardio/Resp": "ልብ/መተንፈሻ",
+        "👃 ENT": "ጆሮ/አፍንጫ/ጉሮሮ",
+        "🤢 Gastro": "የምግብ መፈጨት",
+        "🤕 Pain": "ህመም",
+        "🦴 Musculo/Limbs": "ጡንቻ/አካላት",
+        "🩺 Skin": "ቆዳ",
+        "👁️ Eye": "ዓይን",
+        "🚻 Urinary/Repro": "ሽንት/ስሜት",
+        "🤰 Women's Health": "የሴቶች ጤና",
+        "👶 Pediatric": "ሕፃናት",
+        "🔬 Other": "ሌላ",
+    }
+
+    is_am   = lang.lower() == "amharic"
+    js_cats = {}
+    for cat_en, symptoms in CATEGORIES_EN.items():
+        label = CAT_AM.get(cat_en, cat_en) if is_am else cat_en
+        js_cats[label] = [
+            {"en": s, "display": SYMPTOM_AM.get(s, s) if is_am else s.title()}
+            for s in symptoms
+        ]
+
+    current_val  = st.session_state.get("symptoms_text", "")
+    current_list = [s.strip().lower() for s in current_val.split(",") if s.strip()]
+    quick_label  = "ምልክቶችን ፈጥኖ ይምረጡ:" if is_am else "Quick-select symptoms:"
+    or_text      = "ወይም ምልክቶችን ይተይቡ" if is_am else "or type symptoms below"
+
+    html_code = f"""<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ background: transparent; font-family: 'Poppins','DM Sans',-apple-system,sans-serif; padding: 4px 2px 0; }}
+.qs-label {{ font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.38); font-weight: 600; margin-bottom: 10px; }}
+.cat-tabs {{ display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }}
+.cat-tab {{ padding: 5px 12px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.5); font-size: 0.72rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.18s ease; font-family: inherit; }}
+.cat-tab:hover {{ border-color: #0d9488; color: #14b8a6; background: rgba(13,148,136,0.1); }}
+.cat-tab.active {{ background: rgba(13,148,136,0.2); border-color: #14b8a6; color: #14b8a6; }}
+.pills-wrap {{ display: flex; flex-wrap: wrap; gap: 7px; max-height: 118px; overflow-y: auto; padding: 2px 2px 6px; scrollbar-width: thin; scrollbar-color: rgba(13,148,136,0.45) transparent; }}
+.pills-wrap::-webkit-scrollbar {{ width: 4px; }}
+.pills-wrap::-webkit-scrollbar-thumb {{ background: rgba(13,148,136,0.45); border-radius: 4px; }}
+.pill {{ padding: 5px 13px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.75); font-size: 0.77rem; cursor: pointer; white-space: nowrap; transition: all 0.16s ease; user-select: none; font-family: inherit; }}
+.pill:hover {{ border-color: #14b8a6; color: #fff; background: rgba(13,148,136,0.12); transform: translateY(-1px); }}
+.pill.sel {{ background: rgba(13,148,136,0.25) !important; border-color: #14b8a6 !important; color: #14b8a6 !important; font-weight: 600 !important; }}
+.or-div {{ display: flex; align-items: center; gap: 10px; margin: 14px 0 2px; color: rgba(255,255,255,0.22); font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.1em; }}
+.or-div::before, .or-div::after {{ content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }}
+</style></head><body>
+<div class="qs-label">{quick_label}</div>
+<div class="cat-tabs" id="catTabs"></div>
+<div class="pills-wrap" id="pillsWrap"></div>
+<div class="or-div">{or_text}</div>
+<script>
+var CATS    = {json.dumps(js_cats, ensure_ascii=False)};
+var KEYS    = Object.keys(CATS);
+var active  = KEYS[0];
+var selected = {json.dumps(current_list)};
+
+function renderTabs() {{
+  var el = document.getElementById('catTabs'); el.innerHTML = '';
+  KEYS.forEach(function(k) {{
+    var b = document.createElement('button');
+    b.className = 'cat-tab' + (k === active ? ' active' : '');
+    b.textContent = k;
+    b.onclick = function() {{ active = k; renderTabs(); renderPills(); }};
+    el.appendChild(b);
+  }});
+}}
+function renderPills() {{
+  var el = document.getElementById('pillsWrap'); el.innerHTML = '';
+  (CATS[active] || []).forEach(function(item) {{
+    var isSel = selected.indexOf(item.en.toLowerCase()) !== -1;
+    var p = document.createElement('button');
+    p.className = 'pill' + (isSel ? ' sel' : '');
+    p.textContent = (isSel ? '✓ ' : '') + item.display;
+    p.onclick = (function(sym) {{ return function() {{ toggleSym(sym); }}; }})(item.en);
+    el.appendChild(p);
+  }});
+}}
+function syncToStreamlit() {{
+  var val = selected.join(', ');
+  try {{
+    var doc = window.parent.document;
+    var areas = doc.querySelectorAll('textarea');
+    for (var i = 0; i < areas.length; i++) {{
+      var ta = areas[i];
+      if (ta.placeholder && ta.placeholder.indexOf('headache') !== -1) {{
+        var setter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, 'value').set;
+        setter.call(ta, val);
+        ta.dispatchEvent(new window.parent.Event('input', {{ bubbles: true }}));
+        break;
+      }}
+    }}
+  }} catch(e) {{}}
+}}
+function toggleSym(sym) {{
+  var lo = sym.toLowerCase();
+  var idx = selected.indexOf(lo);
+  if (idx === -1) {{ selected.push(lo); }} else {{ selected.splice(idx, 1); }}
+  renderPills(); syncToStreamlit();
+}}
+renderTabs(); renderPills();
+</script></body></html>"""
+
+    components.html(html_code, height=220, scrolling=False)
+
+
+# ──────────────────────────────────────────────
+# CALLBACKS
+# ──────────────────────────────────────────────
+def clear_symptoms_callback():
+    st.session_state["symptoms_text"]    = ""
+    st.session_state["prediction_result"] = None
+    st.session_state["prediction_error"]  = None
+
+def clear_diagnosis_callback():
+    st.session_state["prediction_result"] = None
+    st.session_state["prediction_error"]  = None
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SIDEBAR — Sign Up / Login panel (no ngrok URL field; URL is hardcoded)
+# ══════════════════════════════════════════════════════════════════════════════
+def render_sidebar_auth(role: str, lang: str) -> str:
+    """
+    Renders the Sign Up / Login section in the sidebar for Student / Doctor roles.
+    Returns the active user_id string (empty string if not logged in).
+    The Colab API URL is hardcoded as COLAB_API_URL — no UI input required.
+    """
+
+    # ── Session state keys ───────────────────────────────────────────────────
+    if "logged_in_as"   not in st.session_state: st.session_state["logged_in_as"]   = None
+    if "auth_msg"       not in st.session_state: st.session_state["auth_msg"]        = ("", False)
+    if "auth_mode"      not in st.session_state: st.session_state["auth_mode"]       = "login"
+
+    # ── If already logged in as this role, show badge + logout ───────────────
+    li = st.session_state.get("logged_in_as")
+    if li and li.get("role") == role:
+        uid = li["user_id"]
+        st.sidebar.markdown(
+            f"<div class='logged-in-badge'>✅ Logged in as {role}<br>"
+            f"<span style='font-size:0.75rem;opacity:0.8'>ID: {uid}</span></div>",
+            unsafe_allow_html=True,
+        )
+        if st.sidebar.button("🚪 Log out", key="logout_btn", use_container_width=True):
+            st.session_state["logged_in_as"] = None
+            st.session_state["auth_msg"]     = ("", False)
+            st.rerun()
+        return uid
+
+    # ── Mode toggle: Login / Sign Up ─────────────────────────────────────────
+    mode_col1, mode_col2 = st.sidebar.columns(2)
+    with mode_col1:
+        if st.button("🔑 Login",   key="mode_login",  use_container_width=True):
+            st.session_state["auth_mode"] = "login"
+            st.session_state["auth_msg"]  = ("", False)
+    with mode_col2:
+        if st.button("📝 Sign Up", key="mode_signup", use_container_width=True):
+            st.session_state["auth_mode"] = "signup"
+            st.session_state["auth_msg"]  = ("", False)
+
+    mode = st.session_state["auth_mode"]
+
+    # ── ID format hint ────────────────────────────────────────────────────────
+    prefix      = "ST" if role == "Student" else "DR"
+    hint        = f"ID must start with <b>{prefix}</b> — e.g. {prefix}001"
+    placeholder = f"e.g. {prefix}001"
+
+    st.sidebar.markdown(
+        f"<div class='auth-info' style='margin-bottom:6px'>{hint}</div>",
+        unsafe_allow_html=True,
+    )
+
+    if mode == "signup":
+        # ── Sign Up form ──────────────────────────────────────────────────────
+        su_id   = st.sidebar.text_input("Choose an ID",  placeholder=placeholder, key="su_id_field")
+        su_name = st.sidebar.text_input("Your name (optional)", placeholder="Full name", key="su_name_field")
+        if st.sidebar.button("✅ Create Account", key="signup_submit_btn", use_container_width=True):
+            if not su_id.strip():
+                st.session_state["auth_msg"] = ("Please enter an ID.", False)
+            else:
+                ok, msg = _api_signup(role, su_id.strip(), su_name.strip())
+                st.session_state["auth_msg"] = (msg, ok)
+                if ok:
+                    # Auto-login after successful signup
+                    st.session_state["logged_in_as"] = {
+                        "role": role, "user_id": su_id.strip().upper()
+                    }
+                    st.rerun()
+    else:
+        # ── Login form ────────────────────────────────────────────────────────
+        li_id = st.sidebar.text_input("Your ID", placeholder=placeholder,
+                                      type="password", key="li_id_field")
+        if st.sidebar.button("🔓 Login", key="login_submit_btn", use_container_width=True):
+            if not li_id.strip():
+                st.session_state["auth_msg"] = ("Please enter your ID.", False)
+            else:
+                ok, msg = _api_login(role, li_id.strip())
+                st.session_state["auth_msg"] = (msg, ok)
+                if ok:
+                    st.session_state["logged_in_as"] = {
+                        "role": role, "user_id": li_id.strip().upper()
+                    }
+                    st.rerun()
+
+    # ── Auth feedback message ─────────────────────────────────────────────────
+    msg_text, msg_ok = st.session_state["auth_msg"]
+    if msg_text:
+        css = "auth-success" if msg_ok else "auth-error"
+        st.sidebar.markdown(
+            f"<div class='{css}'>{msg_text}</div>",
+            unsafe_allow_html=True,
+        )
+
+    return ""   # not logged in yet
+
+
+# ──────────────────────────────────────────────
+# MAIN
+# ──────────────────────────────────────────────
+def main():
+    missing = check_files()
+    if missing:
+        st.error(f"Missing required files: {missing}")
+        return
+
+    main_df, desc_map, diets_map, meds_map, precs_map, workout_map = load_data()
+    svc, dt, le = load_models()
+
+    symptom_list  = tuple(main_df.drop(columns=["diseases"]).columns)
+    disease_names = tuple(main_df["diseases"].unique())
+    vec, sym_matrix, _ = build_tfidf_index(symptom_list, disease_names)
+
+    # ── Sidebar ──────────────────────────────────────────────────────────────
+    st.sidebar.markdown('<div class="section-header">User Profile</div>', unsafe_allow_html=True)
+    lang = st.sidebar.selectbox("🌐 Language", ["English", "Amharic"])
+    role = st.sidebar.selectbox("👤 Role", ["Normal User", "Student", "Doctor"])
+    age  = st.sidebar.number_input("🎂 Age", min_value=0, max_value=120, value=25)
+
+    # ── Auth panel — only for Student / Doctor ───────────────────────────────
+    user_id = ""
+    if role in ("Student", "Doctor"):
+        st.sidebar.markdown("---")
+        st.sidebar.markdown(
+            f'<div class="section-header">{"Student" if role=="Student" else "Doctor"} Access</div>',
+            unsafe_allow_html=True,
+        )
+        user_id = render_sidebar_auth(role, lang)
+
+    # ── Role badge ────────────────────────────────────────────────────────────
+    role_colors = {"Doctor": "#1f6feb", "Student": "#2ea043", "Normal User": "#6e7681"}
+    rc = role_colors.get(role, "#6e7681")
+    st.sidebar.markdown(
+        f"<div style='margin-top:8px'>"
+        f"<span class='role-badge' style='background:rgba({int(rc[1:3],16)},{int(rc[3:5],16)},{int(rc[5:7],16)},0.2);"
+        f"color:{rc};border:1px solid {rc}40'>● {role}</span></div>",
+        unsafe_allow_html=True,
+    )
+    st.sidebar.markdown("---")
+    st.sidebar.caption("⚕️ General health information only. Always consult a qualified doctor.")
+
+    # ── Session state init ────────────────────────────────────────────────────
+    for key in ("prediction_result", "prediction_error", "chat_response"):
+        if key not in st.session_state:
+            st.session_state[key] = None
+
+    # ── Header ────────────────────────────────────────────────────────────────
+    st.markdown("""
+    <div class='main-header'>
+      <div class='main-header-title'>🏥 Integrated Healthcare Dashboard</div>
+      <div class='main-header-subtitle'>Disease Prediction · Health Recommendations · AI Chatbot</div>
+    </div>""", unsafe_allow_html=True)
+
+    tab1, tab2, tab3 = st.tabs([
+        t("Disease Predictor",  lang),
+        t("Health Recommender", lang),
+        t("Healthcare Chatbot", lang),
+    ])
+
+    # ══════════════════════════════════════════
+    # TAB 1 — DISEASE PREDICTOR
+    # ══════════════════════════════════════════
+    with tab1:
+        st.markdown('<div class="section-header">🩺 Symptom-Based Disease Predictor</div>',
+                    unsafe_allow_html=True)
+        render_quick_select_symptoms(lang)
+
+        user_input = st.text_area(
+            "Symptoms",
+            key="symptoms_text",
+            placeholder="e.g., headache, fever, chills",
+            label_visibility="collapsed",
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button(f"✦ {t('Predict & Recommend', lang)}", use_container_width=True):
+                if not user_input.strip():
+                    st.warning(t("Please enter symptoms.", lang))
+                else:
+                    with st.spinner("🔍 Analysing symptoms…"):
+                        res, err = integrated_prediction_system(
+                            user_input, age, role, user_id, lang,
+                            main_df, le, svc, dt,
+                            desc_map, diets_map, meds_map, precs_map, workout_map,
+                            vec, sym_matrix,
+                        )
+                    st.session_state["prediction_result"] = res
+                    st.session_state["prediction_error"]  = err
+
+        with col2:
+            st.markdown('<div class="clear-btn-container">', unsafe_allow_html=True)
+            st.button(t("Clear Symptoms", lang), key="clear_sym",
+                      on_click=clear_symptoms_callback, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        if st.session_state["prediction_error"]:
+            st.markdown(
+                f'<div class="access-denied">{st.session_state["prediction_error"]}</div>',
+                unsafe_allow_html=True,
+            )
+
+        elif st.session_state["prediction_result"]:
+            res = st.session_state["prediction_result"]
+            st.markdown("---")
+
+            st.markdown('<div class="section-header">✅ Matched Symptoms</div>',
+                        unsafe_allow_html=True)
+            chips = " · ".join(
+                f"<span style='background:rgba(88,166,255,0.15);padding:4px 12px;"
+                f"border-radius:6px;font-size:0.85rem;color:#58a6ff;"
+                f"border:1px solid rgba(88,166,255,0.3)'>{s}</span>"
+                for s in res["matched_symptoms"]
+            )
+            st.markdown(chips, unsafe_allow_html=True)
+
+            st.markdown('<br><div class="section-header">🎯 Predicted Conditions</div>',
+                        unsafe_allow_html=True)
+            rows = (
+                "<div style='background:rgba(22,27,34,0.7);border:1px solid rgba(88,166,255,0.2);"
+                "border-radius:10px;padding:14px 16px;margin-bottom:8px'>"
+                "<div style='color:#79c0ff;font-size:0.75rem;font-weight:700;"
+                "letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px'>"
+                "🤖 SVC — Top Predictions</div>"
+            )
+            for rank, p in enumerate(res["predicted_conditions"]):
+                bg  = "linear-gradient(135deg,#1f6feb,#388bfd)" if rank == 0 else "rgba(33,38,45,0.8)"
+                col = "#fff" if rank == 0 else "#8b949e"
+                bar = p["confidence"].replace("%", "") if p["confidence"] != "N/A" else "0"
+                rows += (
+                    f"<div style='display:flex;align-items:center;gap:10px;margin-bottom:8px'>"
+                    f"<span style='min-width:18px;color:#8b949e;font-size:0.75rem'>#{rank+1}</span>"
+                    f"<span style='flex:1;background:{bg};color:{col};padding:5px 12px;"
+                    f"border-radius:16px;font-size:0.85rem;font-weight:600'>{p['disease']}</span>"
+                    f"<span style='min-width:48px;text-align:right;color:#58a6ff;"
+                    f"font-size:0.82rem;font-weight:700'>{p['confidence']}</span></div>"
+                    f"<div style='height:3px;background:rgba(48,54,61,0.5);border-radius:2px;margin-bottom:6px'>"
+                    f"<div style='height:3px;width:{bar}%;background:linear-gradient(90deg,#1f6feb,#58a6ff);"
+                    f"border-radius:2px'></div></div>"
+                )
+            st.markdown(rows + "</div>", unsafe_allow_html=True)
+
+            with st.expander(f"📊 Health Plan — {res['top_disease']}", expanded=True):
+                render_rec_cards(res["rec_cards"])
+                if res["advice"]:
+                    st.markdown(
+                        f'<div class="advice-banner">{res["advice"]}</div>',
+                        unsafe_allow_html=True,
+                    )
+
+            st.markdown('<div class="clear-btn-container" style="margin-top:16px;max-width:200px">',
+                        unsafe_allow_html=True)
+            st.button(t("Clear Diagnosis", lang), key="clear_diag",
+                      on_click=clear_diagnosis_callback, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    # ══════════════════════════════════════════
+    # TAB 2 — HEALTH RECOMMENDER
+    # ══════════════════════════════════════════
+    with tab2:
+        st.markdown('<div class="section-header">🏥 Select a Disease</div>',
+                    unsafe_allow_html=True)
+        sorted_diseases  = sorted(list(desc_map.keys()))
+        selected_disease = st.selectbox(
+            "Disease", options=sorted_diseases,
+            format_func=lambda x: x.title(),
+            label_visibility="collapsed",
+        )
+
+        col_r1, col_r2 = st.columns([1, 5])
+        with col_r1:
+            get_plan = st.button(t("Get Plan", lang), use_container_width=True)
+
+        if get_plan:
+            ok, err_msg = check_access(age, role, user_id, lang)
+            if not ok:
+                st.markdown(f'<div class="access-denied">{err_msg}</div>',
+                            unsafe_allow_html=True)
+            else:
+                key = clean_disease_name(selected_disease)
+                cards, advice = role_based_recs(
+                    role, lang, key,
+                    desc_map, diets_map, meds_map, precs_map, workout_map,
+                )
+                with st.expander(f"💊 Health Plan — {selected_disease.title()}", expanded=True):
+                    render_rec_cards(cards)
+                    if advice:
+                        st.markdown(
+                            f'<div class="advice-banner">{advice}</div>',
+                            unsafe_allow_html=True,
+                        )
+
+    # ══════════════════════════════════════════
+    # TAB 3 — CHATBOT
+    # ══════════════════════════════════════════
+    with tab3:
+        st.markdown('<div class="section-header">💬 Healthcare Chatbot</div>',
+                    unsafe_allow_html=True)
+
+        greeting = t("Hello! How can I help you with health information today?", lang)
+        st.markdown(f'<div class="chat-bot">🤖 {greeting}</div>', unsafe_allow_html=True)
+
+        st.markdown(
+            "<div style='margin:10px 0 4px;font-size:0.72rem;color:#475569;"
+            "text-transform:uppercase;letter-spacing:0.1em;font-weight:600'>"
+            "Example queries:</div>"
+            "<div style='font-size:0.82rem;color:#8b949e;margin-bottom:12px'>"
+            "• <em>What is allergy?</em> &nbsp;|&nbsp; "
+            "• <em>What diet should I follow for asthma?</em> &nbsp;|&nbsp; "
+            "• <em>What medications are used for allergy?</em> &nbsp;|&nbsp; "
+            "• <em>What precautions for Common Cold?</em></div>",
+            unsafe_allow_html=True,
+        )
+
+        chat_query = st.text_input(
+            "Your question:",
+            placeholder="e.g. What diet should I follow for Asthma?",
+            key="chat_query",
+            label_visibility="collapsed",
+        )
+
+        col_c1, col_c2 = st.columns([1, 6])
+        with col_c1:
+            ask_btn = st.button(t("Ask Bot", lang), use_container_width=True)
+
+        with col_c2:
+            st.markdown('<div class="clear-btn-container">', unsafe_allow_html=True)
+            if st.button("🗑️ Clear", key="chat_clear", use_container_width=True):
+                st.session_state["chat_response"] = None
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        if ask_btn:
+            if not chat_query.strip():
+                st.warning(t("Please enter a query.", lang))
+            else:
+                with st.spinner("🤔 Thinking…"):
+                    reply = chatbot_response(
+                        chat_query, age, role, user_id, lang,
+                        desc_map, diets_map, meds_map, precs_map, workout_map,
+                        vec,
+                    )
+                st.session_state["chat_response"] = reply
+
+        if st.session_state.get("chat_response"):
+            st.markdown(
+                f'<div class="chat-bot">🤖 {st.session_state["chat_response"]}</div>',
+                unsafe_allow_html=True,
+            )
+
+
+if __name__ == "__main__":
+    main()
