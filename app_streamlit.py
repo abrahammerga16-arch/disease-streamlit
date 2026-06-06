@@ -19,6 +19,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 warnings.filterwarnings("ignore")
 
+# ── Hardcoded Colab API URL (no UI input needed) ──────────────────────────────
+COLAB_API_URL = "https://porcupine-universal-timing.ngrok-free.dev"
+
 st.set_page_config(
     page_title="Integrated Healthcare Dashboard",
     page_icon="🏥",
@@ -469,24 +472,15 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ACCESS CONTROL  ←  UPDATED: calls Colab Flask API instead of hardcoded IDs
+# ACCESS CONTROL  ←  Uses hardcoded COLAB_API_URL constant
 # ══════════════════════════════════════════════════════════════════════════════
-
-def _get_api_base() -> str:
-    """Return the ngrok base URL stored in session state, without trailing slash."""
-    url = st.session_state.get("colab_api_url", "").strip().rstrip("/")
-    return url
-
 
 def _api_login(role: str, user_id: str) -> tuple[bool, str]:
     """
-    Call POST {ngrok_url}/login on the Colab Flask server.
+    Call POST {COLAB_API_URL}/login on the Colab Flask server.
     Returns (success, message).
-    Falls back gracefully if the API is unreachable.
     """
-    base = _get_api_base()
-    if not base:
-        return False, "⚠️ No Colab API URL set. Enter your ngrok URL in the sidebar."
+    base = COLAB_API_URL.rstrip("/")
     try:
         resp = requests.post(
             f"{base}/login",
@@ -498,21 +492,19 @@ def _api_login(role: str, user_id: str) -> tuple[bool, str]:
             return True, data.get("message", "Login successful.")
         return False, data.get("message", "Login failed.")
     except requests.exceptions.ConnectionError:
-        return False, "❌ Cannot reach Colab server. Make sure the ngrok tunnel is running."
+        return False, "❌ Cannot reach server. Please try again later."
     except requests.exceptions.Timeout:
-        return False, "❌ Request timed out. The Colab server may be sleeping."
+        return False, "❌ Request timed out. Please try again."
     except Exception as e:
         return False, f"❌ API error: {e}"
 
 
 def _api_signup(role: str, user_id: str, name: str = "") -> tuple[bool, str]:
     """
-    Call POST {ngrok_url}/signup on the Colab Flask server.
+    Call POST {COLAB_API_URL}/signup on the Colab Flask server.
     Returns (success, message).
     """
-    base = _get_api_base()
-    if not base:
-        return False, "⚠️ No Colab API URL set. Enter your ngrok URL in the sidebar."
+    base = COLAB_API_URL.rstrip("/")
     try:
         resp = requests.post(
             f"{base}/signup",
@@ -524,9 +516,9 @@ def _api_signup(role: str, user_id: str, name: str = "") -> tuple[bool, str]:
             return True, data.get("message", "Sign-up successful.")
         return False, data.get("message", "Sign-up failed.")
     except requests.exceptions.ConnectionError:
-        return False, "❌ Cannot reach Colab server. Make sure the ngrok tunnel is running."
+        return False, "❌ Cannot reach server. Please try again later."
     except requests.exceptions.Timeout:
-        return False, "❌ Request timed out. The Colab server may be sleeping."
+        return False, "❌ Request timed out. Please try again."
     except Exception as e:
         return False, f"❌ API error: {e}"
 
@@ -543,7 +535,7 @@ def check_access(age: int, role: str, user_id: str, lang: str) -> tuple[bool, st
 
     if role in ("Student", "Doctor"):
         # Use the cached login state from session so we don't hit the API on every render
-        logged_in_as = st.session_state.get("logged_in_as")   # e.g. {"role":"Student","user_id":"ST001"}
+        logged_in_as = st.session_state.get("logged_in_as")
         if (
             logged_in_as
             and logged_in_as.get("role") == role
@@ -1027,45 +1019,19 @@ def clear_diagnosis_callback():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SIDEBAR — UPDATED: Sign Up / Login panel replaces plain ID input
+# SIDEBAR — Sign Up / Login panel (no ngrok URL field; URL is hardcoded)
 # ══════════════════════════════════════════════════════════════════════════════
 def render_sidebar_auth(role: str, lang: str) -> str:
     """
     Renders the Sign Up / Login section in the sidebar for Student / Doctor roles.
     Returns the active user_id string (empty string if not logged in).
+    The Colab API URL is hardcoded as COLAB_API_URL — no UI input required.
     """
 
     # ── Session state keys ───────────────────────────────────────────────────
-    if "colab_api_url"  not in st.session_state: st.session_state["colab_api_url"]  = ""
     if "logged_in_as"   not in st.session_state: st.session_state["logged_in_as"]   = None
     if "auth_msg"       not in st.session_state: st.session_state["auth_msg"]        = ("", False)
     if "auth_mode"      not in st.session_state: st.session_state["auth_mode"]       = "login"
-
-    # ── Colab ngrok URL input ────────────────────────────────────────────────
-    st.sidebar.markdown(
-        "<div style='font-size:0.7rem;color:#8b949e;text-transform:uppercase;"
-        "letter-spacing:0.1em;margin-bottom:4px'>🔗 Colab API URL</div>",
-        unsafe_allow_html=True,
-    )
-    colab_url = st.sidebar.text_input(
-        "colab_url_input",
-        value=st.session_state["colab_api_url"],
-        placeholder="https://xxxx-xx-xx.ngrok-free.app",
-        label_visibility="collapsed",
-        key="colab_url_field",
-    )
-    if colab_url != st.session_state["colab_api_url"]:
-        st.session_state["colab_api_url"]  = colab_url
-        st.session_state["logged_in_as"]   = None   # reset login when URL changes
-        st.session_state["auth_msg"]       = ("", False)
-
-    if not colab_url.strip():
-        st.sidebar.markdown(
-            "<div class='auth-info'>Paste your ngrok URL from Colab cell 37 output.</div>",
-            unsafe_allow_html=True,
-        )
-
-    st.sidebar.markdown("---")
 
     # ── If already logged in as this role, show badge + logout ───────────────
     li = st.session_state.get("logged_in_as")
