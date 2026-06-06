@@ -1,14 +1,15 @@
 """
-Integrated Healthcare Dashboard — Streamlit version (Enhanced UI with Animations)
+Integrated Healthcare Dashboard — Streamlit (No-Server Auth Edition)
   • Disease Predictor  (symptom input → ML prediction)
   • Health Recommender (disease dropdown → full health plan)
   • Healthcare Chatbot  (natural-language query → semantic answer)
-  • Role / Age / ID access control  ← signup/login via Colab Flask API
+  • Role / Age access control  ← NO server needed, IDs validated locally
   • English ↔ Amharic UI
-  • NLP paragraph symptom extraction (NEW)
+  • NLP paragraph symptom extraction
+  • Auth managed via companion auth.html — paste valid IDs into VALID_DOCTORS / VALID_STUDENTS below
 """
 
-import os, re, json, warnings, requests
+import os, re, json, warnings
 import numpy as np
 import pandas as pd
 import joblib
@@ -20,12 +21,24 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 warnings.filterwarnings("ignore")
 
-# ── Hardcoded Colab API URL (no UI input needed) ──────────────────────────────
-COLAB_API_URL = "https://porcupine-universal-timing.ngrok-free.dev"
+# ══════════════════════════════════════════════════════════════════════════════
+# LOCAL AUTH CONFIG
+# Paste the IDs you created in auth.html here.
+# Format: a Python set of uppercase ID strings.
+# ══════════════════════════════════════════════════════════════════════════════
+VALID_DOCTORS: set = {
+    "DR001",
+    # "DR002", "DR003",  ← add more as needed
+}
+VALID_STUDENTS: set = {
+    "ST001",
+    # "ST002", "ST003",
+}
 
+# ──────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Integrated Healthcare Dashboard",
-    page_icon="",
+    page_icon="🏥",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -295,7 +308,7 @@ hr { border-color: rgba(88,166,255,0.1) !important; }
     border-color: rgba(88, 166, 255, 0.25) !important;
 }
 
-/* ── Auth panel styles ── */
+/* ── Auth panel ── */
 .auth-panel {
     background: rgba(22,27,34,0.7);
     border: 1px solid rgba(48,54,61,0.6);
@@ -337,7 +350,6 @@ hr { border-color: rgba(88,166,255,0.1) !important; }
     font-weight: 600;
     margin-bottom: 8px;
 }
-/* ── NLP extraction info banner ── */
 .nlp-info-banner {
     background: linear-gradient(135deg, rgba(31,111,235,0.08) 0%, rgba(33,38,45,0.6) 100%);
     border-left: 3px solid rgba(88,166,255,0.5);
@@ -353,9 +365,9 @@ hr { border-color: rgba(88,166,255,0.1) !important; }
 """, unsafe_allow_html=True)
 
 
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 # TRANSLATIONS
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 AMHARIC = {
     "Disease": "በሽታ",
     "Description": "መግለጫ",
@@ -389,9 +401,9 @@ def t(text: str, lang: str) -> str:
     return AMHARIC.get(text, text) if lang.lower() == "amharic" else text
 
 
-# ──────────────────────────────────────────────
-# GOOGLE TRANSLATE
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# GOOGLE TRANSLATE (optional)
+# ══════════════════════════════════════════════════════════════════════════════
 @st.cache_resource(show_spinner=False)
 def get_translator():
     try:
@@ -416,9 +428,9 @@ def translate_content(text, target_lang="English"):
         return text
 
 
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 # FILE CHECKS
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 DATA_FILES = [
     "data/Diseases_and_Symptoms_dataset.csv",
     "data/description.csv", "data/diets.csv",
@@ -433,9 +445,9 @@ def clean_disease_name(name: str) -> str:
     return str(name).lower().replace("_", " ").strip()
 
 
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 # DATA LOADING
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 @st.cache_data(show_spinner="Loading dataset…")
 def load_data():
     main_df        = pd.read_csv("data/Diseases_and_Symptoms_dataset.csv")
@@ -485,10 +497,8 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# NLP SYMPTOM EXTRACTOR  ←  NEW: handles free-form paragraphs
+# NLP SYMPTOM EXTRACTOR
 # ══════════════════════════════════════════════════════════════════════════════
-
-# Words/phrases that signal the following content is negated
 NEGATION_TRIGGERS = [
     "no ", "not ", "without ", "don't have", "doesn't have",
     "do not have", "i have no", "haven't", "havent",
@@ -496,7 +506,6 @@ NEGATION_TRIGGERS = [
     "no complaint of", "absence of",
 ]
 
-# Filler words that add noise but carry no symptom meaning
 FILLER_RE = re.compile(
     r"\b(i|i've|i have|i am|i'm|been|having|some|really|very|quite|"
     r"a\s+bit|little|a\s+lot|feel|feeling|seems|seem|also|and|but|for|"
@@ -512,26 +521,17 @@ FILLER_RE = re.compile(
 
 
 def _is_negated(sentence: str) -> bool:
-    """Return True if the sentence contains a negation trigger."""
     sl = sentence.lower()
     return any(trigger in sl for trigger in NEGATION_TRIGGERS)
 
 
 def _fuzzy_match(phrase: str, symptom_list: list, tfidf_vec, sym_matrix, threshold: float):
-    """
-    Match a cleaned phrase against the symptom list.
-    Uses TF-IDF cosine similarity (same vectoriser as the rest of the app).
-    Returns the best matching symptom string, or None if below threshold.
-    """
     phrase_norm = phrase.replace("_", " ").strip()
     if not phrase_norm or len(phrase_norm) < 3:
         return None
-
-    # Exact match shortcut
     phrase_key = phrase_norm.replace(" ", "_").lower()
     if phrase_key in symptom_list:
         return phrase_key
-
     vec_query = tfidf_vec.transform([phrase_norm]).toarray()
     sims = cosine_similarity(vec_query, sym_matrix)[0]
     best_idx = int(np.argmax(sims))
@@ -546,23 +546,8 @@ def extract_symptoms_from_text(
     tfidf_vec,
     sym_matrix,
     threshold: float = 0.35,
-) -> tuple[set, set]:
-    """
-    Parse free-form text (paragraph, comma list, or mixed) and return:
-        confirmed_symptoms  – set of matched symptom strings
-        negated_symptoms    – set of explicitly denied symptoms (for display)
-
-    Strategy:
-      1. Split on sentence boundaries (.!?;)
-      2. Per sentence, detect negation context
-      3. Split each sentence into clauses (comma / conjunctions / newlines)
-      4. Strip filler words from each clause
-      5. Fuzzy-match cleaned clause against symptom list
-      6. Exclude anything negated
-    """
-    # Split into sentences first
+) -> tuple:
     sentences = re.split(r"[.!?;]+", user_input)
-
     matched: set = set()
     negated: set = set()
 
@@ -570,24 +555,15 @@ def extract_symptoms_from_text(
         sentence = sentence.strip()
         if not sentence:
             continue
-
         is_neg = _is_negated(sentence)
-
-        # Split sentence into smaller clauses
         clauses = re.split(
             r"[,\n]|\band\b|\bor\b|\bbut\b|\balso\b|\bwith\b|\bplus\b",
-            sentence,
-            flags=re.IGNORECASE,
+            sentence, flags=re.IGNORECASE,
         )
-
         for clause in clauses:
-            # Remove filler words
             cleaned = FILLER_RE.sub(" ", clause)
-            # Collapse whitespace and normalise
             cleaned = re.sub(r"\s+", " ", cleaned).strip().lower()
-            # Convert spaces to underscores for symptom-list lookup
             cleaned_key = cleaned.replace(" ", "_")
-
             sym = _fuzzy_match(cleaned_key, symptom_list, tfidf_vec, sym_matrix, threshold)
             if sym:
                 if is_neg:
@@ -595,79 +571,125 @@ def extract_symptoms_from_text(
                 else:
                     matched.add(sym)
 
-    # Final confirmed = matched minus anything explicitly negated
     confirmed = matched - negated
     return confirmed, negated
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ACCESS CONTROL  ←  Uses hardcoded COLAB_API_URL constant
+# ACCESS CONTROL  ←  100% LOCAL, no server needed
 # ══════════════════════════════════════════════════════════════════════════════
-
-def _api_login(role: str, user_id: str) -> tuple[bool, str]:
-    base = COLAB_API_URL.rstrip("/")
-    try:
-        resp = requests.post(
-            f"{base}/login",
-            json={"role": role, "user_id": user_id},
-            timeout=8,
-        )
-        data = resp.json()
-        if resp.status_code == 200 and data.get("success"):
-            return True, data.get("message", "Login successful.")
-        return False, data.get("message", "Login failed.")
-    except requests.exceptions.ConnectionError:
-        return False, "❌ Cannot reach server. Please try again later."
-    except requests.exceptions.Timeout:
-        return False, "❌ Request timed out. Please try again."
-    except Exception as e:
-        return False, f"❌ API error: {e}"
-
-
-def _api_signup(role: str, user_id: str, name: str = "") -> tuple[bool, str]:
-    base = COLAB_API_URL.rstrip("/")
-    try:
-        resp = requests.post(
-            f"{base}/signup",
-            json={"role": role, "user_id": user_id, "name": name},
-            timeout=8,
-        )
-        data = resp.json()
-        if resp.status_code == 200 and data.get("success"):
-            return True, data.get("message", "Sign-up successful.")
-        return False, data.get("message", "Sign-up failed.")
-    except requests.exceptions.ConnectionError:
-        return False, "❌ Cannot reach server. Please try again later."
-    except requests.exceptions.Timeout:
-        return False, "❌ Request timed out. Please try again."
-    except Exception as e:
-        return False, f"❌ API error: {e}"
-
-
-def check_access(age: int, role: str, user_id: str, lang: str) -> tuple[bool, str]:
+def check_access(age: int, role: str, user_id: str, lang: str) -> tuple:
+    """
+    Returns (allowed: bool, error_message: str).
+    Validates purely against local sets — no HTTP calls.
+    """
     if age < 18:
         return False, t("Access Denied: Information is not available for users under 18.", lang)
 
-    if role in ("Student", "Doctor"):
-        logged_in_as = st.session_state.get("logged_in_as")
-        if (
-            logged_in_as
-            and logged_in_as.get("role") == role
-            and logged_in_as.get("user_id", "").upper() == user_id.strip().upper()
-        ):
-            return True, ""
-        ok, msg = _api_login(role, user_id)
-        if ok:
-            st.session_state["logged_in_as"] = {"role": role, "user_id": user_id.strip().upper()}
-            return True, ""
-        return False, msg
+    uid = user_id.strip().upper()
 
+    if role == "Doctor":
+        # Already verified this session
+        if st.session_state.get("verified_id") == uid and st.session_state.get("verified_role") == "Doctor":
+            return True, ""
+        if uid in VALID_DOCTORS:
+            st.session_state["verified_id"]   = uid
+            st.session_state["verified_role"] = "Doctor"
+            return True, ""
+        return False, t("Access Denied: Invalid ID for Doctor role.", lang)
+
+    if role == "Student":
+        if st.session_state.get("verified_id") == uid and st.session_state.get("verified_role") == "Student":
+            return True, ""
+        if uid in VALID_STUDENTS:
+            st.session_state["verified_id"]   = uid
+            st.session_state["verified_role"] = "Student"
+            return True, ""
+        return False, t("Access Denied: Invalid ID for Student role.", lang)
+
+    # Normal User — no ID check needed
     return True, ""
 
 
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# SIDEBAR AUTH PANEL  ←  clean, no API calls
+# ══════════════════════════════════════════════════════════════════════════════
+def render_sidebar_auth(role: str, lang: str) -> str:
+    """
+    Shows ID entry for Student / Doctor roles.
+    Verifies against local sets instantly.
+    Returns the verified user_id string (or "").
+    """
+    if "verified_id"   not in st.session_state: st.session_state["verified_id"]   = ""
+    if "verified_role" not in st.session_state: st.session_state["verified_role"] = ""
+    if "auth_msg"      not in st.session_state: st.session_state["auth_msg"]       = ("", False)
+
+    vid  = st.session_state.get("verified_id", "")
+    vrol = st.session_state.get("verified_role", "")
+
+    # Already verified for this role
+    if vid and vrol == role:
+        st.sidebar.markdown(
+            f"<div class='logged-in-badge'>✅ Verified as {role}<br>"
+            f"<span style='font-size:0.75rem;opacity:0.8'>ID: {vid}</span></div>",
+            unsafe_allow_html=True,
+        )
+        if st.sidebar.button("🔒 Clear verification", key="clear_verify", use_container_width=True):
+            st.session_state["verified_id"]   = ""
+            st.session_state["verified_role"] = ""
+            st.session_state["auth_msg"]      = ("", False)
+            st.rerun()
+        return vid
+
+    prefix      = "ST" if role == "Student" else "DR"
+    placeholder = f"e.g. {prefix}001"
+    hint        = f"ID must start with <b>{prefix}</b> — e.g. {prefix}001"
+
+    st.sidebar.markdown(
+        f"<div class='auth-info' style='margin-bottom:6px'>{hint}</div>",
+        unsafe_allow_html=True,
+    )
+
+    entered_id = st.sidebar.text_input(
+        "Enter your ID", placeholder=placeholder,
+        type="password", key="sidebar_id_field",
+    )
+
+    if st.sidebar.button("✅ Verify ID", key="verify_btn", use_container_width=True):
+        uid = entered_id.strip().upper()
+        if not uid:
+            st.session_state["auth_msg"] = ("Please enter your ID.", False)
+        elif role == "Doctor" and uid not in VALID_DOCTORS:
+            st.session_state["auth_msg"] = ("❌ ID not recognised for Doctor role.", False)
+        elif role == "Student" and uid not in VALID_STUDENTS:
+            st.session_state["auth_msg"] = ("❌ ID not recognised for Student role.", False)
+        else:
+            st.session_state["verified_id"]   = uid
+            st.session_state["verified_role"] = role
+            st.session_state["auth_msg"]      = (f"✅ Verified as {role}.", True)
+            st.rerun()
+
+    msg_text, msg_ok = st.session_state["auth_msg"]
+    if msg_text:
+        css = "auth-success" if msg_ok else "auth-error"
+        st.sidebar.markdown(
+            f"<div class='{css}'>{msg_text}</div>",
+            unsafe_allow_html=True,
+        )
+
+    st.sidebar.markdown(
+        "<div class='auth-info'>Don't have an ID? Open <b>auth.html</b> in your browser "
+        "to create one, then add it to <code>VALID_DOCTORS</code> / <code>VALID_STUDENTS</code> "
+        "at the top of <code>app.py</code>.</div>",
+        unsafe_allow_html=True,
+    )
+
+    return ""
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # ROLE-BASED RECOMMENDATIONS
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 def role_based_recs(role, lang, key,
                     description_map, diets_map, medications_map,
                     precautions_map, workout_map):
@@ -679,11 +701,11 @@ def role_based_recs(role, lang, key,
 
     if role == "Doctor":
         cards = [
-            {"label": t("Description",      lang), "content": desc,    "card_type": "full"},
-            {"label": t("Dietary Plan",      lang), "content": diet,    "card_type": "full"},
-            {"label": t("Medications",       lang), "content": meds,    "card_type": "full"},
-            {"label": t("Precautions",       lang), "content": precs,   "card_type": "full"},
-            {"label": t("Workout/Activity",  lang), "content": workout, "card_type": "full"},
+            {"label": t("Description",     lang), "content": desc,    "card_type": "full"},
+            {"label": t("Dietary Plan",     lang), "content": diet,    "card_type": "full"},
+            {"label": t("Medications",      lang), "content": meds,    "card_type": "full"},
+            {"label": t("Precautions",      lang), "content": precs,   "card_type": "full"},
+            {"label": t("Workout/Activity", lang), "content": workout, "card_type": "full"},
         ]
         advice = ""
 
@@ -701,36 +723,36 @@ def role_based_recs(role, lang, key,
             meds_note    = "Full medication details restricted to Doctors only."
 
         cards = [
-            {"label": t("Description",      lang), "content": desc,         "card_type": "full"},
-            {"label": t("Dietary Plan",      lang), "content": diet,         "card_type": "full"},
-            {"label": t("Medications",       lang), "content": meds_display,
-             "note": meds_note,                                               "card_type": "limited"},
-            {"label": t("Precautions",       lang), "content": precs,        "card_type": "full"},
-            {"label": t("Workout/Activity",  lang), "content": workout,      "card_type": "full"},
+            {"label": t("Description",     lang), "content": desc,         "card_type": "full"},
+            {"label": t("Dietary Plan",     lang), "content": diet,         "card_type": "full"},
+            {"label": t("Medications",      lang), "content": meds_display,
+             "note": meds_note,                                              "card_type": "limited"},
+            {"label": t("Precautions",      lang), "content": precs,        "card_type": "full"},
+            {"label": t("Workout/Activity", lang), "content": workout,      "card_type": "full"},
         ]
         advice = "ℹ️ Full medication details are only available to licensed Doctors."
 
     else:
         cards = [
-            {"label": t("Description",      lang), "content": desc,   "card_type": "full"},
-            {"label": t("Dietary Plan",      lang),
-             "content": "🔒 Dietary plan details are restricted. Please consult a licensed nutritionist or doctor for a personalised plan.",
-                                                                        "card_type": "locked"},
-            {"label": t("Medications",       lang),
+            {"label": t("Description",     lang), "content": desc,   "card_type": "full"},
+            {"label": t("Dietary Plan",     lang),
+             "content": "🔒 Dietary plan details are restricted. Please consult a licensed nutritionist or doctor.",
+             "card_type": "locked"},
+            {"label": t("Medications",     lang),
              "content": "🔒 Medication details are restricted to licensed Doctors only. Please consult a healthcare professional.",
-                                                                        "card_type": "locked"},
-            {"label": t("Precautions",       lang), "content": precs, "card_type": "full"},
-            {"label": t("Workout/Activity",  lang), "content": workout, "card_type": "full"},
+             "card_type": "locked"},
+            {"label": t("Precautions",     lang), "content": precs,   "card_type": "full"},
+            {"label": t("Workout/Activity",lang), "content": workout, "card_type": "full"},
         ]
         advice = ("⚠️ This information is for general awareness only. "
-                  "Always consult a qualified doctor before taking any medication or following a treatment plan.")
+                  "Always consult a qualified doctor before taking any medication.")
 
     return cards, advice
 
 
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 # RENDER RECOMMENDATION CARDS
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 def render_rec_cards(cards: list):
     for card in cards:
         label     = card["label"]
@@ -745,7 +767,8 @@ def render_rec_cards(cards: list):
             body = f"<p style='margin:0'>{content}</p>"
 
         if note:
-            body += f"<p class='restriction-note' style='margin-top:8px;color:#f0883e;font-size:0.8rem;font-style:italic'>⚠️ {note}</p>"
+            body += (f"<p class='restriction-note' style='margin-top:8px;color:#f0883e;"
+                     f"font-size:0.8rem;font-style:italic'>⚠️ {note}</p>")
 
         css_class = {
             "full":    "result-card",
@@ -759,9 +782,9 @@ def render_rec_cards(cards: list):
         )
 
 
-# ──────────────────────────────────────────────
-# PREDICTION SYSTEM  ←  updated to use NLP extractor
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# PREDICTION SYSTEM
+# ══════════════════════════════════════════════════════════════════════════════
 def integrated_prediction_system(
     user_input, age, role, user_id, lang,
     main_df, le, svc_model, dt_model,
@@ -773,17 +796,15 @@ def integrated_prediction_system(
         return None, msg
 
     symptom_list = list(main_df.drop(columns=["diseases"]).columns)
-
-    # ── NEW: NLP paragraph extractor replaces simple comma-split ──────────────
     matched_symptoms, negated_symptoms = extract_symptoms_from_text(
         user_input, symptom_list, tfidf_vec, sym_matrix, threshold
     )
-    # ─────────────────────────────────────────────────────────────────────────
 
     if not matched_symptoms:
         hint = ""
         if negated_symptoms:
-            hint = f" (Negated symptoms detected: {', '.join(s.replace('_',' ') for s in negated_symptoms)})"
+            hint = (f" (Negated symptoms detected: "
+                    f"{', '.join(s.replace('_',' ') for s in negated_symptoms)})")
         return None, (
             "⚠️ No recognised symptoms found. Try describing your symptoms naturally, e.g.:\n"
             "• *I have a headache and sore throat*\n"
@@ -821,12 +842,9 @@ def integrated_prediction_system(
         description_map, diets_map, medications_map, precautions_map, workout_map,
     )
 
-    matched_display  = [s.replace("_", " ").title() for s in matched_symptoms]
-    negated_display  = [s.replace("_", " ").title() for s in negated_symptoms]
-
     return {
-        "matched_symptoms":     matched_display,
-        "negated_symptoms":     negated_display,   # shown in UI as excluded
+        "matched_symptoms":     [s.replace("_", " ").title() for s in matched_symptoms],
+        "negated_symptoms":     [s.replace("_", " ").title() for s in negated_symptoms],
         "predicted_conditions": svc_preds,
         "top_disease":          top_disease,
         "rec_cards":            cards,
@@ -834,9 +852,9 @@ def integrated_prediction_system(
     }, ""
 
 
-# ──────────────────────────────────────────────
-# CHATBOT  ←  updated to use NLP extractor for disease lookup
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# CHATBOT
+# ══════════════════════════════════════════════════════════════════════════════
 def chatbot_response(
     query, age, role, user_id, lang,
     description_map, diets_map, medications_map, precautions_map, workout_map,
@@ -849,13 +867,13 @@ def chatbot_response(
     q = query.lower().strip()
 
     INTENT_KEYWORDS = {
-        "diet":       ["diet", "food", "eat", "nutrition", "meal", "drink", "አመጋገብ"],
-        "medication": ["medicine", "medication", "drug", "pill", "treat", "tablet",
-                       "prescription", "dose", "መድሃኒት"],
-        "precaution": ["precaution", "avoid", "prevent", "careful", "warning", "ጥንቃቄ"],
-        "workout":    ["workout", "exercise", "activity", "fitness", "sport", "physical", "ስፖርት"],
-        "description":["what is", "describe", "about", "explain", "overview",
-                       "definition", "meaning", "symptom", "cause", "sign"],
+        "diet":        ["diet", "food", "eat", "nutrition", "meal", "drink", "አመጋገብ"],
+        "medication":  ["medicine", "medication", "drug", "pill", "treat", "tablet",
+                        "prescription", "dose", "መድሃኒት"],
+        "precaution":  ["precaution", "avoid", "prevent", "careful", "warning", "ጥንቃቄ"],
+        "workout":     ["workout", "exercise", "activity", "fitness", "sport", "physical", "ስፖርት"],
+        "description": ["what is", "describe", "about", "explain", "overview",
+                        "definition", "meaning", "symptom", "cause", "sign"],
     }
 
     intent = "description"
@@ -864,36 +882,24 @@ def chatbot_response(
             intent = key
             break
 
-    disease_keys   = list(description_map.keys())
-    rich_texts     = []
-    for dk in disease_keys:
-        desc = description_map.get(dk, "")
-        rich_texts.append(f"{dk} {desc}")
+    disease_keys = list(description_map.keys())
+    rich_texts   = [f"{dk} {description_map.get(dk,'')}" for dk in disease_keys]
 
     if not rich_texts:
         return "Sorry, the knowledge base is empty."
 
-    chat_vec    = TfidfVectorizer(
-        analyzer="word",
-        ngram_range=(1, 2),
-        stop_words="english",
-        min_df=1,
-    ).fit(rich_texts)
-
+    chat_vec    = TfidfVectorizer(analyzer="word", ngram_range=(1, 2),
+                                  stop_words="english", min_df=1).fit(rich_texts)
     rich_matrix = chat_vec.transform(rich_texts).toarray()
 
-    # ── NEW: use NLP-cleaned query for better matching ────────────────────────
     q_cleaned = FILLER_RE.sub(" ", q)
     q_cleaned = re.sub(r"\s+", " ", q_cleaned).strip()
     q_vec     = chat_vec.transform([q_cleaned]).toarray()
-    # ─────────────────────────────────────────────────────────────────────────
-
-    sims        = cosine_similarity(q_vec, rich_matrix)[0]
-    best_idx    = int(np.argmax(sims))
-    best_sim    = float(sims[best_idx])
+    sims      = cosine_similarity(q_vec, rich_matrix)[0]
+    best_idx  = int(np.argmax(sims))
+    best_sim  = float(sims[best_idx])
 
     if best_sim < threshold:
-        # ── NEW: try to extract symptoms from query and suggest diseases ──────
         if symptom_list is not None and sym_matrix is not None:
             confirmed, _ = extract_symptoms_from_text(
                 query, symptom_list, tfidf_vec, sym_matrix, threshold=0.35
@@ -902,16 +908,14 @@ def chatbot_response(
                 sym_names = ", ".join(s.replace("_", " ") for s in list(confirmed)[:5])
                 fallback = (
                     f"I found possible symptoms in your message: *{sym_names}*.\n\n"
-                    "Try using the **Disease Predictor** tab to get a full diagnosis based on those symptoms. "
+                    "Try using the **Disease Predictor** tab for a full diagnosis. "
                     "Or ask about a specific disease, e.g.:\n"
                     "• *What is diabetes?*\n"
                     "• *What diet should I follow for asthma?*"
                 )
                 return translate_content(fallback, lang) if lang.lower() == "amharic" else fallback
-        # ─────────────────────────────────────────────────────────────────────
         fallback = (
-            "I couldn't find specific information for that query. "
-            "Try asking about a specific disease, e.g.:\n"
+            "I couldn't find specific information for that query. Try asking:\n"
             "• *What is diabetes?*\n"
             "• *What diet should I follow for asthma?*\n"
             "• *What medications are used for hypertension?*\n"
@@ -925,18 +929,14 @@ def chatbot_response(
     if intent == "diet":
         raw   = diets_map.get(disease_key, "N/A")
         label = t("Dietary Plan", lang)
-        if role == "Normal User":
-            info        = "🔒 Dietary plan details are restricted. Please consult a licensed nutritionist or doctor for a personalised plan."
-            restriction = ""
-        else:
-            info        = raw
-            restriction = ""
+        info  = ("🔒 Dietary plan details are restricted." if role == "Normal User" else raw)
+        restriction = ""
 
     elif intent == "medication":
         raw   = medications_map.get(disease_key, "N/A")
         label = t("Medications", lang)
         if role == "Normal User":
-            info        = "🔒 Medication details are restricted. Please consult a licensed doctor."
+            info = "🔒 Medication details are restricted. Please consult a licensed doctor."
             restriction = ""
         elif role == "Student":
             if isinstance(raw, str) and raw not in ("N/A", ""):
@@ -947,16 +947,13 @@ def chatbot_response(
                 info = "N/A"
             restriction = "\n\n⚠️ *Drug class names only. Full details restricted to Doctors.*"
         else:
-            info        = raw
+            info = raw
             restriction = ""
 
     elif intent == "precaution":
         raw   = precautions_map.get(disease_key, [])
         label = t("Precautions", lang)
-        if isinstance(raw, list):
-            info = "\n" + "\n".join(f"• {p}" for p in raw) if raw else "N/A"
-        else:
-            info = str(raw)
+        info  = ("\n" + "\n".join(f"• {p}" for p in raw)) if isinstance(raw, list) and raw else str(raw)
         restriction = ""
 
     elif intent == "workout":
@@ -978,9 +975,9 @@ def chatbot_response(
     return f"**{disease_title}** — {label}:\n\n{info_str}{restriction}"
 
 
-# ──────────────────────────────────────────────
-# QUICK-SELECT WIDGET
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# QUICK-SELECT SYMPTOM WIDGET
+# ══════════════════════════════════════════════════════════════════════════════
 def render_quick_select_symptoms(lang: str) -> None:
     CATEGORIES_EN = {
         "🌡️ General": [
@@ -1058,9 +1055,8 @@ def render_quick_select_symptoms(lang: str) -> None:
             "blood in urine", "retention of urine", "unusual color or odor to urine",
             "excessive urination at night", "low urine output", "hesitancy",
             "symptoms of bladder", "symptoms of the kidneys", "kidney mass",
-            "symptoms of prostate",
-            "vaginal itching", "vaginal discharge", "vaginal pain", "vaginal redness",
-            "pain during intercourse", "impotence",
+            "symptoms of prostate", "vaginal itching", "vaginal discharge",
+            "vaginal pain", "vaginal redness", "pain during intercourse", "impotence",
             "symptoms of the scrotum and testes", "swelling of scrotum", "pain in testicles",
         ],
         "🤰 Women's Health": [
@@ -1092,143 +1088,29 @@ def render_quick_select_symptoms(lang: str) -> None:
         "fluid retention": "ፈሳሽ ማቆር",
         "anxiety and nervousness": "ጭንቀት እና ነርቭ", "depression": "ድብርት",
         "insomnia": "እንቅልፍ ማጣት", "dizziness": "ራስ ዞር",
-        "abnormal involuntary movements": "ያልተፈለጉ እንቅስቃሴዎች",
-        "depressive or psychotic symptoms": "ድብርት ወይም ሳይኮቲክ ምልክቶች",
-        "disturbance of memory": "የትውስታ ችግር", "paresthesia": "መቆጥቆጥ ስሜት",
-        "loss of sensation": "ስሜት ማጣት", "focal weakness": "ጠቃላይ ድክመት",
-        "seizures": "ቅብጠት", "delusions or hallucinations": "ቅዠት",
-        "fainting": "ዋዛ ማጣት", "temper problems": "ቁጣ ችግር",
-        "fears and phobias": "ፍርሃቶች", "obsessions and compulsions": "ቋሚ ሃሳቦች",
-        "antisocial behavior": "ፀረ-ማህበራዊ ባህሪ", "hysterical behavior": "ሂስቴሪካዊ ባህሪ",
-        "low self-esteem": "ዝቅተኛ ራስ-ግምት", "excessive anger": "ከፍተኛ ቁጣ",
-        "hostile behavior": "ጠበኛ ባህሪ", "drug abuse": "የዕፅ አጠቃቀም",
-        "abusing alcohol": "የአልኮል ሱሰኝነት",
-        "shortness of breath": "መተንፈስ ማጠር", "sharp chest pain": "ሹል የደረት ህመም",
-        "chest tightness": "ደረት መጠበቅ", "palpitations": "ልብ ምት ስሜት",
-        "irregular heartbeat": "ያልተስተካከለ ልብ ምት", "breathing fast": "ፈጣን መተንፈስ",
-        "cough": "ሳል", "wheezing": "ሲፏፏ ድምፅ", "difficulty breathing": "ለመተንፈስ ችግር",
-        "congestion in chest": "ደረት ውስጥ ብናኝ", "abnormal breathing sounds": "ያልተለመዱ የትንፋሽ ድምፆች",
-        "hurts to breath": "ሲተነፍሱ ህመም", "apnea": "መተንፈስ መቆም",
-        "hoarse voice": "ሻካራ ድምፅ", "hemoptysis": "ደም አሳልፎ ማስወጣት",
-        "coughing up sputum": "ምራቅ ማሳል", "increased heart rate": "ልብ ምት መጨመር",
-        "decreased heart rate": "ልብ ምት መቀነስ", "burning chest pain": "የሚቃጠል የደረት ህመም",
-        "sore throat": "ጉሮሮ ህመም", "difficulty speaking": "ለመናገር ችግር",
-        "nasal congestion": "አፍንጫ መዘጋት", "throat swelling": "ጉሮሮ ማበጥ",
-        "diminished hearing": "ሰሚ ማቀዝቀዝ", "difficulty in swallowing": "ለመዋጥ ችግር",
-        "pus draining from ear": "ጆሮ ፕስ", "ear pain": "የጆሮ ህመም",
-        "ringing in ear": "ጆሮ ድምፅ", "plugged feeling in ear": "ጆሮ መዘጋት",
-        "itchy ear(s)": "ጆሮ ማሳከክ", "fluid in ear": "ጆሮ ውስጥ ፈሳሽ",
-        "redness in ear": "ጆሮ ቀያ", "bleeding from ear": "ጆሮ ደም",
-        "swollen or red tonsils": "ቲንሲሎች ማበጥ", "sneezing": "ማስነጠስ",
-        "coryza": "አፍንጫ ፍሳሽ", "sinus congestion": "ሳይነስ መዘጋት",
-        "painful sinuses": "ሳይነስ ህመም", "nosebleed": "አፍንጫ ደም",
-        "sharp abdominal pain": "ሹል የሆድ ህመም", "upper abdominal pain": "የላይ ሆድ ህመም",
-        "burning abdominal pain": "የሚቃጠል የሆድ ህመም", "lower abdominal pain": "የታች ሆድ ህመም",
-        "nausea": "ማቅለሽለሽ", "vomiting": "ማስታወክ", "vomiting blood": "ደም ማስታወክ",
+        "headache": "ራስ ምታት", "nausea": "ማቅለሽለሽ", "vomiting": "ማስታወክ",
         "diarrhea": "ተቅማጥ", "constipation": "ሆድ መጠፍጠፍ",
-        "stomach bloating": "ሆድ ማበጥ", "heartburn": "ሆድ ማቃጠል",
-        "regurgitation": "ምግብ መመለስ", "blood in stool": "ሰገራ ውስጥ ደም",
-        "melena": "ጥቁር ሰገራ", "rectal bleeding": "የፊንጥ ደም",
-        "changes in stool appearance": "ሰገራ ቀለም ለውጥ",
-        "pain of the anus": "የፊንጥ ህመም",
-        "mass or swelling around the anus": "የፊንጥ አካባቢ ማበጥ",
-        "itching of the anus": "የፊንጥ ማሳከክ",
-        "headache": "ራስ ምታት", "frontal headache": "ፊት ራስ ምታት",
-        "back pain": "የጀርባ ህመም", "low back pain": "የታች ጀርባ ህመም",
-        "neck pain": "የአንገት ህመም", "shoulder pain": "የትከሻ ህመም",
-        "hip pain": "የጭን ህመም", "knee pain": "የጉልበት ህመም",
-        "leg pain": "የእግር ህመም", "foot or toe pain": "የጣት/እግር ህመም",
-        "ankle pain": "የቁርጭምጭሚት ህመም", "elbow pain": "የክርን ህመም",
-        "arm pain": "የክንድ ህመም", "wrist pain": "የሚዳቃ ህመም",
-        "hand or finger pain": "የእጅ/ጣት ህመም", "joint pain": "የመገጣጠሚያ ህመም",
-        "rib pain": "የጎን ሳምባ ህመም", "groin pain": "የጉሮሮ ህመም",
-        "suprapubic pain": "የታች ሆድ ህመም", "side pain": "የጎን ህመም",
-        "facial pain": "የፊት ህመም", "bones are painful": "አጥንቶች ህማም",
-        "back cramps or spasms": "የጀርባ ቁርጠት", "cramps and spasms": "ቁርጠት",
-        "arm stiffness or tightness": "ክንድ ድርቀት", "arm swelling": "ክንድ ማበጥ",
-        "arm weakness": "ክንድ ድክመት", "arm lump or mass": "ክንድ እብጠት",
-        "wrist swelling": "ሚዳቃ ማበጥ",
-        "hand or finger swelling": "እጅ/ጣት ማበጥ",
-        "hand or finger stiffness or tightness": "እጅ/ጣት ድርቀት",
-        "hand or finger weakness": "እጅ/ጣት ድክመት",
-        "hand or finger lump or mass": "እጅ/ጣት እብጠት",
-        "knee swelling": "ጉልበት ማበጥ", "knee stiffness or tightness": "ጉልበት ድርቀት",
-        "leg swelling": "እግር ማበጥ", "leg weakness": "እግር ድክመት",
-        "ankle swelling": "ቁርጭምጭሚት ማበጥ", "foot or toe swelling": "ጣት/እግር ማበጥ",
-        "elbow swelling": "ክርን ማበጥ",
-        "shoulder stiffness or tightness": "ትከሻ ድርቀት",
-        "hip stiffness or tightness": "ጭን ድርቀት",
-        "back stiffness or tightness": "ጀርባ ድርቀት",
-        "neck mass": "አንገት እብጠት", "neck swelling": "አንገት ማበጥ",
-        "peripheral edema": "ዳርቻ ማበጥ", "problems with movement": "እንቅስቃሴ ችግር",
-        "abnormal appearing skin": "ቆዳ ለውጥ", "skin lesion": "ቆዳ ቁስለት",
-        "acne or pimples": "ሽፍታ/ፊጥ", "skin growth": "ቆዳ ዕድገት",
-        "skin moles": "የቆዳ ምልክቶች", "warts": "ዕጢ",
-        "skin rash": "ቆዳ ሽፍታ", "itching of skin": "ቆዳ ማሳከክ",
-        "skin dryness, peeling, scaliness, or roughness": "ቆዳ ደረቅ/መላጥ",
-        "skin irritation": "ቆዳ ቅርጫ", "itchy scalp": "ጭንቅላት ማሳከክ",
-        "irregular appearing scalp": "ጭንቅላት ለውጥ", "jaundice": "ቢጫ በሽታ",
-        "diaper rash": "ዳይፐር ሽፍታ", "eyelid lesion or rash": "ዐይን ሽፍታ",
-        "irregular appearing nails": "ጥፍር ለውጥ",
-        "diminished vision": "ዕይታ መቀነስ", "double vision": "ድርብ ዕይታ",
-        "symptoms of eye": "የዓይን ምልክቶች", "pain in eye": "የዓይን ህመም",
-        "abnormal movement of eyelid": "የዐይን ሽፋን እንቅስቃሴ",
-        "foreign body sensation in eye": "ዓይን ውስጥ ነገር ስሜት",
-        "eye redness": "ቀይ ዓይን", "lacrimation": "ዕንባ",
-        "itchiness of eye": "ዓይን ማሳከክ", "blindness": "ዓይነ ስውርነት",
-        "eye burns or stings": "ዓይን ማቃጠል",
-        "spots or clouds in vision": "ዕይታ ደበዘዘ", "bleeding from eye": "ዓይን ደም",
-        "mass on eyelid": "የዐይን ሽፋን እብጠት", "swollen eye": "ዓይን ማበጥ",
-        "eyelid swelling": "የዐይን ሽፋን ማበጥ", "white discharge from eye": "ዓይን ፈሳሽ",
-        "painful urination": "ሽንት ሲሸኑ ህመም", "frequent urination": "ተደጋጋሚ ሽንት",
-        "involuntary urination": "ያለፈቃድ ሽንት", "blood in urine": "ሽንት ውስጥ ደም",
-        "retention of urine": "ሽንት ማቆር", "unusual color or odor to urine": "ሽንት ቀለም/ሽታ ለውጥ",
-        "excessive urination at night": "ሌሊት ሽንት", "low urine output": "ሽንት መቀነስ",
-        "hesitancy": "ሽንት ማቅማማት",
-        "symptoms of bladder": "የፊኛ ምልክቶች",
-        "symptoms of the kidneys": "የኩላሊት ምልክቶች", "kidney mass": "ኩላሊት እብጠት",
-        "symptoms of prostate": "የፕሮስቴት ምልክቶች",
-        "vaginal itching": "ብልት ማሳከክ", "vaginal discharge": "ብልት ፍሳሽ",
-        "vaginal pain": "ብልት ህመም", "vaginal redness": "ብልት ቀያ",
-        "pain during intercourse": "ወሲብ ጊዜ ህመም", "impotence": "ወሲብ ድካም",
-        "symptoms of the scrotum and testes": "የፍልፈል ምልክቶች",
-        "swelling of scrotum": "ፍልፈል ማበጥ", "pain in testicles": "ፍልፈል ህመም",
-        "hot flashes": "ሙቀት ፍላጻ", "intermenstrual bleeding": "ወር አበባ መካከል ደም",
-        "pain during pregnancy": "እርግዝና ጊዜ ህመም",
-        "problems during pregnancy": "እርግዝና ጊዜ ችግሮች",
-        "spotting or bleeding during pregnancy": "እርግዝና ጊዜ ደም",
-        "uterine contractions": "የማህፀን መኮማተር", "recent pregnancy": "ቅርብ ጊዜ እርግዝና",
-        "pelvic pain": "የዳሌ ህመም",
-        "long menstrual periods": "ረዥም ወር አበባ",
-        "heavy menstrual flow": "ከባድ ወር አበባ", "unpredictable menstruation": "ያልተስተካከለ ወር አበባ",
+        "cough": "ሳል", "shortness of breath": "መተንፈስ ማጠር",
+        "sore throat": "ጉሮሮ ህመም", "back pain": "የጀርባ ህመም",
+        "joint pain": "የመገጣጠሚያ ህመም", "chest tightness": "ደረት መጠበቅ",
+        "jaundice": "ቢጫ በሽታ", "skin rash": "ቆዳ ሽፍታ",
+        "eye redness": "ቀይ ዓይን", "painful urination": "ሽንት ሲሸኑ ህመም",
+        "frequent urination": "ተደጋጋሚ ሽንት", "blood in urine": "ሽንት ውስጥ ደም",
+        "palpitations": "ልብ ምት ስሜት", "sneezing": "ማስነጠስ",
+        "nasal congestion": "አፍንጫ መዘጋት", "ear pain": "የጆሮ ህመም",
+        "vaginal discharge": "ብልት ፍሳሽ", "hot flashes": "ሙቀት ፍላጻ",
         "painful menstruation": "ወር አበባ ህመም", "infertility": "መካንነት",
-        "frequent menstruation": "ተደጋጋሚ ወር አበባ",
-        "blood clots during menstrual periods": "ወር አበባ ደም ስብ",
-        "lack of growth": "እድገት ማጣት", "irritable infant": "ቅሬታ ሕፃን",
-        "infant feeding problem": "ሕፃን ምግብ ችግር", "pulling at ears": "ጆሮ መጎተት",
-        "back mass or lump": "ጀርባ እብጠት", "jaw swelling": "መንጋጋ ማበጥ",
-        "lip swelling": "ከንፈር ማበጥ", "toothache": "ጥርስ ህመም",
-        "mouth ulcer": "አፍ ቁስለት", "gum pain": "ድድ ህመም",
-        "mouth dryness": "አፍ ደረቅ", "mouth pain": "አፍ ህመም",
-        "bleeding gums": "ድድ ደም", "pain in gums": "ድድ ህመም",
-        "allergic reaction": "አለርጂ", "symptoms of the face": "የፊት ምልክቶች",
-        "lower body pain": "የታች አካል ህመም",
+        "lack of growth": "እድገት ማጣት", "toothache": "ጥርስ ህመም",
+        "mouth ulcer": "አፍ ቁስለት", "allergic reaction": "አለርጂ",
     }
 
     CAT_AM = {
-        "🌡️ General": "አጠቃላይ",
-        "🧠 Neuro/Mental": "ነርቭ/አዕምሮ",
-        "🫀 Cardio/Resp": "ልብ/መተንፈሻ",
-        "👃 ENT": "ጆሮ/አፍንጫ/ጉሮሮ",
-        "🤢 Gastro": "የምግብ መፈጨት",
-        "🤕 Pain": "ህመም",
-        "🦴 Musculo/Limbs": "ጡንቻ/አካላት",
-        "🩺 Skin": "ቆዳ",
-        "👁️ Eye": "ዓይን",
-        "🚻 Urinary/Repro": "ሽንት/ስሜት",
-        "🤰 Women's Health": "የሴቶች ጤና",
-        "👶 Pediatric": "ሕፃናት",
-        "🔬 Other": "ሌላ",
+        "🌡️ General": "አጠቃላይ", "🧠 Neuro/Mental": "ነርቭ/አዕምሮ",
+        "🫀 Cardio/Resp": "ልብ/መተንፈሻ", "👃 ENT": "ጆሮ/አፍንጫ/ጉሮሮ",
+        "🤢 Gastro": "የምግብ መፈጨት", "🤕 Pain": "ህመም",
+        "🦴 Musculo/Limbs": "ጡንቻ/አካላት", "🩺 Skin": "ቆዳ",
+        "👁️ Eye": "ዓይን", "🚻 Urinary/Repro": "ሽንት/ስሜት",
+        "🤰 Women's Health": "የሴቶች ጤና", "👶 Pediatric": "ሕፃናት", "🔬 Other": "ሌላ",
     }
 
     is_am   = lang.lower() == "amharic"
@@ -1322,11 +1204,11 @@ renderTabs(); renderPills();
     components.html(html_code, height=220, scrolling=False)
 
 
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 # CALLBACKS
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 def clear_symptoms_callback():
-    st.session_state["symptoms_text"]    = ""
+    st.session_state["symptoms_text"]     = ""
     st.session_state["prediction_result"] = None
     st.session_state["prediction_error"]  = None
 
@@ -1336,91 +1218,8 @@ def clear_diagnosis_callback():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SIDEBAR — Sign Up / Login panel
-# ══════════════════════════════════════════════════════════════════════════════
-def render_sidebar_auth(role: str, lang: str) -> str:
-    if "logged_in_as"   not in st.session_state: st.session_state["logged_in_as"]   = None
-    if "auth_msg"       not in st.session_state: st.session_state["auth_msg"]        = ("", False)
-    if "auth_mode"      not in st.session_state: st.session_state["auth_mode"]       = "login"
-
-    li = st.session_state.get("logged_in_as")
-    if li and li.get("role") == role:
-        uid = li["user_id"]
-        st.sidebar.markdown(
-            f"<div class='logged-in-badge'>✅ Logged in as {role}<br>"
-            f"<span style='font-size:0.75rem;opacity:0.8'>ID: {uid}</span></div>",
-            unsafe_allow_html=True,
-        )
-        if st.sidebar.button("🚪 Log out", key="logout_btn", use_container_width=True):
-            st.session_state["logged_in_as"] = None
-            st.session_state["auth_msg"]     = ("", False)
-            st.rerun()
-        return uid
-
-    mode_col1, mode_col2 = st.sidebar.columns(2)
-    with mode_col1:
-        if st.button("🔑 Login",   key="mode_login",  use_container_width=True):
-            st.session_state["auth_mode"] = "login"
-            st.session_state["auth_msg"]  = ("", False)
-    with mode_col2:
-        if st.button("📝 Sign Up", key="mode_signup", use_container_width=True):
-            st.session_state["auth_mode"] = "signup"
-            st.session_state["auth_msg"]  = ("", False)
-
-    mode = st.session_state["auth_mode"]
-
-    prefix      = "ST" if role == "Student" else "DR"
-    hint        = f"ID must start with <b>{prefix}</b> — e.g. {prefix}001"
-    placeholder = f"e.g. {prefix}001"
-
-    st.sidebar.markdown(
-        f"<div class='auth-info' style='margin-bottom:6px'>{hint}</div>",
-        unsafe_allow_html=True,
-    )
-
-    if mode == "signup":
-        su_id   = st.sidebar.text_input("Choose an ID",  placeholder=placeholder, key="su_id_field")
-        su_name = st.sidebar.text_input("Your name (optional)", placeholder="Full name", key="su_name_field")
-        if st.sidebar.button("✅ Create Account", key="signup_submit_btn", use_container_width=True):
-            if not su_id.strip():
-                st.session_state["auth_msg"] = ("Please enter an ID.", False)
-            else:
-                ok, msg = _api_signup(role, su_id.strip(), su_name.strip())
-                st.session_state["auth_msg"] = (msg, ok)
-                if ok:
-                    st.session_state["logged_in_as"] = {
-                        "role": role, "user_id": su_id.strip().upper()
-                    }
-                    st.rerun()
-    else:
-        li_id = st.sidebar.text_input("Your ID", placeholder=placeholder,
-                                      type="password", key="li_id_field")
-        if st.sidebar.button("🔓 Login", key="login_submit_btn", use_container_width=True):
-            if not li_id.strip():
-                st.session_state["auth_msg"] = ("Please enter your ID.", False)
-            else:
-                ok, msg = _api_login(role, li_id.strip())
-                st.session_state["auth_msg"] = (msg, ok)
-                if ok:
-                    st.session_state["logged_in_as"] = {
-                        "role": role, "user_id": li_id.strip().upper()
-                    }
-                    st.rerun()
-
-    msg_text, msg_ok = st.session_state["auth_msg"]
-    if msg_text:
-        css = "auth-success" if msg_ok else "auth-error"
-        st.sidebar.markdown(
-            f"<div class='{css}'>{msg_text}</div>",
-            unsafe_allow_html=True,
-        )
-
-    return ""
-
-
-# ──────────────────────────────────────────────
 # MAIN
-# ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
 def main():
     missing = check_files()
     if missing:
@@ -1435,7 +1234,8 @@ def main():
     vec, sym_matrix, _ = build_tfidf_index(symptom_list, disease_names)
 
     # ── Sidebar ──────────────────────────────────────────────────────────────
-    st.sidebar.markdown('<div class="section-header">User Profile</div>', unsafe_allow_html=True)
+    st.sidebar.markdown('<div class="section-header">User Profile</div>',
+                        unsafe_allow_html=True)
     lang = st.sidebar.selectbox("🌐 Language", ["English", "Amharic"])
     role = st.sidebar.selectbox("👤 Role", ["Normal User", "Student", "Doctor"])
     age  = st.sidebar.number_input("🎂 Age", min_value=0, max_value=120, value=25)
@@ -1451,19 +1251,26 @@ def main():
 
     role_colors = {"Doctor": "#1f6feb", "Student": "#2ea043", "Normal User": "#6e7681"}
     rc = role_colors.get(role, "#6e7681")
+    r_int = int(rc[1:3], 16)
+    g_int = int(rc[3:5], 16)
+    b_int = int(rc[5:7], 16)
     st.sidebar.markdown(
         f"<div style='margin-top:8px'>"
-        f"<span class='role-badge' style='background:rgba({int(rc[1:3],16)},{int(rc[3:5],16)},{int(rc[5:7],16)},0.2);"
+        f"<span class='role-badge' style='background:rgba({r_int},{g_int},{b_int},0.2);"
         f"color:{rc};border:1px solid {rc}40'>● {role}</span></div>",
         unsafe_allow_html=True,
     )
     st.sidebar.markdown("---")
     st.sidebar.caption("⚕️ General health information only. Always consult a qualified doctor.")
 
-    for key in ("prediction_result", "prediction_error", "chat_response"):
+    for key in ("prediction_result", "prediction_error", "chat_response",
+                "verified_id", "verified_role", "auth_msg"):
         if key not in st.session_state:
-            st.session_state[key] = None
+            st.session_state[key] = None if key in ("prediction_result",
+                                                     "prediction_error",
+                                                     "chat_response") else ""
 
+    # ── Header ───────────────────────────────────────────────────────────────
     st.markdown("""
     <div class='main-header'>
       <div class='main-header-title'>🏥 Integrated Healthcare Dashboard</div>
@@ -1483,10 +1290,9 @@ def main():
         st.markdown('<div class="section-header">🩺 Symptom-Based Disease Predictor</div>',
                     unsafe_allow_html=True)
 
-        # ── NLP info banner (NEW) ─────────────────────────────────────────────
         st.markdown(
             "<div class='nlp-info-banner'>"
-            "<span>✦ Smart symptom extraction</span> — you can type naturally: "
+            "<span>✦ Smart symptom extraction</span> — type naturally: "
             "<em>\"I've been having terrible headaches and my throat is sore. Also feel tired with some chills.\"</em> "
             "Commas, sentences, or paragraphs all work. Negations like "
             "<em>\"no vomiting\"</em> are automatically excluded."
@@ -1545,7 +1351,6 @@ def main():
             )
             st.markdown(chips, unsafe_allow_html=True)
 
-            # ── Show negated symptoms if any (NEW) ────────────────────────────
             if res.get("negated_symptoms"):
                 neg_chips = " · ".join(
                     f"<span style='background:rgba(248,81,73,0.08);padding:4px 12px;"
@@ -1554,7 +1359,8 @@ def main():
                     for s in res["negated_symptoms"]
                 )
                 st.markdown(
-                    f"<div style='margin-top:8px;font-size:0.78rem;color:#8b949e'>Excluded (negated): {neg_chips}</div>",
+                    f"<div style='margin-top:8px;font-size:0.78rem;color:#8b949e'>"
+                    f"Excluded (negated): {neg_chips}</div>",
                     unsafe_allow_html=True,
                 )
 
@@ -1611,7 +1417,7 @@ def main():
             label_visibility="collapsed",
         )
 
-        col_r1, col_r2 = st.columns([1, 5])
+        col_r1, _ = st.columns([1, 5])
         with col_r1:
             get_plan = st.button(t("Get Plan", lang), use_container_width=True)
 
@@ -1666,7 +1472,6 @@ def main():
         col_c1, col_c2 = st.columns([1, 6])
         with col_c1:
             ask_btn = st.button(t("Ask Bot", lang), use_container_width=True)
-
         with col_c2:
             st.markdown('<div class="clear-btn-container">', unsafe_allow_html=True)
             if st.button("🗑️ Clear", key="chat_clear", use_container_width=True):
