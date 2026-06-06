@@ -1,126 +1,763 @@
-import streamlit as st
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Healthcare Dashboard — Auth</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Poppins',sans-serif;background:linear-gradient(135deg,#0d1117 0%,#161b22 50%,#0d1f2d 100%);color:#e6edf3;min-height:100vh;padding:2rem 1rem}
+.container{max-width:720px;margin:0 auto}
 
-# ==========================================
-# 📋 ACCOUNTS EXPORTED FROM YOUR AUTH.HTML
-# ==========================================
-# Paste your copied snippet from the HTML admin panel here:
-VALID_DOCTORS: set = {
-    # e.g., "DR001", "DR002",
+/* ── Header ── */
+.header{text-align:center;margin-bottom:2rem}
+.header-icon{width:56px;height:56px;border-radius:14px;background:rgba(31,111,235,0.2);border:1px solid rgba(88,166,255,0.3);display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin:0 auto 1rem}
+.header h1{font-size:1.8rem;font-weight:700;background:linear-gradient(135deg,#58a6ff,#79c0ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header p{color:#8b949e;font-size:0.9rem;margin-top:6px}
+
+/* ── Nav tabs (top level: Login / Admin) ── */
+.nav-bar{display:flex;gap:0;margin-bottom:1.5rem;border-radius:10px;overflow:hidden;border:1px solid rgba(48,54,61,0.5)}
+.nav-tab{flex:1;padding:11px 0;font-size:0.92rem;cursor:pointer;text-align:center;background:transparent;border:none;color:#8b949e;font-family:inherit;transition:all .2s}
+.nav-tab+.nav-tab{border-left:1px solid rgba(48,54,61,0.5)}
+.nav-tab.active{background:rgba(33,38,45,0.9);color:#e6edf3;font-weight:600}
+.nav-tab.admin-tab.active{color:#f0883e}
+
+/* ── Card ── */
+.card{background:rgba(22,27,34,0.8);border:1px solid rgba(48,54,61,0.6);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem}
+.card-title{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#58a6ff;border-bottom:1px solid rgba(88,166,255,0.15);padding-bottom:10px;margin-bottom:1.25rem}
+.card-title.orange{color:#f0883e;border-bottom-color:rgba(240,136,62,0.2)}
+.card-title.red{color:#f85149;border-bottom-color:rgba(248,81,73,0.2)}
+.card-title.green{color:#3fb950;border-bottom-color:rgba(63,185,80,0.2)}
+
+/* ── Role pills ── */
+.role-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.25rem}
+.role-btn{border:1px solid rgba(48,54,61,0.6);border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;background:rgba(33,38,45,0.6);color:#8b949e;transition:all .2s;font-family:inherit;font-size:0.85rem}
+.role-btn .icon{font-size:1.4rem;display:block;margin-bottom:5px}
+.role-btn:hover{border-color:rgba(88,166,255,0.4);color:#c9d1d9}
+.role-btn.active{border-color:#58a6ff;background:rgba(88,166,255,0.12);color:#58a6ff;font-weight:600}
+
+/* ── Inner tabs (Login sub-tabs) ── */
+.tabs{display:flex;gap:0;margin-bottom:1.25rem;border-radius:8px;overflow:hidden;border:1px solid rgba(48,54,61,0.5)}
+.tab{flex:1;padding:9px 0;font-size:0.88rem;cursor:pointer;text-align:center;background:transparent;border:none;color:#8b949e;font-family:inherit;transition:all .2s}
+.tab+.tab{border-left:1px solid rgba(48,54,61,0.5)}
+.tab.active{background:rgba(33,38,45,0.8);color:#e6edf3;font-weight:600}
+
+/* ── Fields ── */
+.field{margin-bottom:1rem}
+label{display:block;font-size:0.82rem;color:#8b949e;margin-bottom:6px}
+input,select{width:100%;padding:10px 14px;background:rgba(33,38,45,0.8);border:1px solid rgba(48,54,61,0.5);border-radius:8px;color:#e6edf3;font-size:0.92rem;font-family:inherit;transition:border-color .2s}
+input:focus,select:focus{outline:none;border-color:#58a6ff;box-shadow:0 0 0 3px rgba(88,166,255,0.15)}
+select option{background:#1c2128}
+
+/* ── Buttons ── */
+.btn-primary{width:100%;padding:11px;background:linear-gradient(135deg,#238636,#2ea043);border:none;border-radius:8px;color:#fff;font-size:0.95rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(46,160,67,0.35)}
+.btn-orange{width:100%;padding:11px;background:linear-gradient(135deg,#b45309,#d97706);border:none;border-radius:8px;color:#fff;font-size:0.95rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-orange:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(217,119,6,0.35)}
+.btn-sm{padding:5px 12px;border-radius:6px;border:none;font-size:0.78rem;cursor:pointer;font-family:inherit;transition:all .2s;font-weight:600}
+.btn-del{background:rgba(248,81,73,0.12);color:#f85149;border:1px solid rgba(248,81,73,0.3)}
+.btn-del:hover{background:rgba(248,81,73,0.22)}
+.btn-edit{background:rgba(88,166,255,0.1);color:#58a6ff;border:1px solid rgba(88,166,255,0.25)}
+.btn-edit:hover{background:rgba(88,166,255,0.2)}
+.btn-reset{background:rgba(240,136,62,0.1);color:#f0883e;border:1px solid rgba(240,136,62,0.3)}
+.btn-reset:hover{background:rgba(240,136,62,0.2)}
+.btn-copy{padding:7px 16px;background:rgba(33,38,45,0.8);border:1px solid rgba(88,166,255,0.35);border-radius:6px;color:#58a6ff;font-size:0.82rem;cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-copy:hover{background:rgba(88,166,255,0.1)}
+
+/* ── Messages ── */
+.msg{padding:10px 14px;border-radius:8px;font-size:0.85rem;margin-top:.75rem;display:none}
+.msg.ok {background:rgba(35,134,54,0.15);border-left:3px solid #2ea043;color:#3fb950}
+.msg.err{background:rgba(248,81,73,0.1); border-left:3px solid #f85149;color:#f85149}
+.msg.warn{background:rgba(240,136,62,0.1);border-left:3px solid #f0883e;color:#f0883e}
+
+/* ── Stats ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem}
+.stat{background:rgba(33,38,45,0.6);border-radius:8px;padding:14px;text-align:center;border:1px solid rgba(48,54,61,0.4)}
+.stat-num{font-size:1.5rem;font-weight:700;color:#58a6ff}
+.stat-lbl{font-size:0.68rem;color:#8b949e;margin-top:3px;text-transform:uppercase;letter-spacing:.06em}
+
+/* ── User table ── */
+.user-table{width:100%;border-collapse:collapse;font-size:0.85rem}
+.user-table th{text-align:left;padding:8px 10px;color:#8b949e;font-size:0.7rem;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(48,54,61,0.5);font-weight:600}
+.user-table td{padding:10px 10px;border-bottom:1px solid rgba(48,54,61,0.25);vertical-align:middle}
+.user-table tr:last-child td{border-bottom:none}
+.user-table tr:hover td{background:rgba(88,166,255,0.03)}
+.avatar{width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0}
+.av-doctor {background:rgba(31,111,235,0.2);color:#58a6ff;border:1px solid rgba(88,166,255,0.3)}
+.av-student{background:rgba(35,134,54,0.2);color:#3fb950;border:1px solid rgba(63,185,80,0.3)}
+.av-normal {background:rgba(48,54,61,0.4); color:#8b949e;border:1px solid rgba(48,54,61,0.5)}
+.av-admin  {background:rgba(240,136,62,0.2);color:#f0883e;border:1px solid rgba(240,136,62,0.3)}
+.name-cell{display:flex;align-items:center;gap:8px}
+.badge{font-size:0.68rem;padding:2px 8px;border-radius:20px;font-weight:600}
+.badge-doctor {background:rgba(31,111,235,0.2);color:#58a6ff;border:1px solid rgba(88,166,255,0.25)}
+.badge-student{background:rgba(35,134,54,0.2); color:#3fb950;border:1px solid rgba(63,185,80,0.25)}
+.badge-normal {background:rgba(48,54,61,0.4);  color:#8b949e;border:1px solid rgba(48,54,61,0.5)}
+.badge-admin  {background:rgba(240,136,62,0.2);color:#f0883e;border:1px solid rgba(240,136,62,0.3)}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.empty-state{text-align:center;padding:2rem;color:#8b949e;font-size:0.9rem}
+.empty-state .big{font-size:2rem;margin-bottom:.5rem}
+
+/* ── Filter bar ── */
+.filter-bar{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
+.filter-bar input{flex:1;min-width:160px;padding:8px 12px;font-size:0.85rem}
+.filter-bar select{width:140px;padding:8px 10px;font-size:0.85rem}
+
+/* ── Logged-in bar ── */
+.li-bar{display:flex;align-items:center;gap:10px;background:rgba(35,134,54,0.15);border:1px solid rgba(63,185,80,0.3);border-radius:8px;padding:10px 14px;margin-bottom:1rem;font-size:0.85rem;color:#3fb950}
+.li-bar.admin-bar{background:rgba(240,136,62,0.12);border-color:rgba(240,136,62,0.3);color:#f0883e}
+.li-bar .li-icon{font-size:1.1rem}
+.li-bar .li-text{flex:1;font-weight:600}
+.logout-btn{background:none;border:1px solid currentColor;border-radius:6px;padding:4px 10px;color:inherit;font-size:0.75rem;cursor:pointer;font-family:inherit;opacity:.75}
+.logout-btn:hover{opacity:1}
+
+/* ── Snippet ── */
+.snippet-box{background:rgba(13,17,23,0.8);border:1px solid rgba(48,54,61,0.5);border-radius:8px;padding:1rem 1.2rem;font-family:'SFMono-Regular','Consolas',monospace;font-size:0.82rem;color:#79c0ff;white-space:pre;overflow-x:auto;margin-bottom:.75rem}
+.hint{font-size:0.78rem;color:#8b949e;line-height:1.6}
+.hint code{background:rgba(88,166,255,0.1);padding:1px 6px;border-radius:4px;color:#58a6ff}
+.hint strong{color:#c9d1d9}
+.copy-row{display:flex;align-items:center;gap:10px;margin-bottom:.75rem}
+
+/* ── Admin lock screen ── */
+.lock-screen{text-align:center;padding:2rem 1rem}
+.lock-screen .lock-icon{font-size:3rem;margin-bottom:1rem}
+.lock-screen p{color:#8b949e;font-size:0.9rem;margin-bottom:1.5rem}
+
+/* ── Edit modal (inline) ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#161b22;border:1px solid rgba(88,166,255,0.2);border-radius:14px;padding:1.5rem;width:100%;max-width:400px;position:relative}
+.modal-title{font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#58a6ff;margin-bottom:1.25rem}
+.modal-close{position:absolute;top:14px;right:14px;background:none;border:none;color:#8b949e;font-size:1.2rem;cursor:pointer;line-height:1}
+.modal-close:hover{color:#e6edf3}
+
+/* ── Confirm banner ── */
+.confirm-bar{display:none;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.25);border-radius:8px;padding:12px 14px;margin-top:1rem;font-size:0.85rem;color:#f85149;align-items:center;gap:10px}
+.confirm-bar.show{display:flex}
+.confirm-bar span{flex:1}
+.confirm-actions{display:flex;gap:8px}
+
+hr{border:none;border-top:1px solid rgba(48,54,61,0.4);margin:1rem 0}
+.section-sub{font-size:0.72rem;color:#8b949e;margin-bottom:.75rem}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-icon">🏥</div>
+    <h1>Healthcare Dashboard</h1>
+    <p id="headerSub">Sign in to access the healthcare platform</p>
+  </div>
+
+  <!-- Top nav -->
+  <div class="nav-bar">
+    <button class="nav-tab active" id="navLogin" onclick="showPage('login')">🔑 Login</button>
+    <button class="nav-tab admin-tab" id="navAdmin" onclick="showPage('admin')">⚙️ Admin</button>
+  </div>
+
+  <!-- ═══════════════════════════════ LOGIN PAGE ═══════════════════════════════ -->
+  <div id="pageLogin">
+
+    <!-- Logged-in bar -->
+    <div id="liBar" style="display:none" class="li-bar">
+      <span class="li-icon">✅</span>
+      <span class="li-text" id="liText"></span>
+      <button class="logout-btn" onclick="doLogout()">Log out</button>
+    </div>
+
+    <div class="card" id="loginCard">
+      <div class="card-title">🔐 Sign in</div>
+
+      <!-- Role -->
+      <div class="role-row">
+        <button class="role-btn active" id="rb-Normal User" onclick="selectRole('Normal User')">
+          <span class="icon">👤</span>Normal user
+        </button>
+        <button class="role-btn" id="rb-Student" onclick="selectRole('Student')">
+          <span class="icon">🎓</span>Student
+        </button>
+        <button class="role-btn" id="rb-Doctor" onclick="selectRole('Doctor')">
+          <span class="icon">🩺</span>Doctor
+        </button>
+      </div>
+
+      <div class="field">
+        <label for="li-id" id="liIdLabel">User ID</label>
+        <input id="li-id" type="text" placeholder="e.g. USR001">
+      </div>
+      <div class="field">
+        <label for="li-pass">Password</label>
+        <input id="li-pass" type="password" placeholder="Your password">
+      </div>
+
+      <button class="btn-primary" onclick="doLogin()">Sign in</button>
+      <div class="msg" id="liMsg"></div>
+    </div>
+
+    <!-- Info notice -->
+    <div class="card" style="border-color:rgba(88,166,255,0.15)">
+      <div class="card-title" style="color:#8b949e;border-bottom-color:rgba(48,54,61,0.3)">ℹ️ Account access</div>
+      <p style="font-size:0.85rem;color:#8b949e;line-height:1.7">
+        Accounts are created by the system administrator.<br>
+        If you don't have an account, contact your admin to register you.<br>
+        Admins can log in via the <strong style="color:#f0883e">Admin</strong> tab above.
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ ADMIN PAGE ═══════════════════════════════ -->
+  <div id="pageAdmin" style="display:none">
+
+    <!-- Admin lock screen (not logged in) -->
+    <div id="adminLock" class="card">
+      <div class="card-title orange">⚙️ Admin access</div>
+      <div class="lock-screen">
+        <div class="lock-icon">🔒</div>
+        <p>Enter your admin credentials to manage accounts.</p>
+      </div>
+      <div class="field">
+        <label for="adm-id">Admin ID</label>
+        <input id="adm-id" type="text" placeholder="e.g. ADMIN">
+      </div>
+      <div class="field">
+        <label for="adm-pass">Admin password</label>
+        <input id="adm-pass" type="password" placeholder="Admin password">
+      </div>
+      <button class="btn-orange" onclick="doAdminLogin()">Unlock admin panel</button>
+      <div class="msg" id="admMsg"></div>
+      <p style="font-size:0.75rem;color:#8b949e;margin-top:1rem;text-align:center">
+        Default: ID <code style="color:#f0883e">ADMIN</code> · Password <code style="color:#f0883e">admin1234</code><br>
+        Change these in the Admin Settings section after first login.
+      </p>
+    </div>
+
+    <!-- Admin panel (logged in) -->
+    <div id="adminPanel" style="display:none">
+
+      <!-- Admin bar -->
+      <div class="li-bar admin-bar" style="margin-bottom:1.25rem">
+        <span class="li-icon">🛡️</span>
+        <span class="li-text" id="adminBarText"></span>
+        <button class="logout-btn" onclick="doAdminLogout()">Log out</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat"><div class="stat-num" id="sTotal">0</div><div class="stat-lbl">Total</div></div>
+        <div class="stat"><div class="stat-num" id="sDoctors">0</div><div class="stat-lbl">Doctors</div></div>
+        <div class="stat"><div class="stat-num" id="sStudents">0</div><div class="stat-lbl">Students</div></div>
+        <div class="stat"><div class="stat-num" id="sNormal">0</div><div class="stat-lbl">Normal</div></div>
+      </div>
+
+      <!-- ── Register new account ── -->
+      <div class="card">
+        <div class="card-title green">➕ Register new account</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field" style="margin:0">
+            <label for="reg-name">Full name</label>
+            <input id="reg-name" type="text" placeholder="e.g. Abebe Kebede">
+          </div>
+          <div class="field" style="margin:0">
+            <label for="reg-age">Age</label>
+            <input id="reg-age" type="number" min="0" max="120" placeholder="e.g. 25">
+          </div>
+          <div class="field" style="margin:0">
+            <label for="reg-role">Role</label>
+            <select id="reg-role" onchange="updateRegIdHint()">
+              <option value="Normal User">Normal user</option>
+              <option value="Student">Student</option>
+              <option value="Doctor">Doctor</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0">
+            <label for="reg-id" id="regIdLabel">User ID</label>
+            <input id="reg-id" type="text" placeholder="e.g. USR001">
+          </div>
+          <div class="field" style="margin:0">
+            <label for="reg-pass">Password</label>
+            <input id="reg-pass" type="password" placeholder="At least 4 characters">
+          </div>
+          <div class="field" style="margin:0">
+            <label for="reg-pass2">Confirm password</label>
+            <input id="reg-pass2" type="password" placeholder="Repeat password">
+          </div>
+        </div>
+        <button class="btn-primary" style="margin-top:1rem" onclick="registerUser()">Register account</button>
+        <div class="msg" id="regMsg"></div>
+      </div>
+
+      <!-- ── Manage accounts ── -->
+      <div class="card">
+        <div class="card-title orange">👥 Manage accounts</div>
+
+        <div class="filter-bar">
+          <input type="text" id="filterSearch" placeholder="Search by name or ID…" oninput="refreshUserTable()">
+          <select id="filterRole" onchange="refreshUserTable()">
+            <option value="">All roles</option>
+            <option value="Doctor">Doctor</option>
+            <option value="Student">Student</option>
+            <option value="Normal User">Normal user</option>
+          </select>
+        </div>
+
+        <div style="overflow-x:auto">
+          <table class="user-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>ID</th>
+                <th>Role</th>
+                <th>Age</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody"></tbody>
+          </table>
+        </div>
+        <div id="userTableEmpty" class="empty-state" style="display:none">
+          <div class="big">👥</div>No accounts match your filter.
+        </div>
+
+        <!-- Delete confirm -->
+        <div class="confirm-bar" id="confirmBar">
+          <span id="confirmText"></span>
+          <div class="confirm-actions">
+            <button class="btn-sm btn-del" onclick="confirmDelete()">Yes, delete</button>
+            <button class="btn-sm btn-edit" onclick="cancelDelete()">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Export snippet ── -->
+      <div class="card">
+        <div class="card-title">📋 Export IDs to app.py</div>
+        <div class="copy-row">
+          <button class="btn-copy" onclick="copySnippet()">Copy snippet</button>
+          <span id="copyMsg" style="font-size:.8rem;color:#3fb950;display:none">✅ Copied!</span>
+        </div>
+        <div class="snippet-box" id="snippet">No accounts yet.</div>
+        <div class="hint">
+          <strong>How to use:</strong> Copy the snippet and paste it at the top of <code>app.py</code>
+          replacing the <code>VALID_DOCTORS</code> and <code>VALID_STUDENTS</code> sets, then restart Streamlit.
+        </div>
+      </div>
+
+      <!-- ── Admin settings ── -->
+      <div class="card">
+        <div class="card-title red">🔧 Admin settings</div>
+        <p class="section-sub">Change the admin ID or password used to unlock this panel.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field" style="margin:0">
+            <label for="set-id">New admin ID</label>
+            <input id="set-id" type="text" placeholder="e.g. ADMIN">
+          </div>
+          <div class="field" style="margin:0">
+            <label for="set-pass">New password</label>
+            <input id="set-pass" type="password" placeholder="At least 6 characters">
+          </div>
+          <div class="field" style="margin:0;grid-column:1/-1">
+            <label for="set-pass2">Confirm new password</label>
+            <input id="set-pass2" type="password" placeholder="Repeat password">
+          </div>
+        </div>
+        <button class="btn-orange" style="margin-top:1rem" onclick="saveAdminSettings()">Save admin credentials</button>
+        <div class="msg" id="setMsg"></div>
+        <hr>
+        <p class="section-sub" style="color:#f85149">Danger zone</p>
+        <button class="btn-sm btn-del" style="padding:8px 16px;font-size:0.82rem" onclick="promptNukeAll()">🗑️ Delete ALL accounts</button>
+        <div class="confirm-bar" id="nukeBar">
+          <span>This will permanently delete every user account. Are you sure?</span>
+          <div class="confirm-actions">
+            <button class="btn-sm btn-del" onclick="nukeAll()">Yes, delete all</button>
+            <button class="btn-sm btn-edit" onclick="cancelNuke()">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /adminPanel -->
+  </div><!-- /pageAdmin -->
+
+</div><!-- /container -->
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Edit account</div>
+    <button class="modal-close" onclick="closeEditModal()">✕</button>
+    <div class="field">
+      <label for="ed-name">Full name</label>
+      <input id="ed-name" type="text">
+    </div>
+    <div class="field">
+      <label for="ed-age">Age</label>
+      <input id="ed-age" type="number" min="0" max="120">
+    </div>
+    <div class="field">
+      <label for="ed-role">Role</label>
+      <select id="ed-role">
+        <option value="Normal User">Normal user</option>
+        <option value="Student">Student</option>
+        <option value="Doctor">Doctor</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="ed-id">ID</label>
+      <input id="ed-id" type="text">
+    </div>
+    <div class="field">
+      <label for="ed-pass">New password <span style="color:#8b949e;font-weight:400">(leave blank to keep current)</span></label>
+      <input id="ed-pass" type="password" placeholder="Leave blank to keep current">
+    </div>
+    <button class="btn-primary" onclick="saveEdit()">Save changes</button>
+    <div class="msg" id="edMsg"></div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════ STORAGE ═══════════════════════════ */
+var USERS_KEY   = 'hc_users_v1';
+var SESSION_KEY = 'hc_session_v1';
+var ADMIN_KEY   = 'hc_admin_v1';
+var ASESS_KEY   = 'hc_admin_sess_v1';
+
+function getUsers()       { try { return JSON.parse(localStorage.getItem(USERS_KEY)   || '[]');    } catch(e){ return []; }    }
+function saveUsers(u)     { localStorage.setItem(USERS_KEY, JSON.stringify(u)); }
+function getSession()     { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');  } catch(e){ return null; }  }
+function saveSession(s)   { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
+function clearSession()   { localStorage.removeItem(SESSION_KEY); }
+function getAdminCreds()  { try { return JSON.parse(localStorage.getItem(ADMIN_KEY)   || 'null');  } catch(e){ return null; }  }
+function saveAdminCreds(c){ localStorage.setItem(ADMIN_KEY, JSON.stringify(c)); }
+function getAdminSess()   { return sessionStorage.getItem(ASESS_KEY) === '1'; }
+function setAdminSess(v)  { if(v) sessionStorage.setItem(ASESS_KEY,'1'); else sessionStorage.removeItem(ASESS_KEY); }
+
+function defaultAdmin()   { return { id: 'ADMIN', pass: 'admin1234' }; }
+function adminCreds()     { return getAdminCreds() || defaultAdmin(); }
+
+/* ═══════════════════════════ STATE ═══════════════════════════ */
+var currentRole  = 'Normal User';
+var deleteTarget = -1;
+
+/* ═══════════════════════════ PAGE SWITCH ═══════════════════════════ */
+function showPage(page) {
+  document.getElementById('pageLogin').style.display = page === 'login' ? '' : 'none';
+  document.getElementById('pageAdmin').style.display = page === 'admin' ? '' : 'none';
+  document.getElementById('navLogin').classList.toggle('active', page === 'login');
+  document.getElementById('navAdmin').classList.toggle('active', page === 'admin');
+  if (page === 'admin') renderAdminPage();
 }
 
-VALID_STUDENTS: set = {
-    # e.g., "ST001", "ST002",
+/* ═══════════════════════════ HELPERS ═══════════════════════════ */
+function showMsg(id, text, type) {
+  var el = document.getElementById(id);
+  el.textContent = text; el.className = 'msg ' + type; el.style.display = 'block';
+  setTimeout(function(){ el.style.display = 'none'; }, 4000);
+}
+function initials(name) {
+  return (name||'?').split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase();
+}
+function avClass(role)    { return role==='Doctor'?'av-doctor':role==='Student'?'av-student':role==='Admin'?'av-admin':'av-normal'; }
+function badgeClass(role) { return role==='Doctor'?'badge-doctor':role==='Student'?'badge-student':role==='Admin'?'badge-admin':'badge-normal'; }
+function validateId(id, role) {
+  if (role==='Student' && !id.toUpperCase().startsWith('ST')) return 'Student ID must start with ST';
+  if (role==='Doctor'  && !id.toUpperCase().startsWith('DR')) return 'Doctor ID must start with DR';
+  return '';
 }
 
-# ==========================================
-# 🛠️ STATE INITIALIZATION (Prevents Crashes)
-# ==========================================
-def init_session_state():
-    """Initializes all required session state variables safely."""
-    if "auth_msg" not in st.session_state:
-        st.session_state["auth_msg"] = ("", True)  # (message_text, is_ok_boolean)
-        
-    if "authenticated_user" not in st.session_state:
-        st.session_state["authenticated_user"] = None
+/* ═══════════════════════════ LOGIN PAGE ═══════════════════════════ */
+function selectRole(r) {
+  currentRole = r;
+  document.querySelectorAll('.role-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('rb-' + r).classList.add('active');
+  var idEl  = document.getElementById('liIdLabel');
+  var idInp = document.getElementById('li-id');
+  if      (r==='Student') { idEl.textContent='Student ID (starts with ST)'; idInp.placeholder='e.g. ST001'; }
+  else if (r==='Doctor')  { idEl.textContent='Doctor ID (starts with DR)';  idInp.placeholder='e.g. DR001'; }
+  else                    { idEl.textContent='User ID';                      idInp.placeholder='e.g. USR001'; }
+}
 
-# ==========================================
-# 🔑 AUTHENTICATION LAYER
-# ==========================================
-def render_sidebar_auth(role: str, lang: str):
-    """
-    Handles sidebar credentials, matches them against the allowed sets,
-    and enforces age/role parameters safely.
-    """
-    st.sidebar.subheader("🔒 Authentication")
-    
-    # Text localization dictionary based on your app setup
-    labels = {
-        "en": {"id": "User ID", "pass": "Password", "btn": "Sign In", "under18": "Access denied: users under 18 cannot log in."},
-        "es": {"id": "ID de Usuario", "pass": "Contraseña", "btn": "Iniciar Sesión", "under18": "Acceso denegado: menores de 18 años no pueden ingresar."}
-    }.get(lang, "en")
+function doLogin() {
+  var id   = document.getElementById('li-id').value.trim().toUpperCase();
+  var pass = document.getElementById('li-pass').value;
+  if (!id)   { showMsg('liMsg','Please enter your ID.','err'); return; }
+  if (!pass) { showMsg('liMsg','Please enter your password.','err'); return; }
+  var users = getUsers();
+  var match = users.find(function(u){ return u.id===id && u.role===currentRole && u.pass===pass; });
+  if (!match) { showMsg('liMsg','Invalid ID, role, or password.','err'); return; }
+  if (match.age && match.age < 18) { showMsg('liMsg','Access denied: users under 18 cannot log in.','err'); return; }
+  saveSession({ id: id, role: currentRole, name: match.name });
+  showMsg('liMsg','Logged in successfully!','ok');
+  refreshLoginBar();
+}
 
-    # Dynamic ID hints matching your auth.html script logic
-    if role == "Student":
-        id_placeholder = "e.g., ST001"
-    elif role == "Doctor":
-        id_placeholder = "e.g., DR001"
-    else:
-        id_placeholder = "e.g., USR001"
+function doLogout() { clearSession(); refreshLoginBar(); }
 
-    input_id = st.sidebar.text_input(labels["id"], placeholder=id_placeholder).strip().upper()
-    input_pass = st.sidebar.text_input(labels["pass"], type="password")
-    
-    if st.sidebar.button(labels["btn"]):
-        # Enforce structural prefix requirements configured in your auth.html JavaScript
-        if role == "Student" and not input_id.startswith("ST"):
-            st.session_state["auth_msg"] = ("Student ID must start with ST", False)
-        elif role == "Doctor" and not input_id.startswith("DR"):
-            st.session_state["auth_msg"] = ("Doctor ID must start with DR", False)
-        elif role == "Doctor" and input_id not in VALID_DOCTORS:
-            st.session_state["auth_msg"] = ("Invalid Doctor ID or access unauthorized.", False)
-        elif role == "Student" and input_id not in VALID_STUDENTS:
-            st.session_state["auth_msg"] = ("Invalid Student ID or access unauthorized.", False)
-        elif not input_id or not input_pass:
-            st.session_state["auth_msg"] = ("Please provide both ID and password.", False)
-        else:
-            # Assuming successful simulation of local system matchmaking
-            st.session_state["auth_msg"] = ("Logged in successfully!", True)
-            st.session_state["authenticated_user"] = input_id
+function refreshLoginBar() {
+  var s   = getSession();
+  var bar = document.getElementById('liBar');
+  var card= document.getElementById('loginCard');
+  if (s) {
+    bar.style.display = 'flex';
+    document.getElementById('liText').textContent = 'Signed in as ' + s.name + ' (' + s.role + ') — ' + s.id;
+    card.style.opacity = '.45'; card.style.pointerEvents = 'none';
+  } else {
+    bar.style.display = 'none';
+    card.style.opacity = '1'; card.style.pointerEvents = '';
+  }
+}
 
-    # 🚨 CRITICAL FIX LINE 672: Safe extraction of the tuple values
-    auth_data = st.session_state.get("auth_msg", ("", True))
-    if isinstance(auth_data, tuple) and len(auth_data) == 2:
-        msg_text, msg_ok = auth_data
-    else:
-        msg_text, msg_ok = "", True  # Fail-safe default
+/* ═══════════════════════════ ADMIN AUTH ═══════════════════════════ */
+function doAdminLogin() {
+  var id   = document.getElementById('adm-id').value.trim().toUpperCase();
+  var pass = document.getElementById('adm-pass').value;
+  var creds = adminCreds();
+  if (id !== creds.id.toUpperCase() || pass !== creds.pass) {
+    showMsg('admMsg','Invalid admin credentials.','err'); return;
+  }
+  setAdminSess(true);
+  renderAdminPage();
+}
 
-    # Display status banner updates to the user in the sidebar
-    if msg_text:
-        if msg_ok:
-            st.sidebar.success(msg_text)
-        else:
-            st.sidebar.error(msg_text)
+function doAdminLogout() { setAdminSess(false); renderAdminPage(); }
 
-    return st.session_state["authenticated_user"]
+function renderAdminPage() {
+  var isAdmin = getAdminSess();
+  document.getElementById('adminLock') .style.display = isAdmin ? 'none' : '';
+  document.getElementById('adminPanel').style.display = isAdmin ? ''     : 'none';
+  if (isAdmin) {
+    var creds = adminCreds();
+    document.getElementById('adminBarText').textContent = 'Admin panel — logged in as ' + creds.id;
+    refreshStats();
+    refreshUserTable();
+    refreshSnippet();
+  }
+}
 
-# ==========================================
-# 📊 MAIN APP LOGIC
-# ==========================================
-def main():
-    st.set_page_config(page_title="Healthcare Dashboard", page_icon="🏥", layout="wide")
-    
-    # 1. Trigger the safety initialization check immediately
-    init_session_state()
-    
-    st.title("🏥 AI-Based Disease Prediction & Healthcare Dashboard")
-    
-    # App Global Controls
-    lang = st.sidebar.selectbox("🌐 Language / Idioma", ["en", "es"])
-    role = st.sidebar.selectbox("👤 Select Your Role", ["Normal User", "Student", "Doctor"])
-    
-    # 2. Run authentication system securely
-    user_id = render_sidebar_auth(role, lang)
-    
-    # 3. Main Dashboard Routing
-    if user_id:
-        st.info(f"Welcome back! Logged in as: **{user_id}** ({role})")
-        
-        # Insert your main clinical prediction tabs, graphs, or diagnostic systems below:
-        tabs = st.tabs(["📋 Symptom Checker", "📈 Patient Analytics", "⚙️ System Configuration"])
-        
-        with tabs[0]:
-            st.write("Symptom analyzer module ready for clinical analysis.")
-            
-        with tabs[1]:
-            st.write("Patient metric analysis visualizations.")
-            
-        with tabs[2]:
-            if role in ["Doctor", "Admin"]:
-                st.write("Administrative dashboard overrides enabled.")
-            else:
-                st.warning("Access Restricted: This view is reserved for authorized Personnel only.")
-    else:
-        st.warning("Please authenticate through the sidebar terminal panel to unlock medical insights features.")
+/* ═══════════════════════════ REGISTER (admin only) ═══════════════════════════ */
+function updateRegIdHint() {
+  var role = document.getElementById('reg-role').value;
+  var lbl  = document.getElementById('regIdLabel');
+  var inp  = document.getElementById('reg-id');
+  if      (role==='Student') { lbl.textContent='Student ID (starts with ST)'; inp.placeholder='e.g. ST001'; }
+  else if (role==='Doctor')  { lbl.textContent='Doctor ID (starts with DR)';  inp.placeholder='e.g. DR001'; }
+  else                       { lbl.textContent='User ID';                      inp.placeholder='e.g. USR001'; }
+}
 
-if __name__ == "__main__":
-    main()
+function registerUser() {
+  var name  = document.getElementById('reg-name') .value.trim();
+  var age   = parseInt(document.getElementById('reg-age').value) || 0;
+  var role  = document.getElementById('reg-role') .value;
+  var id    = document.getElementById('reg-id')   .value.trim().toUpperCase();
+  var pass  = document.getElementById('reg-pass') .value;
+  var pass2 = document.getElementById('reg-pass2').value;
+
+  if (!name)               { showMsg('regMsg','Full name is required.','err');             return; }
+  if (age < 1 || age > 120){ showMsg('regMsg','Please enter a valid age.','err');          return; }
+  if (!id)                 { showMsg('regMsg','ID is required.','err');                    return; }
+  if (pass.length < 4)     { showMsg('regMsg','Password must be at least 4 characters.','err'); return; }
+  if (pass !== pass2)      { showMsg('regMsg','Passwords do not match.','err');            return; }
+
+  var idErr = validateId(id, role);
+  if (idErr) { showMsg('regMsg', idErr, 'err'); return; }
+
+  var users = getUsers();
+  if (users.find(function(u){ return u.id===id && u.role===role; })) {
+    showMsg('regMsg','An account with this ID and role already exists.','err'); return;
+  }
+  users.push({ id: id, role: role, pass: pass, name: name, age: age, created: Date.now() });
+  saveUsers(users);
+
+  /* Clear form */
+  ['reg-name','reg-id','reg-pass','reg-pass2'].forEach(function(f){ document.getElementById(f).value=''; });
+  document.getElementById('reg-age').value = '';
+
+  showMsg('regMsg','Account for ' + name + ' created successfully!','ok');
+  refreshStats();
+  refreshUserTable();
+  refreshSnippet();
+}
+
+/* ═══════════════════════════ MANAGE TABLE ═══════════════════════════ */
+function refreshStats() {
+  var users = getUsers();
+  document.getElementById('sTotal')   .textContent = users.length;
+  document.getElementById('sDoctors') .textContent = users.filter(function(u){return u.role==='Doctor';}).length;
+  document.getElementById('sStudents').textContent = users.filter(function(u){return u.role==='Student';}).length;
+  document.getElementById('sNormal')  .textContent = users.filter(function(u){return u.role==='Normal User';}).length;
+}
+
+function refreshUserTable() {
+  var users   = getUsers();
+  var search  = (document.getElementById('filterSearch').value || '').toLowerCase();
+  var roleF   = document.getElementById('filterRole').value;
+  var filtered= users.filter(function(u,i){
+    u._idx = i;
+    var matchRole   = !roleF   || u.role === roleF;
+    var matchSearch = !search  || u.name.toLowerCase().includes(search) || u.id.toLowerCase().includes(search);
+    return matchRole && matchSearch;
+  });
+
+  var tbody = document.getElementById('userTableBody');
+  var empty = document.getElementById('userTableEmpty');
+
+  if (!filtered.length) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map(function(u) {
+    var i = users.indexOf(u);
+    return '<tr>'
+      + '<td><div class="name-cell">'
+      +   '<div class="avatar ' + avClass(u.role) + '">' + initials(u.name) + '</div>'
+      +   '<span>' + escHtml(u.name) + '</span>'
+      + '</div></td>'
+      + '<td style="font-family:monospace;font-size:0.82rem;color:#79c0ff">' + escHtml(u.id) + '</td>'
+      + '<td><span class="badge ' + badgeClass(u.role) + '">' + u.role + '</span></td>'
+      + '<td style="color:#8b949e">' + (u.age || '—') + '</td>'
+      + '<td><div class="actions">'
+      +   '<button class="btn-sm btn-edit" onclick="openEditModal(' + i + ')">✏️ Edit</button>'
+      +   '<button class="btn-sm btn-reset" onclick="promptResetPass(' + i + ')">🔑 Reset</button>'
+      +   '<button class="btn-sm btn-del"  onclick="promptDelete(' + i + ')">🗑️ Delete</button>'
+      + '</div></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Delete flow ── */
+function promptDelete(idx) {
+  deleteTarget = idx;
+  var u = getUsers()[idx];
+  document.getElementById('confirmText').textContent = 'Delete account for ' + u.name + ' (' + u.id + ')?';
+  document.getElementById('confirmBar').classList.add('show');
+}
+function cancelDelete() { deleteTarget = -1; document.getElementById('confirmBar').classList.remove('show'); }
+function confirmDelete() {
+  if (deleteTarget < 0) return;
+  var users = getUsers();
+  var u = users[deleteTarget];
+  var s = getSession();
+  if (s && s.id === u.id && s.role === u.role) clearSession();
+  users.splice(deleteTarget, 1);
+  saveUsers(users);
+  deleteTarget = -1;
+  document.getElementById('confirmBar').classList.remove('show');
+  refreshStats(); refreshUserTable(); refreshSnippet();
+}
+
+/* ── Reset password ── */
+function promptResetPass(idx) {
+  var u = getUsers()[idx];
+  var np = prompt('Enter new password for ' + u.name + ' (' + u.id + '):\n(minimum 4 characters)');
+  if (np === null) return;
+  if (np.length < 4) { alert('Password must be at least 4 characters.'); return; }
+  var users = getUsers();
+  users[idx].pass = np;
+  saveUsers(users);
+  showMsg('regMsg','Password reset for ' + u.name + '.','ok');
+}
+
+/* ── Edit modal ── */
+var editTarget = -1;
+function openEditModal(idx) {
+  editTarget = idx;
+  var u = getUsers()[idx];
+  document.getElementById('ed-name').value = u.name;
+  document.getElementById('ed-age') .value = u.age || '';
+  document.getElementById('ed-role').value = u.role;
+  document.getElementById('ed-id')  .value = u.id;
+  document.getElementById('ed-pass').value = '';
+  document.getElementById('edMsg')  .style.display = 'none';
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEditModal() {
+  editTarget = -1;
+  document.getElementById('editModal').classList.remove('open');
+}
+function saveEdit() {
+  if (editTarget < 0) return;
+  var name  = document.getElementById('ed-name').value.trim();
+  var age   = parseInt(document.getElementById('ed-age').value)  || 0;
+  var role  = document.getElementById('ed-role').value;
+  var id    = document.getElementById('ed-id') .value.trim().toUpperCase();
+  var pass  = document.getElementById('ed-pass').value;
+
+  if (!name)                { showMsg('edMsg','Name is required.','err');         return; }
+  if (age < 1 || age > 120) { showMsg('edMsg','Enter a valid age.','err');        return; }
+  if (!id)                  { showMsg('edMsg','ID is required.','err');            return; }
+  if (pass && pass.length<4){ showMsg('edMsg','Password too short (min 4).','err'); return; }
+  var idErr = validateId(id, role);
+  if (idErr) { showMsg('edMsg', idErr, 'err'); return; }
+
+  var users = getUsers();
+  var clash = users.find(function(u,i){ return i!==editTarget && u.id===id && u.role===role; });
+  if (clash) { showMsg('edMsg','Another account already uses this ID + role.','err'); return; }
+
+  users[editTarget].name = name;
+  users[editTarget].age  = age;
+  users[editTarget].role = role;
+  users[editTarget].id   = id;
+  if (pass) users[editTarget].pass = pass;
+  saveUsers(users);
+  closeEditModal();
+  refreshStats(); refreshUserTable(); refreshSnippet();
+}
+
+/* ═══════════════════════════ SNIPPET ═══════════════════════════ */
+function refreshSnippet() {
+  var users    = getUsers();
+  var doctors  = users.filter(function(u){ return u.role==='Doctor';  });
+  var students = users.filter(function(u){ return u.role==='Student'; });
+  var drIds    = doctors .map(function(u){ return '"' + u.id + '"'; });
+  var stIds    = students.map(function(u){ return '"' + u.id + '"'; });
+  var snippet  =
+    'VALID_DOCTORS: set = {\n'  + (drIds.length ? '    ' + drIds.join(',\n    ') + ',\n' : '') + '}\n\n'
+    + 'VALID_STUDENTS: set = {\n' + (stIds.length ? '    ' + stIds.join(',\n    ') + ',\n' : '') + '}';
+  document.getElementById('snippet').textContent = users.length ? snippet : 'No accounts yet.';
+}
+
+function copySnippet() {
+  navigator.clipboard.writeText(document.getElementById('snippet').textContent).then(function(){
+    var m = document.getElementById('copyMsg');
+    m.style.display = 'inline';
+    setTimeout(function(){ m.style.display='none'; }, 2000);
+  });
+}
+
+/* ═══════════════════════════ ADMIN SETTINGS ═══════════════════════════ */
+function saveAdminSettings() {
+  var id    = document.getElementById('set-id')   .value.trim().toUpperCase();
+  var pass  = document.getElementById('set-pass') .value;
+  var pass2 = document.getElementById('set-pass2').value;
+  if (!id)            { showMsg('setMsg','Admin ID is required.','err');           return; }
+  if (pass.length < 6){ showMsg('setMsg','Password must be at least 6 characters.','err'); return; }
+  if (pass !== pass2) { showMsg('setMsg','Passwords do not match.','err');         return; }
+  saveAdminCreds({ id: id, pass: pass });
+  document.getElementById('adminBarText').textContent = 'Admin panel — logged in as ' + id;
+  ['set-id','set-pass','set-pass2'].forEach(function(f){ document.getElementById(f).value=''; });
+  showMsg('setMsg','Admin credentials updated successfully.','ok');
+}
+
+/* ── Nuke all ── */
+function promptNukeAll() { document.getElementById('nukeBar').classList.add('show'); }
+function cancelNuke()    { document.getElementById('nukeBar').classList.remove('show'); }
+function nukeAll() {
+  saveUsers([]);
+  clearSession();
+  document.getElementById('nukeBar').classList.remove('show');
+  refreshStats(); refreshUserTable(); refreshSnippet();
+}
+
+/* ═══════════════════════════ INIT ═══════════════════════════ */
+refreshLoginBar();
+renderAdminPage();
+</script>
+</body>
+</html>
+HTMLEOF
+echo "Done: $(wc -l < /mnt/user-data/outputs/auth.html) lines"
