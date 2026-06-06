@@ -17,6 +17,16 @@ import streamlit.components.v1 as components
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
+from supabase import create_client
+import streamlit as st
+
+SUPABASE_URL = st.secrets["https://wpzueewhzimmtrtjdmoe.supabase.co/rest/v1/"]
+SUPABASE_KEY = st.secrets["sb_publishable_x0gZp8zI6rytLOKFJQfUwg_y1YG1JRP"]
+
+supabase = create_client(
+    SUPABASE_URL,
+    SUPABASE_KEY
+)
 
 warnings.filterwarnings("ignore")
 
@@ -1338,86 +1348,52 @@ def clear_diagnosis_callback():
 # ══════════════════════════════════════════════════════════════════════════════
 # SIDEBAR — Sign Up / Login panel
 # ══════════════════════════════════════════════════════════════════════════════
-def render_sidebar_auth(role: str, lang: str) -> str:
-    if "logged_in_as"   not in st.session_state: st.session_state["logged_in_as"]   = None
-    if "auth_msg"       not in st.session_state: st.session_state["auth_msg"]        = ("", False)
-    if "auth_mode"      not in st.session_state: st.session_state["auth_mode"]       = "login"
 
-    li = st.session_state.get("logged_in_as")
-    if li and li.get("role") == role:
-        uid = li["user_id"]
-        st.sidebar.markdown(
-            f"<div class='logged-in-badge'>✅ Logged in as {role}<br>"
-            f"<span style='font-size:0.75rem;opacity:0.8'>ID: {uid}</span></div>",
-            unsafe_allow_html=True,
-        )
-        if st.sidebar.button("🚪 Log out", key="logout_btn", use_container_width=True):
-            st.session_state["logged_in_as"] = None
-            st.session_state["auth_msg"]     = ("", False)
-            st.rerun()
-        return uid
+def _api_signup(role, user_id, name=""):
 
-    mode_col1, mode_col2 = st.sidebar.columns(2)
-    with mode_col1:
-        if st.button("🔑 Login",   key="mode_login",  use_container_width=True):
-            st.session_state["auth_mode"] = "login"
-            st.session_state["auth_msg"]  = ("", False)
-    with mode_col2:
-        if st.button("📝 Sign Up", key="mode_signup", use_container_width=True):
-            st.session_state["auth_mode"] = "signup"
-            st.session_state["auth_msg"]  = ("", False)
+    user_id = user_id.strip().upper()
 
-    mode = st.session_state["auth_mode"]
-
-    prefix      = "ST" if role == "Student" else "DR"
-    hint        = f"ID must start with <b>{prefix}</b> — e.g. {prefix}001"
-    placeholder = f"e.g. {prefix}001"
-
-    st.sidebar.markdown(
-        f"<div class='auth-info' style='margin-bottom:6px'>{hint}</div>",
-        unsafe_allow_html=True,
+    existing = (
+        supabase
+        .table("app_users")
+        .select("*")
+        .eq("user_id", user_id)
+        .execute()
     )
 
-    if mode == "signup":
-        su_id   = st.sidebar.text_input("Choose an ID",  placeholder=placeholder, key="su_id_field")
-        su_name = st.sidebar.text_input("Your name (optional)", placeholder="Full name", key="su_name_field")
-        if st.sidebar.button("✅ Create Account", key="signup_submit_btn", use_container_width=True):
-            if not su_id.strip():
-                st.session_state["auth_msg"] = ("Please enter an ID.", False)
-            else:
-                ok, msg = _api_signup(role, su_id.strip(), su_name.strip())
-                st.session_state["auth_msg"] = (msg, ok)
-                if ok:
-                    st.session_state["logged_in_as"] = {
-                        "role": role, "user_id": su_id.strip().upper()
-                    }
-                    st.rerun()
-    else:
-        li_id = st.sidebar.text_input("Your ID", placeholder=placeholder,
-                                      type="password", key="li_id_field")
-        if st.sidebar.button("🔓 Login", key="login_submit_btn", use_container_width=True):
-            if not li_id.strip():
-                st.session_state["auth_msg"] = ("Please enter your ID.", False)
-            else:
-                ok, msg = _api_login(role, li_id.strip())
-                st.session_state["auth_msg"] = (msg, ok)
-                if ok:
-                    st.session_state["logged_in_as"] = {
-                        "role": role, "user_id": li_id.strip().upper()
-                    }
-                    st.rerun()
+    if existing.data:
+        return False, "User ID already exists."
 
-    msg_text, msg_ok = st.session_state["auth_msg"]
-    if msg_text:
-        css = "auth-success" if msg_ok else "auth-error"
-        st.sidebar.markdown(
-            f"<div class='{css}'>{msg_text}</div>",
-            unsafe_allow_html=True,
-        )
+    (
+        supabase
+        .table("app_users")
+        .insert({
+            "user_id": user_id,
+            "role": role,
+            "name": name
+        })
+        .execute()
+    )
 
-    return ""
+    return True, "Account created successfully."
 
+def _api_login(role, user_id):
 
+    user_id = user_id.strip().upper()
+
+    result = (
+        supabase
+        .table("app_users")
+        .select("*")
+        .eq("user_id", user_id)
+        .eq("role", role)
+        .execute()
+    )
+
+    if result.data:
+        return True, "Login successful."
+
+    return False, "Invalid ID."
 # ──────────────────────────────────────────────
 # MAIN
 # ──────────────────────────────────────────────
