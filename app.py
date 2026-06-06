@@ -1,55 +1,60 @@
-import os
-import json
-from flask import Flask, request, jsonify, render_template_string
+import requests as _requests
 
-app = Flask(__name__)
-DATA_FILE = "users.json"
-
-# Helper function to read users from the local disk file
-def read_users_from_disk():
-    if not os.path.exists(DATA_FILE):
-        return []
+def _supabase_signup(role: str, user_id: str, name: str = "") -> tuple[bool, str]:
+    uid = user_id.strip().upper()
+    if not uid:
+        return False, "User ID cannot be empty."
     try:
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    except Exception:
-        return []
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal",
+        }
 
-# Helper function to write users safely back to the local disk
-def write_users_to_disk(users_list):
+        # Check if user already exists
+        check = _requests.get(
+            f"{SUPABASE_URL}/rest/v1/app_users?user_id=eq.{uid}&select=user_id",
+            headers=headers, timeout=8,
+        )
+        if check.ok and check.json():
+            return False, "⚠️ User ID already exists. Please log in instead."
+
+        # Insert new user
+        insert = _requests.post(
+            f"{SUPABASE_URL}/rest/v1/app_users",
+            headers=headers,
+            json={"user_id": uid, "role": role, "name": name.strip()},
+            timeout=8,
+        )
+        if insert.status_code in (200, 201):
+            return True, f"✅ Account created! Your ID: **{uid}**"
+        return False, f"❌ Insert failed: {insert.text}"
+
+    except Exception as e:
+        return False, f"❌ Signup error: {e}"
+
+
+def _supabase_login(role: str, user_id: str) -> tuple[bool, str]:
+    uid = user_id.strip().upper()
+    if not uid:
+        return False, "User ID cannot be empty."
     try:
-        with open(DATA_FILE, "w") as f:
-            json.dump(users_list, f, indent=4)
-        return True
-    except Exception:
-        return False
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": "application/json",
+        }
 
-@app.route('/')
-def index():
-    # Serves the auth.html file
-    try:
-        with open("auth.html", "r", encoding="utf-8") as f:
-            return render_template_string(f.read())
-    except FileNotFoundError:
-        return "auth.html file not found on disk.", 404
+        result = _requests.get(
+            f"{SUPABASE_URL}/rest/v1/app_users?user_id=eq.{uid}&role=eq.{role}&select=user_id,name",
+            headers=headers, timeout=8,
+        )
+        if result.ok and result.json():
+            name = result.json()[0].get("name", "")
+            greeting = f" ({name})" if name else ""
+            return True, f"✅ Welcome back{greeting}!"
+        return False, "❌ Invalid ID or role mismatch."
 
-# API Endpoint: Fetch all registered users
-@app.route('/api/users', methods=['GET'])
-def get_users():
-    return jsonify(read_users_from_disk())
-
-# API Endpoint: Save a user list or individual registration updates to disk
-@app.route('/api/users', methods=['POST'])
-def save_users():
-    data = request.get_json()
-    if not isinstance(data, list):
-        return jsonify({"error": "Invalid data format. Expected a list of users."}), 400
-    
-    if write_users_to_disk(data):
-        return jsonify({"status": "success", "message": "Data written to local disk successfully."})
-    else:
-        return jsonify({"error": "Failed to write data to local disk."}), 500
-
-if __name__ == '__main__':
-    # Starts the server on http://127.0.0.1:5000
-    app.run(debug=True, port=5000)
+    except Exception as e:
+        return False, f"❌ Login error: {e}"
