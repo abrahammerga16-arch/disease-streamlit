@@ -3,12 +3,12 @@ Integrated Healthcare Dashboard — Streamlit version (Enhanced UI with Animatio
   • Disease Predictor  (symptom input → ML prediction)
   • Health Recommender (disease dropdown → full health plan)
   • Healthcare Chatbot  (natural-language query → semantic answer)
-  • Role / Age / ID access control  ← signup/login via Colab Flask API
+  • Role / Age / ID access control  ← signup/login via Supabase
   • English ↔ Amharic UI
-  • NLP paragraph symptom extraction (NEW)
+  • NLP paragraph symptom extraction
 """
 
-import os, re, json, warnings, requests
+import os, re, json, warnings
 import numpy as np
 import pandas as pd
 import joblib
@@ -18,27 +18,17 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 from supabase import create_client
-import streamlit as st
-import streamlit as st
-
-st.write(list(st.secrets.keys()))
-
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-
-supabase = create_client(
-    SUPABASE_URL,
-    SUPABASE_KEY
-)
 
 warnings.filterwarnings("ignore")
 
-# ── Hardcoded Colab API URL (no UI input needed) ──────────────────────────────
-COLAB_API_URL = "https://porcupine-universal-timing.ngrok-free.dev"
+# ── Supabase client ───────────────────────────────────────────────────────────
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(
     page_title="Integrated Healthcare Dashboard",
-    page_icon="",
+    page_icon="🏥",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -498,10 +488,9 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# NLP SYMPTOM EXTRACTOR  ←  NEW: handles free-form paragraphs
+# NLP SYMPTOM EXTRACTOR
 # ══════════════════════════════════════════════════════════════════════════════
 
-# Words/phrases that signal the following content is negated
 NEGATION_TRIGGERS = [
     "no ", "not ", "without ", "don't have", "doesn't have",
     "do not have", "i have no", "haven't", "havent",
@@ -509,7 +498,6 @@ NEGATION_TRIGGERS = [
     "no complaint of", "absence of",
 ]
 
-# Filler words that add noise but carry no symptom meaning
 FILLER_RE = re.compile(
     r"\b(i|i've|i have|i am|i'm|been|having|some|really|very|quite|"
     r"a\s+bit|little|a\s+lot|feel|feeling|seems|seem|also|and|but|for|"
@@ -525,22 +513,15 @@ FILLER_RE = re.compile(
 
 
 def _is_negated(sentence: str) -> bool:
-    """Return True if the sentence contains a negation trigger."""
     sl = sentence.lower()
     return any(trigger in sl for trigger in NEGATION_TRIGGERS)
 
 
 def _fuzzy_match(phrase: str, symptom_list: list, tfidf_vec, sym_matrix, threshold: float):
-    """
-    Match a cleaned phrase against the symptom list.
-    Uses TF-IDF cosine similarity (same vectoriser as the rest of the app).
-    Returns the best matching symptom string, or None if below threshold.
-    """
     phrase_norm = phrase.replace("_", " ").strip()
     if not phrase_norm or len(phrase_norm) < 3:
         return None
 
-    # Exact match shortcut
     phrase_key = phrase_norm.replace(" ", "_").lower()
     if phrase_key in symptom_list:
         return phrase_key
@@ -560,20 +541,6 @@ def extract_symptoms_from_text(
     sym_matrix,
     threshold: float = 0.35,
 ) -> tuple[set, set]:
-    """
-    Parse free-form text (paragraph, comma list, or mixed) and return:
-        confirmed_symptoms  – set of matched symptom strings
-        negated_symptoms    – set of explicitly denied symptoms (for display)
-
-    Strategy:
-      1. Split on sentence boundaries (.!?;)
-      2. Per sentence, detect negation context
-      3. Split each sentence into clauses (comma / conjunctions / newlines)
-      4. Strip filler words from each clause
-      5. Fuzzy-match cleaned clause against symptom list
-      6. Exclude anything negated
-    """
-    # Split into sentences first
     sentences = re.split(r"[.!?;]+", user_input)
 
     matched: set = set()
@@ -586,7 +553,6 @@ def extract_symptoms_from_text(
 
         is_neg = _is_negated(sentence)
 
-        # Split sentence into smaller clauses
         clauses = re.split(
             r"[,\n]|\band\b|\bor\b|\bbut\b|\balso\b|\bwith\b|\bplus\b",
             sentence,
@@ -594,11 +560,8 @@ def extract_symptoms_from_text(
         )
 
         for clause in clauses:
-            # Remove filler words
             cleaned = FILLER_RE.sub(" ", clause)
-            # Collapse whitespace and normalise
             cleaned = re.sub(r"\s+", " ", cleaned).strip().lower()
-            # Convert spaces to underscores for symptom-list lookup
             cleaned_key = cleaned.replace(" ", "_")
 
             sym = _fuzzy_match(cleaned_key, symptom_list, tfidf_vec, sym_matrix, threshold)
@@ -608,72 +571,185 @@ def extract_symptoms_from_text(
                 else:
                     matched.add(sym)
 
-    # Final confirmed = matched minus anything explicitly negated
     confirmed = matched - negated
     return confirmed, negated
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ACCESS CONTROL  ←  Uses hardcoded COLAB_API_URL constant
+# SUPABASE AUTH  ←  signup + login via Supabase table "app_users"
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _api_login(role: str, user_id: str) -> tuple[bool, str]:
-    base = COLAB_API_URL.rstrip("/")
+def _supabase_signup(role: str, user_id: str, name: str = "") -> tuple[bool, str]:
+    """Insert a new user into app_users. Returns (success, message)."""
+    uid = user_id.strip().upper()
+    if not uid:
+        return False, "User ID cannot be empty."
     try:
-        resp = requests.post(
-            f"{base}/login",
-            json={"role": role, "user_id": user_id},
-            timeout=8,
+        # Check for existing user
+        existing = (
+            supabase
+            .table("app_users")
+            .select("user_id")
+            .eq("user_id", uid)
+            .execute()
         )
-        data = resp.json()
-        if resp.status_code == 200 and data.get("success"):
-            return True, data.get("message", "Login successful.")
-        return False, data.get("message", "Login failed.")
-    except requests.exceptions.ConnectionError:
-        return False, "❌ Cannot reach server. Please try again later."
-    except requests.exceptions.Timeout:
-        return False, "❌ Request timed out. Please try again."
+        if existing.data:
+            return False, "⚠️ User ID already exists. Please log in instead."
+
+        supabase.table("app_users").insert({
+            "user_id": uid,
+            "role": role,
+            "name": name.strip(),
+        }).execute()
+
+        return True, f"✅ Account created! Your ID: **{uid}**"
     except Exception as e:
-        return False, f"❌ API error: {e}"
+        return False, f"❌ Signup error: {e}"
 
 
-def _api_signup(role: str, user_id: str, name: str = "") -> tuple[bool, str]:
-    base = COLAB_API_URL.rstrip("/")
+def _supabase_login(role: str, user_id: str) -> tuple[bool, str]:
+    """Verify user_id + role against app_users. Returns (success, message)."""
+    uid = user_id.strip().upper()
+    if not uid:
+        return False, "User ID cannot be empty."
     try:
-        resp = requests.post(
-            f"{base}/signup",
-            json={"role": role, "user_id": user_id, "name": name},
-            timeout=8,
+        result = (
+            supabase
+            .table("app_users")
+            .select("user_id, name")
+            .eq("user_id", uid)
+            .eq("role", role)
+            .execute()
         )
-        data = resp.json()
-        if resp.status_code == 200 and data.get("success"):
-            return True, data.get("message", "Sign-up successful.")
-        return False, data.get("message", "Sign-up failed.")
-    except requests.exceptions.ConnectionError:
-        return False, "❌ Cannot reach server. Please try again later."
-    except requests.exceptions.Timeout:
-        return False, "❌ Request timed out. Please try again."
+        if result.data:
+            name = result.data[0].get("name", "")
+            greeting = f" ({name})" if name else ""
+            return True, f"✅ Welcome back{greeting}!"
+        return False, "❌ Invalid ID or role mismatch."
     except Exception as e:
-        return False, f"❌ API error: {e}"
+        return False, f"❌ Login error: {e}"
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SIDEBAR AUTH PANEL  ←  renders signup/login UI and returns the user_id
+# ══════════════════════════════════════════════════════════════════════════════
+
+def render_sidebar_auth(role: str, lang: str) -> str:
+    """
+    Renders a compact Sign Up / Log In panel in the sidebar.
+    Returns the authenticated user_id string (or "" if not yet authed).
+    """
+    # Initialise session state keys
+    for key in ("auth_user_id", "auth_message", "auth_ok", "auth_mode"):
+        if key not in st.session_state:
+            st.session_state[key] = "" if key in ("auth_user_id", "auth_message") else (False if key == "auth_ok" else "login")
+
+    # ── Already logged in ─────────────────────────────────────────────────────
+    logged = st.session_state.get("logged_in_as")
+    if (
+        logged
+        and logged.get("role") == role
+        and logged.get("ok")
+    ):
+        uid = logged["user_id"]
+        st.sidebar.markdown(
+            f"<div class='logged-in-badge'>✔ Logged in as {role}<br>"
+            f"<span style='font-family:monospace;font-size:0.75rem'>{uid}</span></div>",
+            unsafe_allow_html=True,
+        )
+        if st.sidebar.button("🚪 Log Out", key="logout_btn"):
+            st.session_state["logged_in_as"] = None
+            st.session_state["auth_message"]  = ""
+            st.session_state["auth_ok"]       = False
+            st.rerun()
+        return uid
+
+    # ── Mode toggle ───────────────────────────────────────────────────────────
+    mode = st.sidebar.radio(
+        "Action",
+        options=["Log In", "Sign Up"],
+        horizontal=True,
+        key="auth_mode_radio",
+        label_visibility="collapsed",
+    )
+
+    user_id_input = st.sidebar.text_input(
+        "User ID",
+        placeholder=f"Enter your {role} ID",
+        key="auth_uid_input",
+    )
+
+    name_input = ""
+    if mode == "Sign Up":
+        name_input = st.sidebar.text_input(
+            "Full Name (optional)",
+            key="auth_name_input",
+        )
+
+    btn_label = "🔑 Log In" if mode == "Log In" else "📝 Sign Up"
+    if st.sidebar.button(btn_label, key="auth_submit_btn", use_container_width=True):
+        if not user_id_input.strip():
+            st.session_state["auth_message"] = "⚠️ Please enter your User ID."
+            st.session_state["auth_ok"]      = False
+        else:
+            if mode == "Log In":
+                ok, msg = _supabase_login(role, user_id_input)
+            else:
+                ok, msg = _supabase_signup(role, user_id_input, name_input)
+
+            st.session_state["auth_message"] = msg
+            st.session_state["auth_ok"]      = ok
+
+            if ok:
+                st.session_state["logged_in_as"] = {
+                    "role": role,
+                    "user_id": user_id_input.strip().upper(),
+                    "ok": True,
+                }
+                st.rerun()
+
+    # ── Status message ────────────────────────────────────────────────────────
+    msg = st.session_state.get("auth_message", "")
+    if msg:
+        css = "auth-success" if st.session_state.get("auth_ok") else "auth-error"
+        st.sidebar.markdown(f"<div class='{css}'>{msg}</div>", unsafe_allow_html=True)
+
+    st.sidebar.markdown(
+        f"<div class='auth-info'>Your ID is stored securely. Use it to log in next time.</div>",
+        unsafe_allow_html=True,
+    )
+
+    # Return user_id only when authenticated
+    logged = st.session_state.get("logged_in_as")
+    if logged and logged.get("role") == role and logged.get("ok"):
+        return logged["user_id"]
+    return ""
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ACCESS CONTROL
+# ══════════════════════════════════════════════════════════════════════════════
 
 def check_access(age: int, role: str, user_id: str, lang: str) -> tuple[bool, str]:
     if age < 18:
         return False, t("Access Denied: Information is not available for users under 18.", lang)
 
     if role in ("Student", "Doctor"):
-        logged_in_as = st.session_state.get("logged_in_as")
+        # Check if already authenticated in session
+        logged = st.session_state.get("logged_in_as")
         if (
-            logged_in_as
-            and logged_in_as.get("role") == role
-            and logged_in_as.get("user_id", "").upper() == user_id.strip().upper()
+            logged
+            and logged.get("role") == role
+            and logged.get("ok")
+            and logged.get("user_id", "").upper() == (user_id or "").strip().upper()
         ):
             return True, ""
-        ok, msg = _api_login(role, user_id)
-        if ok:
-            st.session_state["logged_in_as"] = {"role": role, "user_id": user_id.strip().upper()}
-            return True, ""
-        return False, msg
+
+        # Not logged in — ask them to authenticate
+        role_label = "Student" if role == "Student" else "Doctor"
+        return False, (
+            f"🔒 Please log in with your {role_label} ID in the sidebar to access this content."
+        )
 
     return True, ""
 
@@ -773,7 +849,7 @@ def render_rec_cards(cards: list):
 
 
 # ──────────────────────────────────────────────
-# PREDICTION SYSTEM  ←  updated to use NLP extractor
+# PREDICTION SYSTEM
 # ──────────────────────────────────────────────
 def integrated_prediction_system(
     user_input, age, role, user_id, lang,
@@ -787,11 +863,9 @@ def integrated_prediction_system(
 
     symptom_list = list(main_df.drop(columns=["diseases"]).columns)
 
-    # ── NEW: NLP paragraph extractor replaces simple comma-split ──────────────
     matched_symptoms, negated_symptoms = extract_symptoms_from_text(
         user_input, symptom_list, tfidf_vec, sym_matrix, threshold
     )
-    # ─────────────────────────────────────────────────────────────────────────
 
     if not matched_symptoms:
         hint = ""
@@ -839,7 +913,7 @@ def integrated_prediction_system(
 
     return {
         "matched_symptoms":     matched_display,
-        "negated_symptoms":     negated_display,   # shown in UI as excluded
+        "negated_symptoms":     negated_display,
         "predicted_conditions": svc_preds,
         "top_disease":          top_disease,
         "rec_cards":            cards,
@@ -848,7 +922,7 @@ def integrated_prediction_system(
 
 
 # ──────────────────────────────────────────────
-# CHATBOT  ←  updated to use NLP extractor for disease lookup
+# CHATBOT
 # ──────────────────────────────────────────────
 def chatbot_response(
     query, age, role, user_id, lang,
@@ -886,7 +960,7 @@ def chatbot_response(
     if not rich_texts:
         return "Sorry, the knowledge base is empty."
 
-    chat_vec    = TfidfVectorizer(
+    chat_vec = TfidfVectorizer(
         analyzer="word",
         ngram_range=(1, 2),
         stop_words="english",
@@ -895,18 +969,15 @@ def chatbot_response(
 
     rich_matrix = chat_vec.transform(rich_texts).toarray()
 
-    # ── NEW: use NLP-cleaned query for better matching ────────────────────────
     q_cleaned = FILLER_RE.sub(" ", q)
     q_cleaned = re.sub(r"\s+", " ", q_cleaned).strip()
     q_vec     = chat_vec.transform([q_cleaned]).toarray()
-    # ─────────────────────────────────────────────────────────────────────────
 
     sims        = cosine_similarity(q_vec, rich_matrix)[0]
     best_idx    = int(np.argmax(sims))
     best_sim    = float(sims[best_idx])
 
     if best_sim < threshold:
-        # ── NEW: try to extract symptoms from query and suggest diseases ──────
         if symptom_list is not None and sym_matrix is not None:
             confirmed, _ = extract_symptoms_from_text(
                 query, symptom_list, tfidf_vec, sym_matrix, threshold=0.35
@@ -921,7 +992,6 @@ def chatbot_response(
                     "• *What diet should I follow for asthma?*"
                 )
                 return translate_content(fallback, lang) if lang.lower() == "amharic" else fallback
-        # ─────────────────────────────────────────────────────────────────────
         fallback = (
             "I couldn't find specific information for that query. "
             "Try asking about a specific disease, e.g.:\n"
@@ -1103,129 +1173,6 @@ def render_quick_select_symptoms(lang: str) -> None:
         "flu-like syndrome": "ጉንፋን መሰል ምልክቶች", "restlessness": "ጸጥ አለማለት",
         "sleepiness": "ድካም/ናፍቆት", "decreased appetite": "የምግብ ፍቅር መቀነስ",
         "fluid retention": "ፈሳሽ ማቆር",
-        "anxiety and nervousness": "ጭንቀት እና ነርቭ", "depression": "ድብርት",
-        "insomnia": "እንቅልፍ ማጣት", "dizziness": "ራስ ዞር",
-        "abnormal involuntary movements": "ያልተፈለጉ እንቅስቃሴዎች",
-        "depressive or psychotic symptoms": "ድብርት ወይም ሳይኮቲክ ምልክቶች",
-        "disturbance of memory": "የትውስታ ችግር", "paresthesia": "መቆጥቆጥ ስሜት",
-        "loss of sensation": "ስሜት ማጣት", "focal weakness": "ጠቃላይ ድክመት",
-        "seizures": "ቅብጠት", "delusions or hallucinations": "ቅዠት",
-        "fainting": "ዋዛ ማጣት", "temper problems": "ቁጣ ችግር",
-        "fears and phobias": "ፍርሃቶች", "obsessions and compulsions": "ቋሚ ሃሳቦች",
-        "antisocial behavior": "ፀረ-ማህበራዊ ባህሪ", "hysterical behavior": "ሂስቴሪካዊ ባህሪ",
-        "low self-esteem": "ዝቅተኛ ራስ-ግምት", "excessive anger": "ከፍተኛ ቁጣ",
-        "hostile behavior": "ጠበኛ ባህሪ", "drug abuse": "የዕፅ አጠቃቀም",
-        "abusing alcohol": "የአልኮል ሱሰኝነት",
-        "shortness of breath": "መተንፈስ ማጠር", "sharp chest pain": "ሹል የደረት ህመም",
-        "chest tightness": "ደረት መጠበቅ", "palpitations": "ልብ ምት ስሜት",
-        "irregular heartbeat": "ያልተስተካከለ ልብ ምት", "breathing fast": "ፈጣን መተንፈስ",
-        "cough": "ሳል", "wheezing": "ሲፏፏ ድምፅ", "difficulty breathing": "ለመተንፈስ ችግር",
-        "congestion in chest": "ደረት ውስጥ ብናኝ", "abnormal breathing sounds": "ያልተለመዱ የትንፋሽ ድምፆች",
-        "hurts to breath": "ሲተነፍሱ ህመም", "apnea": "መተንፈስ መቆም",
-        "hoarse voice": "ሻካራ ድምፅ", "hemoptysis": "ደም አሳልፎ ማስወጣት",
-        "coughing up sputum": "ምራቅ ማሳል", "increased heart rate": "ልብ ምት መጨመር",
-        "decreased heart rate": "ልብ ምት መቀነስ", "burning chest pain": "የሚቃጠል የደረት ህመም",
-        "sore throat": "ጉሮሮ ህመም", "difficulty speaking": "ለመናገር ችግር",
-        "nasal congestion": "አፍንጫ መዘጋት", "throat swelling": "ጉሮሮ ማበጥ",
-        "diminished hearing": "ሰሚ ማቀዝቀዝ", "difficulty in swallowing": "ለመዋጥ ችግር",
-        "pus draining from ear": "ጆሮ ፕስ", "ear pain": "የጆሮ ህመም",
-        "ringing in ear": "ጆሮ ድምፅ", "plugged feeling in ear": "ጆሮ መዘጋት",
-        "itchy ear(s)": "ጆሮ ማሳከክ", "fluid in ear": "ጆሮ ውስጥ ፈሳሽ",
-        "redness in ear": "ጆሮ ቀያ", "bleeding from ear": "ጆሮ ደም",
-        "swollen or red tonsils": "ቲንሲሎች ማበጥ", "sneezing": "ማስነጠስ",
-        "coryza": "አፍንጫ ፍሳሽ", "sinus congestion": "ሳይነስ መዘጋት",
-        "painful sinuses": "ሳይነስ ህመም", "nosebleed": "አፍንጫ ደም",
-        "sharp abdominal pain": "ሹል የሆድ ህመም", "upper abdominal pain": "የላይ ሆድ ህመም",
-        "burning abdominal pain": "የሚቃጠል የሆድ ህመም", "lower abdominal pain": "የታች ሆድ ህመም",
-        "nausea": "ማቅለሽለሽ", "vomiting": "ማስታወክ", "vomiting blood": "ደም ማስታወክ",
-        "diarrhea": "ተቅማጥ", "constipation": "ሆድ መጠፍጠፍ",
-        "stomach bloating": "ሆድ ማበጥ", "heartburn": "ሆድ ማቃጠል",
-        "regurgitation": "ምግብ መመለስ", "blood in stool": "ሰገራ ውስጥ ደም",
-        "melena": "ጥቁር ሰገራ", "rectal bleeding": "የፊንጥ ደም",
-        "changes in stool appearance": "ሰገራ ቀለም ለውጥ",
-        "pain of the anus": "የፊንጥ ህመም",
-        "mass or swelling around the anus": "የፊንጥ አካባቢ ማበጥ",
-        "itching of the anus": "የፊንጥ ማሳከክ",
-        "headache": "ራስ ምታት", "frontal headache": "ፊት ራስ ምታት",
-        "back pain": "የጀርባ ህመም", "low back pain": "የታች ጀርባ ህመም",
-        "neck pain": "የአንገት ህመም", "shoulder pain": "የትከሻ ህመም",
-        "hip pain": "የጭን ህመም", "knee pain": "የጉልበት ህመም",
-        "leg pain": "የእግር ህመም", "foot or toe pain": "የጣት/እግር ህመም",
-        "ankle pain": "የቁርጭምጭሚት ህመም", "elbow pain": "የክርን ህመም",
-        "arm pain": "የክንድ ህመም", "wrist pain": "የሚዳቃ ህመም",
-        "hand or finger pain": "የእጅ/ጣት ህመም", "joint pain": "የመገጣጠሚያ ህመም",
-        "rib pain": "የጎን ሳምባ ህመም", "groin pain": "የጉሮሮ ህመም",
-        "suprapubic pain": "የታች ሆድ ህመም", "side pain": "የጎን ህመም",
-        "facial pain": "የፊት ህመም", "bones are painful": "አጥንቶች ህማም",
-        "back cramps or spasms": "የጀርባ ቁርጠት", "cramps and spasms": "ቁርጠት",
-        "arm stiffness or tightness": "ክንድ ድርቀት", "arm swelling": "ክንድ ማበጥ",
-        "arm weakness": "ክንድ ድክመት", "arm lump or mass": "ክንድ እብጠት",
-        "wrist swelling": "ሚዳቃ ማበጥ",
-        "hand or finger swelling": "እጅ/ጣት ማበጥ",
-        "hand or finger stiffness or tightness": "እጅ/ጣት ድርቀት",
-        "hand or finger weakness": "እጅ/ጣት ድክመት",
-        "hand or finger lump or mass": "እጅ/ጣት እብጠት",
-        "knee swelling": "ጉልበት ማበጥ", "knee stiffness or tightness": "ጉልበት ድርቀት",
-        "leg swelling": "እግር ማበጥ", "leg weakness": "እግር ድክመት",
-        "ankle swelling": "ቁርጭምጭሚት ማበጥ", "foot or toe swelling": "ጣት/እግር ማበጥ",
-        "elbow swelling": "ክርን ማበጥ",
-        "shoulder stiffness or tightness": "ትከሻ ድርቀት",
-        "hip stiffness or tightness": "ጭን ድርቀት",
-        "back stiffness or tightness": "ጀርባ ድርቀት",
-        "neck mass": "አንገት እብጠት", "neck swelling": "አንገት ማበጥ",
-        "peripheral edema": "ዳርቻ ማበጥ", "problems with movement": "እንቅስቃሴ ችግር",
-        "abnormal appearing skin": "ቆዳ ለውጥ", "skin lesion": "ቆዳ ቁስለት",
-        "acne or pimples": "ሽፍታ/ፊጥ", "skin growth": "ቆዳ ዕድገት",
-        "skin moles": "የቆዳ ምልክቶች", "warts": "ዕጢ",
-        "skin rash": "ቆዳ ሽፍታ", "itching of skin": "ቆዳ ማሳከክ",
-        "skin dryness, peeling, scaliness, or roughness": "ቆዳ ደረቅ/መላጥ",
-        "skin irritation": "ቆዳ ቅርጫ", "itchy scalp": "ጭንቅላት ማሳከክ",
-        "irregular appearing scalp": "ጭንቅላት ለውጥ", "jaundice": "ቢጫ በሽታ",
-        "diaper rash": "ዳይፐር ሽፍታ", "eyelid lesion or rash": "ዐይን ሽፍታ",
-        "irregular appearing nails": "ጥፍር ለውጥ",
-        "diminished vision": "ዕይታ መቀነስ", "double vision": "ድርብ ዕይታ",
-        "symptoms of eye": "የዓይን ምልክቶች", "pain in eye": "የዓይን ህመም",
-        "abnormal movement of eyelid": "የዐይን ሽፋን እንቅስቃሴ",
-        "foreign body sensation in eye": "ዓይን ውስጥ ነገር ስሜት",
-        "eye redness": "ቀይ ዓይን", "lacrimation": "ዕንባ",
-        "itchiness of eye": "ዓይን ማሳከክ", "blindness": "ዓይነ ስውርነት",
-        "eye burns or stings": "ዓይን ማቃጠል",
-        "spots or clouds in vision": "ዕይታ ደበዘዘ", "bleeding from eye": "ዓይን ደም",
-        "mass on eyelid": "የዐይን ሽፋን እብጠት", "swollen eye": "ዓይን ማበጥ",
-        "eyelid swelling": "የዐይን ሽፋን ማበጥ", "white discharge from eye": "ዓይን ፈሳሽ",
-        "painful urination": "ሽንት ሲሸኑ ህመም", "frequent urination": "ተደጋጋሚ ሽንት",
-        "involuntary urination": "ያለፈቃድ ሽንት", "blood in urine": "ሽንት ውስጥ ደም",
-        "retention of urine": "ሽንት ማቆር", "unusual color or odor to urine": "ሽንት ቀለም/ሽታ ለውጥ",
-        "excessive urination at night": "ሌሊት ሽንት", "low urine output": "ሽንት መቀነስ",
-        "hesitancy": "ሽንት ማቅማማት",
-        "symptoms of bladder": "የፊኛ ምልክቶች",
-        "symptoms of the kidneys": "የኩላሊት ምልክቶች", "kidney mass": "ኩላሊት እብጠት",
-        "symptoms of prostate": "የፕሮስቴት ምልክቶች",
-        "vaginal itching": "ብልት ማሳከክ", "vaginal discharge": "ብልት ፍሳሽ",
-        "vaginal pain": "ብልት ህመም", "vaginal redness": "ብልት ቀያ",
-        "pain during intercourse": "ወሲብ ጊዜ ህመም", "impotence": "ወሲብ ድካም",
-        "symptoms of the scrotum and testes": "የፍልፈል ምልክቶች",
-        "swelling of scrotum": "ፍልፈል ማበጥ", "pain in testicles": "ፍልፈል ህመም",
-        "hot flashes": "ሙቀት ፍላጻ", "intermenstrual bleeding": "ወር አበባ መካከል ደም",
-        "pain during pregnancy": "እርግዝና ጊዜ ህመም",
-        "problems during pregnancy": "እርግዝና ጊዜ ችግሮች",
-        "spotting or bleeding during pregnancy": "እርግዝና ጊዜ ደም",
-        "uterine contractions": "የማህፀን መኮማተር", "recent pregnancy": "ቅርብ ጊዜ እርግዝና",
-        "pelvic pain": "የዳሌ ህመም",
-        "long menstrual periods": "ረዥም ወር አበባ",
-        "heavy menstrual flow": "ከባድ ወር አበባ", "unpredictable menstruation": "ያልተስተካከለ ወር አበባ",
-        "painful menstruation": "ወር አበባ ህመም", "infertility": "መካንነት",
-        "frequent menstruation": "ተደጋጋሚ ወር አበባ",
-        "blood clots during menstrual periods": "ወር አበባ ደም ስብ",
-        "lack of growth": "እድገት ማጣት", "irritable infant": "ቅሬታ ሕፃን",
-        "infant feeding problem": "ሕፃን ምግብ ችግር", "pulling at ears": "ጆሮ መጎተት",
-        "back mass or lump": "ጀርባ እብጠት", "jaw swelling": "መንጋጋ ማበጥ",
-        "lip swelling": "ከንፈር ማበጥ", "toothache": "ጥርስ ህመም",
-        "mouth ulcer": "አፍ ቁስለት", "gum pain": "ድድ ህመም",
-        "mouth dryness": "አፍ ደረቅ", "mouth pain": "አፍ ህመም",
-        "bleeding gums": "ድድ ደም", "pain in gums": "ድድ ህመም",
-        "allergic reaction": "አለርጂ", "symptoms of the face": "የፊት ምልክቶች",
-        "lower body pain": "የታች አካል ህመም",
     }
 
     CAT_AM = {
@@ -1348,55 +1295,6 @@ def clear_diagnosis_callback():
     st.session_state["prediction_error"]  = None
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# SIDEBAR — Sign Up / Login panel
-# ══════════════════════════════════════════════════════════════════════════════
-
-def _api_signup(role, user_id, name=""):
-
-    user_id = user_id.strip().upper()
-
-    existing = (
-        supabase
-        .table("app_users")
-        .select("*")
-        .eq("user_id", user_id)
-        .execute()
-    )
-
-    if existing.data:
-        return False, "User ID already exists."
-
-    (
-        supabase
-        .table("app_users")
-        .insert({
-            "user_id": user_id,
-            "role": role,
-            "name": name
-        })
-        .execute()
-    )
-
-    return True, "Account created successfully."
-
-def _api_login(role, user_id):
-
-    user_id = user_id.strip().upper()
-
-    result = (
-        supabase
-        .table("app_users")
-        .select("*")
-        .eq("user_id", user_id)
-        .eq("role", role)
-        .execute()
-    )
-
-    if result.data:
-        return True, "Login successful."
-
-    return False, "Invalid ID."
 # ──────────────────────────────────────────────
 # MAIN
 # ──────────────────────────────────────────────
@@ -1426,7 +1324,7 @@ def main():
             f'<div class="section-header">{"Student" if role=="Student" else "Doctor"} Access</div>',
             unsafe_allow_html=True,
         )
-      user_id = render_sidebar_auth(role, lang)
+        user_id = render_sidebar_auth(role, lang)
 
     role_colors = {"Doctor": "#1f6feb", "Student": "#2ea043", "Normal User": "#6e7681"}
     rc = role_colors.get(role, "#6e7681")
@@ -1462,7 +1360,6 @@ def main():
         st.markdown('<div class="section-header">🩺 Symptom-Based Disease Predictor</div>',
                     unsafe_allow_html=True)
 
-        # ── NLP info banner (NEW) ─────────────────────────────────────────────
         st.markdown(
             "<div class='nlp-info-banner'>"
             "<span>✦ Smart symptom extraction</span> — you can type naturally: "
@@ -1524,7 +1421,6 @@ def main():
             )
             st.markdown(chips, unsafe_allow_html=True)
 
-            # ── Show negated symptoms if any (NEW) ────────────────────────────
             if res.get("negated_symptoms"):
                 neg_chips = " · ".join(
                     f"<span style='background:rgba(248,81,73,0.08);padding:4px 12px;"
