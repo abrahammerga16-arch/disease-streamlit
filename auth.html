@@ -1,0 +1,378 @@
+<script>
+/* ═══════════════════════════ STORAGE & BACKEND SYNC ═══════════════════════════ */
+var SESSION_KEY = 'hc_session_v1';
+var ADMIN_KEY   = 'hc_admin_v1';
+var ASESS_KEY   = 'hc_admin_sess_v1';
+
+// Cache array to keep track of data in memory
+var cachedUsers = [];
+
+// NEW: Pull user information directly from local disk via Flask API
+function loadUsersFromDisk() {
+  fetch('/api/users')
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      cachedUsers = Array.isArray(data) ? data : [];
+      // Re-trigger standard application UI changes after loading disk data
+      refreshStats();
+      refreshUserTable();
+      refreshSnippet();
+    })
+    .catch(function(err) { console.error("Error fetching data from disk:", err); });
+}
+
+// NEW: Commit user updates right back to your local disk file
+function syncUsersToDisk() {
+  fetch('/api/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cachedUsers)
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+     if(data.error) console.error("Disk Sync Failed:", data.error);
+  })
+  .catch(function(err) { console.error("Network error trying to write to disk:", err); });
+}
+
+// Backward compatible wrappers replacing old browser LocalStorage implementations
+function getUsers()       { return cachedUsers; }
+function saveUsers(u)     { cachedUsers = u; syncUsersToDisk(); }
+
+function getSession()     { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');  } catch(e){ return null; }  }
+function saveSession(s)   { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
+function clearSession()   { localStorage.removeItem(SESSION_KEY); }
+function getAdminCreds()  { try { return JSON.parse(localStorage.getItem(ADMIN_KEY)   || 'null');  } catch(e){ return null; }  }
+function saveAdminCreds(c){ localStorage.setItem(ADMIN_KEY, JSON.stringify(c)); }
+function getAdminSess()   { return sessionStorage.getItem(ASESS_KEY) === '1'; }
+function setAdminSess(v)  { if(v) sessionStorage.setItem(ASESS_KEY,'1'); else sessionStorage.removeItem(ASESS_KEY); }
+
+function defaultAdmin()   { return { id: 'ADMIN', pass: 'admin1234' }; }
+function adminCreds()     { return getAdminCreds() || defaultAdmin(); }
+
+/* ═══════════════════════════ STATE ═══════════════════════════ */
+var currentRole  = 'Normal User';
+var deleteTarget = -1;
+
+/* ═══════════════════════════ PAGE SWITCH ═══════════════════════════ */
+function showPage(page) {
+  document.getElementById('pageLogin').style.display = page === 'login' ? '' : 'none';
+  document.getElementById('pageAdmin').style.display = page === 'admin' ? '' : 'none';
+  document.getElementById('navLogin').classList.toggle('active', page === 'login');
+  document.getElementById('navAdmin').classList.toggle('active', page === 'admin');
+  if (page === 'admin') renderAdminPage();
+}
+
+/* ═══════════════════════════ HELPERS ═══════════════════════════ */
+function showMsg(id, text, type) {
+  var el = document.getElementById(id);
+  el.textContent = text; el.className = 'msg ' + type; el.style.display = 'block';
+  setTimeout(function(){ el.style.display = 'none'; }, 4000);
+}
+function initials(name) {
+  return (name||'?').split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase();
+}
+function avClass(role)    { return role==='Doctor'?'av-doctor':role==='Student'?'av-student':role==='Admin'?'av-admin':'av-normal'; }
+function badgeClass(role) { return role==='Doctor'?'badge-doctor':role==='Student'?'badge-student':role==='Admin'?'badge-admin':'badge-normal'; }
+function validateId(id, role) {
+  if (role==='Student' && !id.toUpperCase().startsWith('ST')) return 'Student ID must start with ST';
+  if (role==='Doctor'  && !id.toUpperCase().startsWith('DR')) return 'Doctor ID must start with DR';
+  return '';
+}
+
+/* ═══════════════════════════ LOGIN PAGE ═══════════════════════════ */
+function selectRole(r) {
+  currentRole = r;
+  document.querySelectorAll('.role-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('rb-' + r).classList.add('active');
+  var idEl  = document.getElementById('liIdLabel');
+  var idInp = document.getElementById('li-id');
+  if      (r==='Student') { idEl.textContent='Student ID (starts with ST)'; idInp.placeholder='e.g. ST001'; }
+  else if (r==='Doctor')  { idEl.textContent='Doctor ID (starts with DR)';  idInp.placeholder='e.g. DR001'; }
+  else                    { idEl.textContent='User ID';                      idInp.placeholder='e.g. USR001'; }
+}
+
+function doLogin() {
+  var id   = document.getElementById('li-id').value.trim().toUpperCase();
+  var pass = document.getElementById('li-pass').value;
+  if (!id)   { showMsg('liMsg','Please enter your ID.','err'); return; }
+  if (!pass) { showMsg('liMsg','Please enter your password.','err'); return; }
+  var users = getUsers();
+  var match = users.find(function(u){ return u.id===id && u.role===currentRole && u.pass===pass; });
+  if (!match) { showMsg('liMsg','Invalid ID, role, or password.','err'); return; }
+  if (match.age && match.age < 18) { showMsg('liMsg','Access denied: users under 18 cannot log in.','err'); return; }
+  saveSession({ id: id, role: currentRole, name: match.name });
+  showMsg('liMsg','Logged in successfully!','ok');
+  refreshLoginBar();
+}
+
+function doLogout() { clearSession(); refreshLoginBar(); }
+
+function refreshLoginBar() {
+  var s   = getSession();
+  var bar = document.getElementById('liBar');
+  var card= document.getElementById('loginCard');
+  if (s) {
+    bar.style.display = 'flex';
+    document.getElementById('liText').textContent = 'Signed in as ' + s.name + ' (' + s.role + ') — ' + s.id;
+    card.style.opacity = '.45'; card.style.pointerEvents = 'none';
+  } else {
+    bar.style.display = 'none';
+    card.style.opacity = '1'; card.style.pointerEvents = '';
+  }
+}
+
+/* ═══════════════════════════ ADMIN AUTH ═══════════════════════════ */
+function doAdminLogin() {
+  var id   = document.getElementById('adm-id').value.trim().toUpperCase();
+  var pass = document.getElementById('adm-pass').value;
+  var creds = adminCreds();
+  if (id !== creds.id.toUpperCase() || pass !== creds.pass) {
+    showMsg('admMsg','Invalid admin credentials.','err'); return;
+  }
+  setAdminSess(true);
+  renderAdminPage();
+}
+
+function doAdminLogout() { setAdminSess(false); renderAdminPage(); }
+
+function renderAdminPage() {
+  var isAdmin = getAdminSess();
+  document.getElementById('adminLock') .style.display = isAdmin ? 'none' : '';
+  document.getElementById('adminPanel').style.display = isAdmin ? ''     : 'none';
+  if (isAdmin) {
+    var creds = adminCreds();
+    document.getElementById('adminBarText').textContent = 'Admin panel — logged in as ' + creds.id;
+    refreshStats();
+    refreshUserTable();
+    refreshSnippet();
+  }
+}
+
+/* ═══════════════════════════ REGISTER (admin only) ═══════════════════════════ */
+function updateRegIdHint() {
+  var role = document.getElementById('reg-role').value;
+  var lbl  = document.getElementById('regIdLabel');
+  var inp  = document.getElementById('reg-id');
+  if      (role==='Student') { lbl.textContent='Student ID (starts with ST)'; inp.placeholder='e.g. ST001'; }
+  else if (role==='Doctor')  { lbl.textContent='Doctor ID (starts with DR)';  inp.placeholder='e.g. DR001'; }
+  else                       { lbl.textContent='User ID';                      inp.placeholder='e.g. USR001'; }
+}
+
+function registerUser() {
+  var name  = document.getElementById('reg-name') .value.trim();
+  var age   = parseInt(document.getElementById('reg-age').value) || 0;
+  var role  = document.getElementById('reg-role') .value;
+  var id    = document.getElementById('reg-id')   .value.trim().toUpperCase();
+  var pass  = document.getElementById('reg-pass') .value;
+  var pass2 = document.getElementById('reg-pass2').value;
+
+  if (!name)               { showMsg('regMsg','Full name is required.','err');             return; }
+  if (age < 1 || age > 120){ showMsg('regMsg','Please enter a valid age.','err');          return; }
+  if (!id)                 { showMsg('regMsg','ID is required.','err');                    return; }
+  if (pass.length < 4)     { showMsg('regMsg','Password must be at least 4 characters.','err'); return; }
+  if (pass !== pass2)      { showMsg('regMsg','Passwords do not match.','err');            return; }
+
+  var idErr = validateId(id, role);
+  if (idErr) { showMsg('regMsg', idErr, 'err'); return; }
+
+  var users = getUsers();
+  if (users.find(function(u){ return u.id===id && u.role===role; })) {
+    showMsg('regMsg','An account with this ID and role already exists.','err'); return;
+  }
+  users.push({ id: id, role: role, pass: pass, name: name, age: age, created: Date.now() });
+  saveUsers(users);
+
+  /* Clear form */
+  ['reg-name','reg-id','reg-pass','reg-pass2'].forEach(function(f){ document.getElementById(f).value=''; });
+  document.getElementById('reg-age').value = '';
+
+  showMsg('regMsg','Account for ' + name + ' created successfully!','ok');
+  refreshStats();
+  refreshUserTable();
+  refreshSnippet();
+}
+
+/* ═══════════════════════════ MANAGE TABLE ═══════════════════════════ */
+function refreshStats() {
+  var users = getUsers();
+  document.getElementById('sTotal')   .textContent = users.length;
+  document.getElementById('sDoctors') .textContent = users.filter(function(u){return u.role==='Doctor';}).length;
+  document.getElementById('sStudents').textContent = users.filter(function(u){return u.role==='Student';}).length;
+  document.getElementById('sNormal')  .textContent = users.filter(function(u){return u.role==='Normal User';}).length;
+}
+
+function refreshUserTable() {
+  var users   = getUsers();
+  var search  = (document.getElementById('filterSearch').value || '').toLowerCase();
+  var roleF   = document.getElementById('filterRole').value;
+  var filtered= users.filter(function(u,i){
+    u._idx = i;
+    var matchRole   = !roleF   || u.role === roleF;
+    var matchSearch = !search  || u.name.toLowerCase().includes(search) || u.id.toLowerCase().includes(search);
+    return matchRole && matchSearch;
+  });
+
+  var tbody = document.getElementById('userTableBody');
+  var empty = document.getElementById('userTableEmpty');
+
+  if (!filtered.length) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map(function(u) {
+    var i = users.indexOf(u);
+    return '<tr>'
+      + '<td><div class="name-cell">'
+      +   '<div class="avatar ' + avClass(u.role) + '">' + initials(u.name) + '</div>'
+      +   '<span>' + escHtml(u.name) + '</span>'
+      + '</div></td>'
+      + '<td style="font-family:monospace;font-size:0.82rem;color:#79c0ff">' + escHtml(u.id) + '</td>'
+      + '<td><span class="badge ' + badgeClass(u.role) + '">' + u.role + '</span></td>'
+      + '<td style="color:#8b949e">' + (u.age || '—') + '</td>'
+      + '<td><div class="actions">'
+      +   '<button class="btn-sm btn-edit" onclick="openEditModal(' + i + ')">✏️ Edit</button>'
+      +   '<button class="btn-sm btn-reset" onclick="promptResetPass(' + i + ')">🔑 Reset</button>'
+      +   '<button class="btn-sm btn-del"  onclick="promptDelete(' + i + ')">🗑️ Delete</button>'
+      + '</div></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Delete flow ── */
+function promptDelete(idx) {
+  deleteTarget = idx;
+  var u = getUsers()[idx];
+  document.getElementById('confirmText').textContent = 'Delete account for ' + u.name + ' (' + u.id + ')?';
+  document.getElementById('confirmBar').classList.add('show');
+}
+function cancelDelete() { deleteTarget = -1; document.getElementById('confirmBar').classList.remove('show'); }
+function confirmDelete() {
+  if (deleteTarget < 0) return;
+  var users = getUsers();
+  var u = users[deleteTarget];
+  var s = getSession();
+  if (s && s.id === u.id && s.role === u.role) clearSession();
+  users.splice(deleteTarget, 1);
+  saveUsers(users);
+  deleteTarget = -1;
+  document.getElementById('confirmBar').classList.remove('show');
+  refreshStats(); refreshUserTable(); refreshSnippet();
+}
+
+/* ── Reset password ── */
+function promptResetPass(idx) {
+  var u = getUsers()[idx];
+  var np = prompt('Enter new password for ' + u.name + ' (' + u.id + '):\n(minimum 4 characters)');
+  if (np === null) return;
+  if (np.length < 4) { alert('Password must be at least 4 characters.'); return; }
+  var users = getUsers();
+  users[idx].pass = np;
+  saveUsers(users);
+  showMsg('regMsg','Password reset for ' + u.name + '.','ok');
+}
+
+/* ── Edit modal ── */
+var editTarget = -1;
+function openEditModal(idx) {
+  editTarget = idx;
+  var u = getUsers()[idx];
+  document.getElementById('ed-name').value = u.name;
+  document.getElementById('ed-age') .value = u.age || '';
+  document.getElementById('ed-role').value = u.role;
+  document.getElementById('ed-id')  .value = u.id;
+  document.getElementById('ed-pass').value = '';
+  document.getElementById('edMsg')  .style.display = 'none';
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEditModal() {
+  editTarget = -1;
+  document.getElementById('editModal').classList.remove('open');
+}
+function saveEdit() {
+  if (editTarget < 0) return;
+  var name  = document.getElementById('ed-name').value.trim();
+  var age   = parseInt(document.getElementById('ed-age').value)  || 0;
+  var role  = document.getElementById('ed-role').value;
+  var id    = document.getElementById('ed-id') .value.trim().toUpperCase();
+  var pass  = document.getElementById('ed-pass').value;
+
+  if (!name)                { showMsg('edMsg','Name is required.','err');         return; }
+  if (age < 1 || age > 120) { showMsg('edMsg','Enter a valid age.','err');        return; }
+  if (!id)                  { showMsg('edMsg','ID is required.','err');            return; }
+  if (pass && pass.length<4){ showMsg('edMsg','Password too short (min 4).','err'); return; }
+  var idErr = validateId(id, role);
+  if (idErr) { showMsg('edMsg', idErr, 'err'); return; }
+
+  var users = getUsers();
+  var clash = users.find(function(u,i){ return i!==editTarget && u.id===id && u.role===role; });
+  if (clash) { showMsg('edMsg','Another account already uses this ID + role.','err'); return; }
+
+  users[editTarget].name = name;
+  users[editTarget].age  = age;
+  users[editTarget].role = role;
+  users[editTarget].id   = id;
+  if (pass) users[editTarget].pass = pass;
+  saveUsers(users);
+  closeEditModal();
+  refreshStats(); refreshUserTable(); refreshSnippet();
+}
+
+/* ═══════════════════════════ SNIPPET ═══════════════════════════ */
+function refreshSnippet() {
+  var users    = getUsers();
+  var doctors  = users.filter(function(u){ return u.role==='Doctor';  });
+  var students = users.filter(function(u){ return u.role==='Student'; });
+  var drIds    = doctors .map(function(u){ return '"' + u.id + '"'; });
+  var stIds    = students.map(function(u){ return '"' + u.id + '"'; });
+  var snippet  =
+    'VALID_DOCTORS: set = {\n'  + (drIds.length ? '    ' + drIds.join(',\n    ') + ',\n' : '') + '}\n\n'
+    + 'VALID_STUDENTS: set = {\n' + (stIds.length ? '    ' + stIds.join(',\n    ') + ',\n' : '') + '}';
+  document.getElementById('snippet').textContent = users.length ? snippet : 'No accounts yet.';
+}
+
+function copySnippet() {
+  navigator.clipboard.writeText(document.getElementById('snippet').textContent).then(function(){
+    var m = document.getElementById('copyMsg');
+    m.style.display = 'inline';
+    setTimeout(function(){ m.style.display='none'; }, 2000);
+  });
+}
+
+/* ═══════════════════════════ ADMIN SETTINGS ═══════════════════════════ */
+function saveAdminSettings() {
+  var id    = document.getElementById('set-id')   .value.trim().toUpperCase();
+  var pass  = document.getElementById('set-pass') .value;
+  var pass2 = document.getElementById('set-pass2').value;
+  if (!id)            { showMsg('setMsg','Admin ID is required.','err');           return; }
+  if (pass.length < 6){ showMsg('setMsg','Password must be at least 6 characters.','err'); return; }
+  if (pass !== pass2) { showMsg('setMsg','Passwords do not match.','err');         return; }
+  saveAdminCreds({ id: id, pass: pass });
+  document.getElementById('adminBarText').textContent = 'Admin panel — logged in as ' + id;
+  ['set-id','set-pass','set-pass2'].forEach(function(f){ document.getElementById(f).value=''; });
+  showMsg('setMsg','Admin credentials updated successfully.','ok');
+}
+
+/* ── Nuke all ── */
+function promptNukeAll() { document.getElementById('nukeBar').classList.add('show'); }
+function cancelNuke()    { document.getElementById('nukeBar').classList.remove('show'); }
+function nukeAll() {
+  saveUsers([]);
+  clearSession();
+  document.getElementById('nukeBar').classList.remove('show');
+  refreshStats(); refreshUserTable(); refreshSnippet();
+}
+
+/* ═══════════════════════════ INIT ═══════════════════════════ */
+// Fetch persistent user array from backend filesystem on load
+loadUsersFromDisk();
+refreshLoginBar();
+renderAdminPage();
+</script>
