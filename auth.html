@@ -149,16 +149,13 @@ hr{border:none;border-top:1px solid rgba(48,54,61,0.4);margin:1rem 0}
     <p id="headerSub">Sign in to access the healthcare platform</p>
   </div>
 
-  <!-- Top nav -->
   <div class="nav-bar">
     <button class="nav-tab active" id="navLogin" onclick="showPage('login')">🔑 Login</button>
     <button class="nav-tab admin-tab" id="navAdmin" onclick="showPage('admin')">⚙️ Admin</button>
   </div>
 
-  <!-- ═══════════════════════════════ LOGIN PAGE ═══════════════════════════════ -->
   <div id="pageLogin">
 
-    <!-- Logged-in bar -->
     <div id="liBar" style="display:none" class="li-bar">
       <span class="li-icon">✅</span>
       <span class="li-text" id="liText"></span>
@@ -168,7 +165,6 @@ hr{border:none;border-top:1px solid rgba(48,54,61,0.4);margin:1rem 0}
     <div class="card" id="loginCard">
       <div class="card-title">🔐 Sign in</div>
 
-      <!-- Role -->
       <div class="role-row">
         <button class="role-btn active" id="rb-Normal User" onclick="selectRole('Normal User')">
           <span class="icon">👤</span>Normal user
@@ -194,7 +190,6 @@ hr{border:none;border-top:1px solid rgba(48,54,61,0.4);margin:1rem 0}
       <div class="msg" id="liMsg"></div>
     </div>
 
-    <!-- Info notice -->
     <div class="card" style="border-color:rgba(88,166,255,0.15)">
       <div class="card-title" style="color:#8b949e;border-bottom-color:rgba(48,54,61,0.3)">ℹ️ Account access</div>
       <p style="font-size:0.85rem;color:#8b949e;line-height:1.7">
@@ -205,10 +200,8 @@ hr{border:none;border-top:1px solid rgba(48,54,61,0.4);margin:1rem 0}
     </div>
   </div>
 
-  <!-- ═══════════════════════════════ ADMIN PAGE ═══════════════════════════════ -->
   <div id="pageAdmin" style="display:none">
 
-    <!-- Admin lock screen (not logged in) -->
     <div id="adminLock" class="card">
       <div class="card-title orange">⚙️ Admin access</div>
       <div class="lock-screen">
@@ -231,17 +224,14 @@ hr{border:none;border-top:1px solid rgba(48,54,61,0.4);margin:1rem 0}
       </p>
     </div>
 
-    <!-- Admin panel (logged in) -->
     <div id="adminPanel" style="display:none">
 
-      <!-- Admin bar -->
       <div class="li-bar admin-bar" style="margin-bottom:1.25rem">
         <span class="li-icon">🛡️</span>
         <span class="li-text" id="adminBarText"></span>
         <button class="logout-btn" onclick="doAdminLogout()">Log out</button>
       </div>
 
-      <!-- Stats -->
       <div class="stats-row">
         <div class="stat"><div class="stat-num" id="sTotal">0</div><div class="stat-lbl">Total</div></div>
         <div class="stat"><div class="stat-num" id="sDoctors">0</div><div class="stat-lbl">Doctors</div></div>
@@ -249,7 +239,6 @@ hr{border:none;border-top:1px solid rgba(48,54,61,0.4);margin:1rem 0}
         <div class="stat"><div class="stat-num" id="sNormal">0</div><div class="stat-lbl">Normal</div></div>
       </div>
 
-      <!-- ── Register new account ── -->
       <div class="card">
         <div class="card-title green">➕ Register new account</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -286,7 +275,6 @@ hr{border:none;border-top:1px solid rgba(48,54,61,0.4);margin:1rem 0}
         <div class="msg" id="regMsg"></div>
       </div>
 
-      <!-- ── Manage accounts ── -->
       <div class="card">
         <div class="card-title orange">👥 Manage accounts</div>
 
@@ -318,7 +306,6 @@ hr{border:none;border-top:1px solid rgba(48,54,61,0.4);margin:1rem 0}
           <div class="big">👥</div>No accounts match your filter.
         </div>
 
-        <!-- Delete confirm -->
         <div class="confirm-bar" id="confirmBar">
           <span id="confirmText"></span>
           <div class="confirm-actions">
@@ -328,7 +315,6 @@ hr{border:none;border-top:1px solid rgba(48,54,61,0.4);margin:1rem 0}
         </div>
       </div>
 
-      <!-- ── Export snippet ── -->
       <div class="card">
         <div class="card-title">📋 Export IDs to app.py</div>
         <div class="copy-row">
@@ -342,7 +328,6 @@ hr{border:none;border-top:1px solid rgba(48,54,61,0.4);margin:1rem 0}
         </div>
       </div>
 
-      <!-- ── Admin settings ── -->
       <div class="card">
         <div class="card-title red">🔧 Admin settings</div>
         <p class="section-sub">Change the admin ID or password used to unlock this panel.</p>
@@ -374,13 +359,7 @@ hr{border:none;border-top:1px solid rgba(48,54,61,0.4);margin:1rem 0}
         </div>
       </div>
 
-    </div><!-- /adminPanel -->
-  </div><!-- /pageAdmin -->
-
-</div><!-- /container -->
-
-<!-- Edit modal -->
-<div class="modal-overlay" id="editModal">
+    </div></div></div><div class="modal-overlay" id="editModal">
   <div class="modal">
     <div class="modal-title">✏️ Edit account</div>
     <button class="modal-close" onclick="closeEditModal()">✕</button>
@@ -483,7 +462,10 @@ function doLogin() {
   var users = getUsers();
   var match = users.find(function(u){ return u.id===id && u.role===currentRole && u.pass===pass; });
   if (!match) { showMsg('liMsg','Invalid ID, role, or password.','err'); return; }
+  
+  // ── AGE ENFORCEMENT CHECK ──
   if (match.age && match.age < 18) { showMsg('liMsg','Access denied: users under 18 cannot log in.','err'); return; }
+  
   saveSession({ id: id, role: currentRole, name: match.name });
   showMsg('liMsg','Logged in successfully!','ok');
   refreshLoginBar();
@@ -759,5 +741,3 @@ renderAdminPage();
 </script>
 </body>
 </html>
-HTMLEOF
-echo "Done: $(wc -l < /mnt/user-data/outputs/auth.html) lines"
