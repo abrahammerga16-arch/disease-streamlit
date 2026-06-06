@@ -26,6 +26,7 @@ from supabase import create_client, Client
 
 SUPABASE_URL: str = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY: str = st.secrets["SUPABASE_KEY"]
+
 def get_supabase() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -569,9 +570,203 @@ def chatbot_response(query, age, role, user_id, lang,
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# QUICK-SELECT SYMPTOM WIDGET
+# QUICK-SELECT SYMPTOM WIDGET  (with Amharic translation)
 # ══════════════════════════════════════════════════════════════════════════════
-def render_quick_select_symptoms(lang):
+# Flat pre-built Amharic translations for every symptom pill.
+# Using a static dictionary avoids live googletrans calls on every rerun and
+# makes the widget work even when the translation service is unavailable.
+SYMPTOM_AM: dict[str, str] = {
+    # 🌡️ General
+    "fever": "ትኩሳት",
+    "chills": "ብርድ ብርድ ማለት",
+    "sweating": "ላብ",
+    "fatigue": "ድካም",
+    "weakness": "ድካም / ድብርት",
+    "feeling ill": "ታሞ መሰማት",
+    "weight gain": "ክብደት መጨመር",
+    "ache all over": "ሁሉ ቦታ ህመም",
+    "flu-like syndrome": "ጉንፋን መሰል ምልክቶች",
+    "restlessness": "አለመረጋጋት",
+    "sleepiness": "ድቀምራ",
+    "decreased appetite": " appetite መቀነስ",
+    "fluid retention": "ፈሳሽ መጠራቀም",
+    # 🧠 Neuro/Mental
+    "anxiety and nervousness": "ጭንቀት እና ነርቭ",
+    "depression": "ድብርት",
+    "insomnia": "እንቅልፍ አለመምጣት",
+    "dizziness": "ማዞር",
+    "abnormal involuntary movements": "ያልተቆጣጠሩ እንቅስቃሴዎች",
+    "disturbance of memory": "የትዝታ ችግር",
+    "paresthesia": "ዳታ መሰማት",
+    "loss of sensation": "የስሜት ማጣት",
+    "focal weakness": "ትኩረት ድካም",
+    "seizures": "የሚጥል ህመም",
+    "delusions or hallucinations": "የሐሰት ሀሳብ ወይም ቅዠት",
+    "fainting": "気絶 / ሞዛ",
+    "temper problems": "ቁጣ ችግሮች",
+    "fears and phobias": "ፍርሃት እና ፎቢያ",
+    "low self-esteem": "ዝቅተኛ ራስ-ግምት",
+    "excessive anger": "ከፍተኛ ቁጣ",
+    "drug abuse": "የአደንዛዥ ዕፅ አላቂ አጠቃቀም",
+    "abusing alcohol": "አልኮል አላቂ ጠጣ",
+    # 🫀 Cardio/Resp
+    "shortness of breath": "숨이 막힘 / ትንፋሽ ማጠር",
+    "sharp chest pain": "ሹል የደረት ህመም",
+    "chest tightness": "የደረት ጥብቅነት",
+    "palpitations": "የልብ ፈጣን ምት",
+    "irregular heartbeat": "ያልተስተካከለ የልብ ምት",
+    "breathing fast": "ፈጣን መተንፈስ",
+    "cough": "ሳል",
+    "wheezing": "የፊሽካ ድምፅ ሲተነፍሱ",
+    "difficulty breathing": "መተንፈስ ችግር",
+    "congestion in chest": "በደረት ላይ ጭቆና",
+    "hoarse voice": "የጠፋ ድምፅ",
+    "hemoptysis": "ደም ሳልን",
+    "coughing up sputum": "ምራቅ ሳልን",
+    "increased heart rate": "የልብ ምት መጨመር",
+    "decreased heart rate": "የልብ ምት መቀነስ",
+    "burning chest pain": "የሚቃጠል የደረት ህመም",
+    # 👃 ENT
+    "sore throat": "የጉሮሮ ህመም",
+    "difficulty speaking": "መናገር ችግር",
+    "nasal congestion": "የአፍንጫ መዘጋት",
+    "throat swelling": "የጉሮሮ ማበጥ",
+    "diminished hearing": "መስማት መቀነስ",
+    "difficulty in swallowing": "መዋጥ ችግር",
+    "ear pain": "የጆሮ ህመም",
+    "ringing in ear": "የጆሮ ጩኸት",
+    "itchy ear(s)": "ጆሮ ማሳከክ",
+    "swollen or red tonsils": "ያበጠ ወይም ቀይ ቶንሲሎች",
+    "sneezing": "ማስነጠስ",
+    "coryza": "ጉንፋን",
+    "sinus congestion": "ሳይነስ መዘጋት",
+    "painful sinuses": "ሳይነስ ህመም",
+    "nosebleed": "የአፍንጫ ደም",
+    # 🤢 Gastro
+    "sharp abdominal pain": "ሹል የሆድ ህመም",
+    "upper abdominal pain": "ላይኛው የሆድ ህመም",
+    "burning abdominal pain": "ሚቃጠል የሆድ ህመም",
+    "lower abdominal pain": "ታችኛው የሆድ ህመም",
+    "nausea": "ማቅለሽለሽ",
+    "vomiting": "ማስታወክ",
+    "vomiting blood": "ደም ማስታወክ",
+    "diarrhea": "ተቅማጥ",
+    "constipation": "የሆድ ድርቀት",
+    "stomach bloating": "ሆድ መነፋት",
+    "heartburn": "የልብ ቃጠሎ",
+    "regurgitation": "ምግብ መመለስ",
+    "blood in stool": "ሰገራ ውስጥ ደም",
+    "melena": "ጥቁር ሰገራ",
+    "rectal bleeding": "የፊንጢጣ ደም",
+    # 🤕 Pain
+    "headache": "ራስ ምታት",
+    "frontal headache": "የፊት ራስ ምታት",
+    "back pain": "የጀርባ ህመም",
+    "low back pain": "ዝቅተኛ የጀርባ ህመም",
+    "neck pain": "የአንገት ህመም",
+    "shoulder pain": "የትከሻ ህመም",
+    "hip pain": "የዳሌ ህመም",
+    "knee pain": "የጉልበት ህመም",
+    "leg pain": "የእግር ህመም",
+    "foot or toe pain": "የእግር ጣት ህመም",
+    "ankle pain": "የቁርጭምጭሚት ህመም",
+    "elbow pain": "የክርን ህመም",
+    "arm pain": "የክንድ ህመም",
+    "wrist pain": "የጥቆሌ ህመም",
+    "hand or finger pain": "የእጅ ወይም ጣት ህመም",
+    "joint pain": "የข้อ ህመም",
+    "rib pain": "የጎን ህመም",
+    "groin pain": "የብብት ህመም",
+    "facial pain": "የፊት ህመም",
+    "bones are painful": "አጥንቶች ይቆርቁዛሉ",
+    "cramps and spasms": "ሙቀጫ እና ቁርጠት",
+    # 🦴 Musculo
+    "arm stiffness or tightness": "የክንድ ድርቀት",
+    "arm swelling": "የክንድ ማበጥ",
+    "arm weakness": "የክንድ ድካም",
+    "wrist swelling": "የጥቆሌ ማበጥ",
+    "hand or finger swelling": "የእጅ ወይም ጣት ማበጥ",
+    "knee swelling": "የጉልበት ማበጥ",
+    "leg swelling": "የእግር ማበጥ",
+    "ankle swelling": "የቁርጭምጭሚት ማበጥ",
+    "elbow swelling": "የክርን ማበጥ",
+    "shoulder stiffness or tightness": "የትከሻ ድርቀት",
+    "back stiffness or tightness": "የጀርባ ድርቀት",
+    "neck swelling": "የአንገት ማበጥ",
+    "peripheral edema": "ጠርዝ むくみ / ማበጥ",
+    "problems with movement": "እንቅስቃሴ ችግሮች",
+    # 🩺 Skin
+    "abnormal appearing skin": "ያልተለመደ ቆዳ",
+    "skin lesion": "የቆዳ ቁስለት",
+    "acne or pimples": "ክኒፍ ወይም ፊቅ",
+    "skin rash": "የቆዳ ሽፍታ",
+    "itching of skin": "ቆዳ ማሳከክ",
+    "skin dryness, peeling, scaliness, or roughness": "ቆዳ ደርቆ መነቀል",
+    "skin irritation": "የቆዳ ሕዝቦሽ",
+    "itchy scalp": "ራስ ቆዳ ማሳከክ",
+    "jaundice": "ቢጫ በሽታ",
+    "eyelid lesion or rash": "የዓይን ሽፋን ሽፍታ",
+    "irregular appearing nails": "ያልተስተካከሉ ጥፍሮች",
+    # 👁️ Eye
+    "diminished vision": "ዕይታ መቀነስ",
+    "double vision": "ድርብ ዕይታ",
+    "pain in eye": "የዓይን ህመም",
+    "eye redness": "ቀይ ዓይን",
+    "lacrimation": "ዓይን ማልቀስ",
+    "itchiness of eye": "ዓይን ማሳከክ",
+    "blindness": "ዕውርነት",
+    "eye burns or stings": "ዓይን ማቃጠል",
+    "spots or clouds in vision": "ዕይታ ውስጥ ነጠብጣቦች",
+    "swollen eye": "ያበጠ ዓይን",
+    "eyelid swelling": "የዓይን ሽፋን ማበጥ",
+    "white discharge from eye": "ከዓይን ነጭ ፈሳሽ",
+    # 🚻 Urinary
+    "painful urination": "ሽንት ህመም",
+    "frequent urination": "ተደጋጋሚ ሽንት",
+    "involuntary urination": "ያልተፈለገ ሽንት",
+    "blood in urine": "ሽንት ውስጥ ደም",
+    "retention of urine": "ሽንት አለማስወጣት",
+    "unusual color or odor to urine": "ሽንት ያልተለመደ ቀለም ወይም ሽታ",
+    "excessive urination at night": "ሌሊት ተደጋጋሚ ሽንት",
+    "low urine output": "ዝቅተኛ ሽንት",
+    "vaginal itching": "ሴት ብልት ማሳከክ",
+    "vaginal discharge": "ሴት ብልት ፈሳሽ",
+    "vaginal pain": "ሴት ብልት ህመም",
+    "pain during intercourse": "ግንኙነት ወቅት ህመም",
+    "swelling of scrotum": "ቡቦ ማበጥ",
+    "pain in testicles": "ቡቦ ህመም",
+    # 🤰 Women
+    "hot flashes": "ሙቀት ናሙናዎች",
+    "intermenstrual bleeding": "በወር አበባ መካከል ደም",
+    "pain during pregnancy": "እርግዝና ወቅት ህመም",
+    "problems during pregnancy": "እርግዝና ወቅት ችግሮች",
+    "uterine contractions": "የማህፀን ቁርጠት",
+    "pelvic pain": "የዳሌ ህመም",
+    "long menstrual periods": "ረጅም የወር አበባ",
+    "heavy menstrual flow": "ከፍተኛ የወር አበባ",
+    "painful menstruation": "የሚያሰቃይ የወር አበባ",
+    "infertility": "መካንነት",
+    # 👶 Pediatric
+    "lack of growth": "እድገት አለመኖር",
+    "irritable infant": "ቅሬታ ያለው ህፃን",
+    "infant feeding problem": "ህፃን ምግብ ችግር",
+    "pulling at ears": "ጆሮ መጎተት",
+    "diaper rash": "ዳይፐር ሽፍታ",
+    # 🔬 Other
+    "back mass or lump": "የጀርባ ድጥ",
+    "neck mass": "የአንገት ድጥ",
+    "jaw swelling": "የመንጋጋ ማበጥ",
+    "lip swelling": "የከንፈር ማበጥ",
+    "toothache": "የጥርስ ህመም",
+    "mouth ulcer": "የአፍ ቁስለት",
+    "gum pain": "የድድ ህመም",
+    "mouth dryness": "የአፍ ደርቀት",
+    "allergic reaction": "አለርጂ ምላሽ",
+    "lower body pain": "የታችኛው አካል ህመም",
+}
+
+
+def render_quick_select_symptoms(lang: str):
     CATEGORIES_EN = {
         "🌡️ General":["fever","chills","sweating","fatigue","weakness","feeling ill","weight gain","ache all over","flu-like syndrome","restlessness","sleepiness","decreased appetite","fluid retention"],
         "🧠 Neuro/Mental":["anxiety and nervousness","depression","insomnia","dizziness","abnormal involuntary movements","disturbance of memory","paresthesia","loss of sensation","focal weakness","seizures","delusions or hallucinations","fainting","temper problems","fears and phobias","low self-esteem","excessive anger","drug abuse","abusing alcohol"],
@@ -587,8 +782,22 @@ def render_quick_select_symptoms(lang):
         "👶 Pediatric":["lack of growth","irritable infant","infant feeding problem","pulling at ears","diaper rash"],
         "🔬 Other":["jaundice","back mass or lump","neck mass","jaw swelling","lip swelling","toothache","mouth ulcer","gum pain","mouth dryness","allergic reaction","lower body pain"],
     }
-    is_am   = lang.lower() == "amharic"
-    js_cats = {cat: [{"en":s,"display":s.title()} for s in syms] for cat,syms in CATEGORIES_EN.items()}
+
+    is_am = lang.lower() == "amharic"
+
+    # Build js_cats — use Amharic display labels when language is Amharic,
+    # keeping the original English key ("en") so symptom matching still works.
+    js_cats = {}
+    for cat, symptoms in CATEGORIES_EN.items():
+        items = []
+        for s in symptoms:
+            if is_am:
+                display = SYMPTOM_AM.get(s, s.title())   # static dict, instant lookup
+            else:
+                display = s.title()
+            items.append({"en": s, "display": display})
+        js_cats[cat] = items
+
     current_list = [s.strip().lower() for s in st.session_state.get("symptoms_text","").split(",") if s.strip()]
     quick_label  = "ምልክቶችን ፈጥኖ ይምረጡ:" if is_am else "Quick-select symptoms:"
     or_text      = "ወይም ምልክቶችን ይተይቡ" if is_am else "or type symptoms below — comma list OR full sentence"
