@@ -3,11 +3,11 @@ Integrated Healthcare Dashboard — Streamlit version (Enhanced UI with Animatio
   • Disease Predictor  (symptom input → ML prediction)
   • Health Recommender (disease dropdown → full health plan)
   • Healthcare Chatbot  (natural-language query → semantic answer)
-  • Role / Age / ID access control
+  • Role / Age / ID access control  ← signup/login via Colab Flask API
   • English ↔ Amharic UI
 """
 
-import os, json, warnings
+import os, json, warnings, requests
 import numpy as np
 import pandas as pd
 import joblib
@@ -145,7 +145,6 @@ div.clear-btn-container > div > button:hover {
 }
 .result-card p, .result-card li { color: #c9d1d9; font-size: 0.95rem; line-height: 1.6; }
 
-/* Locked card for restricted content */
 .result-card-locked {
     background: linear-gradient(135deg, rgba(45,14,14,0.5) 0%, rgba(33,38,45,0.4) 100%);
     border: 1px solid rgba(248,81,73,0.25);
@@ -163,7 +162,6 @@ div.clear-btn-container > div > button:hover {
 }
 .result-card-locked p { color: #8b949e; font-size: 0.95rem; line-height: 1.6; font-style: italic; }
 
-/* Partially visible card for limited content */
 .result-card-limited {
     background: linear-gradient(135deg, rgba(22,27,34,0.8) 0%, rgba(33,38,45,0.6) 100%);
     border: 1px solid rgba(240,136,62,0.3);
@@ -276,7 +274,6 @@ div.clear-btn-container > div > button:hover {
 }
 hr { border-color: rgba(88,166,255,0.1) !important; }
 
-/* ── Number input — fix invisible text in age box */
 .stNumberInput input {
     background: rgba(22, 30, 40, 1) !important;
     color: #e6edf3 !important;
@@ -288,11 +285,53 @@ hr { border-color: rgba(88,166,255,0.1) !important; }
     border-color: #58a6ff !important;
     box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2) !important;
 }
-/* Step buttons (+ / -) */
 .stNumberInput button {
     background: rgba(33, 38, 45, 1) !important;
     color: #e6edf3 !important;
     border-color: rgba(88, 166, 255, 0.25) !important;
+}
+
+/* ── Auth panel styles ── */
+.auth-panel {
+    background: rgba(22,27,34,0.7);
+    border: 1px solid rgba(48,54,61,0.6);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+}
+.auth-success {
+    background: rgba(35,134,54,0.15);
+    border-left: 3px solid #2ea043;
+    border-radius: 0 6px 6px 0;
+    padding: 8px 12px;
+    color: #3fb950;
+    font-size: 0.82rem;
+    margin-top: 6px;
+}
+.auth-error {
+    background: rgba(248,81,73,0.1);
+    border-left: 3px solid #f85149;
+    border-radius: 0 6px 6px 0;
+    padding: 8px 12px;
+    color: #f85149;
+    font-size: 0.82rem;
+    margin-top: 6px;
+}
+.auth-info {
+    color: #8b949e;
+    font-size: 0.72rem;
+    margin-top: 6px;
+    font-style: italic;
+}
+.logged-in-badge {
+    background: rgba(35,134,54,0.2);
+    border: 1px solid rgba(46,160,67,0.4);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #3fb950;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 8px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -429,23 +468,100 @@ def build_tfidf_index(symptom_list: tuple, disease_names: tuple):
     return vec, sym_matrix, dis_matrix
 
 
-# ──────────────────────────────────────────────
-# ACCESS CONTROL
-# ──────────────────────────────────────────────
-def check_access(age: int, role: str, user_id: str, lang: str):
+# ══════════════════════════════════════════════════════════════════════════════
+# ACCESS CONTROL  ←  UPDATED: calls Colab Flask API instead of hardcoded IDs
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _get_api_base() -> str:
+    """Return the ngrok base URL stored in session state, without trailing slash."""
+    url = st.session_state.get("colab_api_url", "").strip().rstrip("/")
+    return url
+
+
+def _api_login(role: str, user_id: str) -> tuple[bool, str]:
+    """
+    Call POST {ngrok_url}/login on the Colab Flask server.
+    Returns (success, message).
+    Falls back gracefully if the API is unreachable.
+    """
+    base = _get_api_base()
+    if not base:
+        return False, "⚠️ No Colab API URL set. Enter your ngrok URL in the sidebar."
+    try:
+        resp = requests.post(
+            f"{base}/login",
+            json={"role": role, "user_id": user_id},
+            timeout=8,
+        )
+        data = resp.json()
+        if resp.status_code == 200 and data.get("success"):
+            return True, data.get("message", "Login successful.")
+        return False, data.get("message", "Login failed.")
+    except requests.exceptions.ConnectionError:
+        return False, "❌ Cannot reach Colab server. Make sure the ngrok tunnel is running."
+    except requests.exceptions.Timeout:
+        return False, "❌ Request timed out. The Colab server may be sleeping."
+    except Exception as e:
+        return False, f"❌ API error: {e}"
+
+
+def _api_signup(role: str, user_id: str, name: str = "") -> tuple[bool, str]:
+    """
+    Call POST {ngrok_url}/signup on the Colab Flask server.
+    Returns (success, message).
+    """
+    base = _get_api_base()
+    if not base:
+        return False, "⚠️ No Colab API URL set. Enter your ngrok URL in the sidebar."
+    try:
+        resp = requests.post(
+            f"{base}/signup",
+            json={"role": role, "user_id": user_id, "name": name},
+            timeout=8,
+        )
+        data = resp.json()
+        if resp.status_code == 200 and data.get("success"):
+            return True, data.get("message", "Sign-up successful.")
+        return False, data.get("message", "Sign-up failed.")
+    except requests.exceptions.ConnectionError:
+        return False, "❌ Cannot reach Colab server. Make sure the ngrok tunnel is running."
+    except requests.exceptions.Timeout:
+        return False, "❌ Request timed out. The Colab server may be sleeping."
+    except Exception as e:
+        return False, f"❌ API error: {e}"
+
+
+def check_access(age: int, role: str, user_id: str, lang: str) -> tuple[bool, str]:
+    """
+    Central access-control gate used by all three tabs.
+    • Age check is local (no API needed).
+    • Student / Doctor identity is verified via the Colab /login endpoint.
+    • Normal User always passes (no ID required).
+    """
     if age < 18:
         return False, t("Access Denied: Information is not available for users under 18.", lang)
-    if role == "Student" and user_id != "1111":
-        return False, t("Access Denied: Invalid ID for Student role.", lang)
-    if role == "Doctor" and user_id != "0000":
-        return False, t("Access Denied: Invalid ID for Doctor role.", lang)
-    return True, ""
+
+    if role in ("Student", "Doctor"):
+        # Use the cached login state from session so we don't hit the API on every render
+        logged_in_as = st.session_state.get("logged_in_as")   # e.g. {"role":"Student","user_id":"ST001"}
+        if (
+            logged_in_as
+            and logged_in_as.get("role") == role
+            and logged_in_as.get("user_id", "").upper() == user_id.strip().upper()
+        ):
+            return True, ""
+        # Not cached — try a live login check
+        ok, msg = _api_login(role, user_id)
+        if ok:
+            st.session_state["logged_in_as"] = {"role": role, "user_id": user_id.strip().upper()}
+            return True, ""
+        return False, msg
+
+    return True, ""   # Normal User — no check needed
 
 
 # ──────────────────────────────────────────────
 # ROLE-BASED RECOMMENDATIONS
-# Returns list of dicts: {label, content, card_type}
-# card_type: "full" | "limited" | "locked"
 # ──────────────────────────────────────────────
 def role_based_recs(role, lang, key,
                     description_map, diets_map, medications_map,
@@ -457,7 +573,6 @@ def role_based_recs(role, lang, key,
     workout = translate_content(workout_map.get(key, "N/A"), lang)
 
     if role == "Doctor":
-        # Full access — everything visible
         cards = [
             {"label": t("Description",      lang), "content": desc,    "card_type": "full"},
             {"label": t("Dietary Plan",      lang), "content": diet,    "card_type": "full"},
@@ -468,15 +583,13 @@ def role_based_recs(role, lang, key,
         advice = ""
 
     elif role == "Student":
-        # Medications shown as drug-class names only
         if isinstance(meds, str) and meds not in ("N/A", ""):
             drug_classes = []
             for item in meds.split(","):
                 item = item.strip()
                 if item:
-                    # Keep only first word (drug class / generic name stem)
                     drug_classes.append(item.split()[0].rstrip(".,;"))
-            meds_display = ", ".join(dict.fromkeys(drug_classes))  # deduplicate, preserve order
+            meds_display = ", ".join(dict.fromkeys(drug_classes))
             meds_note    = "Drug class names shown only. Full details restricted to licensed Doctors."
         else:
             meds_display = "N/A"
@@ -493,7 +606,6 @@ def role_based_recs(role, lang, key,
         advice = "ℹ️ Full medication details are only available to licensed Doctors."
 
     else:
-        # Normal User — diet fully locked, medications fully locked
         cards = [
             {"label": t("Description",      lang), "content": desc,   "card_type": "full"},
             {"label": t("Dietary Plan",      lang),
@@ -614,7 +726,7 @@ def integrated_prediction_system(
 
 
 # ──────────────────────────────────────────────
-# CHATBOT  — fixed & robust
+# CHATBOT
 # ──────────────────────────────────────────────
 def chatbot_response(
     query, age, role, user_id, lang,
@@ -627,7 +739,6 @@ def chatbot_response(
 
     q = query.lower().strip()
 
-    # ── Detect intent keyword ──────────────────────────────────────────
     INTENT_KEYWORDS = {
         "diet":       ["diet", "food", "eat", "nutrition", "meal", "drink", "አመጋገብ"],
         "medication": ["medicine", "medication", "drug", "pill", "treat", "tablet",
@@ -638,14 +749,12 @@ def chatbot_response(
                        "definition", "meaning", "symptom", "cause", "sign"],
     }
 
-    intent = "description"  # default
+    intent = "description"
     for key, keywords in INTENT_KEYWORDS.items():
         if any(kw in q for kw in keywords):
             intent = key
             break
 
-    # ── Find best-matching disease ─────────────────────────────────────
-    # Build a rich corpus: disease name + its description for better matching
     disease_keys   = list(description_map.keys())
     rich_texts     = []
     for dk in disease_keys:
@@ -655,7 +764,6 @@ def chatbot_response(
     if not rich_texts:
         return "Sorry, the knowledge base is empty."
 
-    # Use a word-level vectorizer for chatbot (better for natural language)
     chat_vec    = TfidfVectorizer(
         analyzer="word",
         ngram_range=(1, 2),
@@ -683,11 +791,9 @@ def chatbot_response(
     disease_key   = disease_keys[best_idx]
     disease_title = disease_key.title()
 
-    # ── Retrieve content based on intent ──────────────────────────────
     if intent == "diet":
         raw   = diets_map.get(disease_key, "N/A")
         label = t("Dietary Plan", lang)
-        # Role-based filtering for diet — Normal User fully locked
         if role == "Normal User":
             info        = "🔒 Dietary plan details are restricted. Please consult a licensed nutritionist or doctor for a personalised plan."
             restriction = ""
@@ -698,7 +804,6 @@ def chatbot_response(
     elif intent == "medication":
         raw   = medications_map.get(disease_key, "N/A")
         label = t("Medications", lang)
-        # Role-based filtering for medications
         if role == "Normal User":
             info        = "🔒 Medication details are restricted. Please consult a licensed doctor."
             restriction = ""
@@ -728,7 +833,7 @@ def chatbot_response(
         label       = t("Workout/Activity", lang)
         restriction = ""
 
-    else:  # description
+    else:
         info        = description_map.get(disease_key, "N/A")
         label       = t("Description", lang)
         restriction = ""
@@ -743,7 +848,7 @@ def chatbot_response(
 
 
 # ──────────────────────────────────────────────
-# QUICK-SELECT WIDGET (iframe-based, always visible)
+# QUICK-SELECT WIDGET
 # ──────────────────────────────────────────────
 def render_quick_select_symptoms(lang: str) -> None:
     CATEGORIES_EN = {
@@ -921,6 +1026,129 @@ def clear_diagnosis_callback():
     st.session_state["prediction_error"]  = None
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# SIDEBAR — UPDATED: Sign Up / Login panel replaces plain ID input
+# ══════════════════════════════════════════════════════════════════════════════
+def render_sidebar_auth(role: str, lang: str) -> str:
+    """
+    Renders the Sign Up / Login section in the sidebar for Student / Doctor roles.
+    Returns the active user_id string (empty string if not logged in).
+    """
+
+    # ── Session state keys ───────────────────────────────────────────────────
+    if "colab_api_url"  not in st.session_state: st.session_state["colab_api_url"]  = ""
+    if "logged_in_as"   not in st.session_state: st.session_state["logged_in_as"]   = None
+    if "auth_msg"       not in st.session_state: st.session_state["auth_msg"]        = ("", False)
+    if "auth_mode"      not in st.session_state: st.session_state["auth_mode"]       = "login"
+
+    # ── Colab ngrok URL input ────────────────────────────────────────────────
+    st.sidebar.markdown(
+        "<div style='font-size:0.7rem;color:#8b949e;text-transform:uppercase;"
+        "letter-spacing:0.1em;margin-bottom:4px'>🔗 Colab API URL</div>",
+        unsafe_allow_html=True,
+    )
+    colab_url = st.sidebar.text_input(
+        "colab_url_input",
+        value=st.session_state["colab_api_url"],
+        placeholder="https://xxxx-xx-xx.ngrok-free.app",
+        label_visibility="collapsed",
+        key="colab_url_field",
+    )
+    if colab_url != st.session_state["colab_api_url"]:
+        st.session_state["colab_api_url"]  = colab_url
+        st.session_state["logged_in_as"]   = None   # reset login when URL changes
+        st.session_state["auth_msg"]       = ("", False)
+
+    if not colab_url.strip():
+        st.sidebar.markdown(
+            "<div class='auth-info'>Paste your ngrok URL from Colab cell 37 output.</div>",
+            unsafe_allow_html=True,
+        )
+
+    st.sidebar.markdown("---")
+
+    # ── If already logged in as this role, show badge + logout ───────────────
+    li = st.session_state.get("logged_in_as")
+    if li and li.get("role") == role:
+        uid = li["user_id"]
+        st.sidebar.markdown(
+            f"<div class='logged-in-badge'>✅ Logged in as {role}<br>"
+            f"<span style='font-size:0.75rem;opacity:0.8'>ID: {uid}</span></div>",
+            unsafe_allow_html=True,
+        )
+        if st.sidebar.button("🚪 Log out", key="logout_btn", use_container_width=True):
+            st.session_state["logged_in_as"] = None
+            st.session_state["auth_msg"]     = ("", False)
+            st.rerun()
+        return uid
+
+    # ── Mode toggle: Login / Sign Up ─────────────────────────────────────────
+    mode_col1, mode_col2 = st.sidebar.columns(2)
+    with mode_col1:
+        if st.button("🔑 Login",   key="mode_login",  use_container_width=True):
+            st.session_state["auth_mode"] = "login"
+            st.session_state["auth_msg"]  = ("", False)
+    with mode_col2:
+        if st.button("📝 Sign Up", key="mode_signup", use_container_width=True):
+            st.session_state["auth_mode"] = "signup"
+            st.session_state["auth_msg"]  = ("", False)
+
+    mode = st.session_state["auth_mode"]
+
+    # ── ID format hint ────────────────────────────────────────────────────────
+    prefix      = "ST" if role == "Student" else "DR"
+    hint        = f"ID must start with <b>{prefix}</b> — e.g. {prefix}001"
+    placeholder = f"e.g. {prefix}001"
+
+    st.sidebar.markdown(
+        f"<div class='auth-info' style='margin-bottom:6px'>{hint}</div>",
+        unsafe_allow_html=True,
+    )
+
+    if mode == "signup":
+        # ── Sign Up form ──────────────────────────────────────────────────────
+        su_id   = st.sidebar.text_input("Choose an ID",  placeholder=placeholder, key="su_id_field")
+        su_name = st.sidebar.text_input("Your name (optional)", placeholder="Full name", key="su_name_field")
+        if st.sidebar.button("✅ Create Account", key="signup_submit_btn", use_container_width=True):
+            if not su_id.strip():
+                st.session_state["auth_msg"] = ("Please enter an ID.", False)
+            else:
+                ok, msg = _api_signup(role, su_id.strip(), su_name.strip())
+                st.session_state["auth_msg"] = (msg, ok)
+                if ok:
+                    # Auto-login after successful signup
+                    st.session_state["logged_in_as"] = {
+                        "role": role, "user_id": su_id.strip().upper()
+                    }
+                    st.rerun()
+    else:
+        # ── Login form ────────────────────────────────────────────────────────
+        li_id = st.sidebar.text_input("Your ID", placeholder=placeholder,
+                                      type="password", key="li_id_field")
+        if st.sidebar.button("🔓 Login", key="login_submit_btn", use_container_width=True):
+            if not li_id.strip():
+                st.session_state["auth_msg"] = ("Please enter your ID.", False)
+            else:
+                ok, msg = _api_login(role, li_id.strip())
+                st.session_state["auth_msg"] = (msg, ok)
+                if ok:
+                    st.session_state["logged_in_as"] = {
+                        "role": role, "user_id": li_id.strip().upper()
+                    }
+                    st.rerun()
+
+    # ── Auth feedback message ─────────────────────────────────────────────────
+    msg_text, msg_ok = st.session_state["auth_msg"]
+    if msg_text:
+        css = "auth-success" if msg_ok else "auth-error"
+        st.sidebar.markdown(
+            f"<div class='{css}'>{msg_text}</div>",
+            unsafe_allow_html=True,
+        )
+
+    return ""   # not logged in yet
+
+
 # ──────────────────────────────────────────────
 # MAIN
 # ──────────────────────────────────────────────
@@ -937,18 +1165,23 @@ def main():
     disease_names = tuple(main_df["diseases"].unique())
     vec, sym_matrix, _ = build_tfidf_index(symptom_list, disease_names)
 
-    # ── Sidebar
+    # ── Sidebar ──────────────────────────────────────────────────────────────
     st.sidebar.markdown('<div class="section-header">User Profile</div>', unsafe_allow_html=True)
-    lang    = st.sidebar.selectbox("🌐 Language", ["English", "Amharic"])
-    role    = st.sidebar.selectbox("👤 Role", ["Normal User", "Student", "Doctor"])
+    lang = st.sidebar.selectbox("🌐 Language", ["English", "Amharic"])
+    role = st.sidebar.selectbox("👤 Role", ["Normal User", "Student", "Doctor"])
+    age  = st.sidebar.number_input("🎂 Age", min_value=0, max_value=120, value=25)
+
+    # ── Auth panel — only for Student / Doctor ───────────────────────────────
     user_id = ""
     if role in ("Student", "Doctor"):
-        placeholder = "Doctor ID: 0000" if role == "Doctor" else "Student ID: 1111"
-        user_id = st.sidebar.text_input("🔐 ID", placeholder=placeholder,
-                                        type="password", label_visibility="collapsed")
-    age = st.sidebar.number_input("🎂 Age", min_value=0, max_value=120, value=25)
+        st.sidebar.markdown("---")
+        st.sidebar.markdown(
+            f'<div class="section-header">{"Student" if role=="Student" else "Doctor"} Access</div>',
+            unsafe_allow_html=True,
+        )
+        user_id = render_sidebar_auth(role, lang)
 
-    # Role badge in sidebar
+    # ── Role badge ────────────────────────────────────────────────────────────
     role_colors = {"Doctor": "#1f6feb", "Student": "#2ea043", "Normal User": "#6e7681"}
     rc = role_colors.get(role, "#6e7681")
     st.sidebar.markdown(
@@ -960,12 +1193,12 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.caption("⚕️ General health information only. Always consult a qualified doctor.")
 
-    # ── Session state init
+    # ── Session state init ────────────────────────────────────────────────────
     for key in ("prediction_result", "prediction_error", "chat_response"):
         if key not in st.session_state:
             st.session_state[key] = None
 
-    # ── Header
+    # ── Header ────────────────────────────────────────────────────────────────
     st.markdown("""
     <div class='main-header'>
       <div class='main-header-title'>🏥 Integrated Healthcare Dashboard</div>
@@ -1025,7 +1258,6 @@ def main():
             res = st.session_state["prediction_result"]
             st.markdown("---")
 
-            # Matched symptoms
             st.markdown('<div class="section-header">✅ Matched Symptoms</div>',
                         unsafe_allow_html=True)
             chips = " · ".join(
@@ -1036,7 +1268,6 @@ def main():
             )
             st.markdown(chips, unsafe_allow_html=True)
 
-            # Predictions
             st.markdown('<br><div class="section-header">🎯 Predicted Conditions</div>',
                         unsafe_allow_html=True)
             rows = (
@@ -1063,7 +1294,6 @@ def main():
                 )
             st.markdown(rows + "</div>", unsafe_allow_html=True)
 
-            # Health plan
             with st.expander(f"📊 Health Plan — {res['top_disease']}", expanded=True):
                 render_rec_cards(res["rec_cards"])
                 if res["advice"]:
@@ -1124,7 +1354,6 @@ def main():
         greeting = t("Hello! How can I help you with health information today?", lang)
         st.markdown(f'<div class="chat-bot">🤖 {greeting}</div>', unsafe_allow_html=True)
 
-        # Example queries
         st.markdown(
             "<div style='margin:10px 0 4px;font-size:0.72rem;color:#475569;"
             "text-transform:uppercase;letter-spacing:0.1em;font-weight:600'>"
