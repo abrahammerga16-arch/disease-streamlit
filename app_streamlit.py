@@ -20,8 +20,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from supabase import create_client
 import streamlit as st
 
-SUPABASE_URL = ["https://wpzueewhzimmtrtjdmoe.supabase.co"]
-SUPABASE_KEY = ["sb_publishable_x0gZp8zI6rytLOKFJQfUwg_y1YG1JRP"]
+SUPABASE_URL = st.secrets["https://wpzueewhzimmtrtjdmoe.supabase.co"]
+SUPABASE_KEY = st.secrets["sb_publishable_x0gZp8zI6rytLOKFJQfUwg_y1YG1JRP"]
 
 supabase = create_client(
     SUPABASE_URL,
